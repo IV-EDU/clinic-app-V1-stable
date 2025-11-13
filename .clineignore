@@ -1,0 +1,23 @@
+node_modules/
+dist/
+build/
+.out/
+.target/
+.cache/
+coverage/
+.git/
+*.lock
+*.log
+*.tmp
+*.csv
+*.tsbuildinfo
+.env
+.env.*
+# optional big stuff
+data/
+datasets/
+*.ipynb
+*.parquet
+.next/
+.nuxt/
+.vite/

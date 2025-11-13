@@ -1,0 +1,52 @@
+{% extends '_base.html' %}
+{% block content %}
+<div class="card" style="text-align:center">
+  <a class="btn{% if tab=='daily' %} secondary{% endif %}" href="{{ url_for('reports.collections', tab='daily', f=from_date, t=to_date) }}">{{ t('tab_daily') }}</a>
+  <a class="btn{% if tab=='monthly' %} secondary{% endif %}" href="{{ url_for('reports.collections', tab='monthly', f=from_date, t=to_date) }}">{{ t('tab_monthly') }}</a>
+</div>
+<div class="card">
+  <form method="get" class="row" style="align-items:center">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <div><label class="h">{{ t('from') }}</label><input type="date" name="f" value="{{ from_date or '' }}"></div>
+    <div><label class="h">{{ t('to') }}</label><input type="date" name="t" value="{{ to_date or '' }}"></div>
+    <div style="display:flex;gap:8px;align-items:end;justify-content:center">
+      <button class="btn">{{ t('filter') }}</button>
+      <a class="btn secondary" href="{{ url_for('reports.collections', tab=tab) }}">{{ t('reset') }}</a>
+      <a class="btn" href="{{ export_url }}">{{ t('export') }}</a>
+    </div>
+  </form>
+</div>
+<div class="card">
+  {% if tab=='daily' %}
+    {% if rows %}
+      <table style="width:100%;border-collapse:separate;border-spacing:0 8px;text-align:center;margin:0 auto">
+        <thead><tr><th>{{ t('date') }}</th><th>{{ t('collected') }}</th><th></th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td class="c">{{ r['paid_at'] }}</td>
+            <td class="c">{{ '{:.2f}'.format((r['amt'] or 0)/100) }}</td>
+            <td class="c"><a class="btn secondary" href="{{ url_for('reports.collections_day', d=r['paid_at']) }}">{{ t('view_day') }}</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}<div style="text-align:center;color:#6b7280">{{ t('no_rows') }}</div>{% endif %}
+  {% else %}
+    {% if rows %}
+      <table style="width:100%;border-collapse:separate;border-spacing:0 8px;text-align:center;margin:0 auto">
+        <thead><tr><th>{{ t('month') }}</th><th>{{ t('collected') }}</th><th></th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td class="c">{{ r['month'] }}</td>
+            <td class="c">{{ '{:.2f}'.format((r['amt'] or 0)/100) }}</td>
+            <td class="c"><a class="btn secondary" href="{{ url_for('reports.collections_month', m=r['month'], f=from_date or '', t=to_date or '') }}">{{ t('view_month') }}</a></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}<div style="text-align:center;color:#6b7280">{{ t('no_rows') }}</div>{% endif %}
+  {% endif %}
+</div>
+{% endblock %}

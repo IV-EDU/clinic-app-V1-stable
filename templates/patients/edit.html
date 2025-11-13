@@ -1,0 +1,20 @@
+{% extends '_base.html' %}
+{% import '_macros.html' as macros %}
+{% block content %}
+<div class="card">
+  <h3 style="text-align:center">{{ t('edit_patient') }}</h3>
+  <form method="post" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row" style="flex-basis:100%">
+      {{ macros.labeled_input('short_id', t('file_no'), value=p['short_id'] or '', placeholder=t('file_no_hint')) }}
+      {{ macros.labeled_input('full_name', t('name'), value=p['full_name'], required=True) }}
+      {{ macros.labeled_input('phone', t('phone'), value=p['phone'] or '', placeholder=t('optional')) }}
+    </div>
+    {{ macros.labeled_textarea('notes', t('notes'), value=p['notes'] or '', placeholder=t('optional')) }}
+    <div style="flex-basis:100%;display:flex;gap:8px;justify-content:center">
+      <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=p['id']) }}">{{ t('back_to_patient') }}</a>
+      <button class="btn">{{ t('update') }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

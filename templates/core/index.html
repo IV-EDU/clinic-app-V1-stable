@@ -1,0 +1,73 @@
+{% extends '_base.html' %}
+{% block content %}
+<div class="card">
+  <form method="get" class="row" style="align-items:center">
+    <div style="flex:2"><input name="q" placeholder="{{ t('search_placeholder') }}" value="{{ q or '' }}" style="width:100%"></div>
+    <div style="flex:0"><button class="btn">{{ t('search') }}</button></div>
+    <div style="flex:0"><a class="btn secondary" href="{{ url_for('index') }}">{{ t('clear') }}</a></div>
+  </form>
+</div>
+<div class="card">
+  <div class="row" style="align-items:center">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div><strong>{{ t('patients') }}:</strong> {{ total_patients }}</div>
+      <a class="btn" href="{{ url_for('patients.new_patient') }}">{{ t('add_patient') }}</a>
+    </div>
+    <div style="margin-left:auto"><strong>{{ t('total_received') }}:</strong> {{ today_total }}</div>
+  </div>
+</div>
+<div class="card">
+  <div class="row" style="align-items:center;margin-bottom:12px">
+    <h3 style="margin:0">{{ t('appointments_today') }}</h3>
+    <a class="btn secondary" href="{{ url_for('appointments.table') }}" style="margin-left:auto">{{ t('view') }}</a>
+  </div>
+  <div class="row" style="gap:24px;flex-wrap:wrap;align-items:flex-start">
+    <div style="flex:1;min-width:180px">
+      <div style="font-size:36px;font-weight:700;line-height:1">{{ appointments_count }}</div>
+      <div style="color:#6b7280">{{ t('appointments_today') }}</div>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap">
+      <div style="min-width:140px">
+        <div style="font-size:14px;color:#6b7280">{{ t('appointment_status_scheduled') }}</div>
+        <div style="font-size:24px;font-weight:600">{{ upcoming_count }}</div>
+      </div>
+      <div style="min-width:140px">
+        <div style="font-size:14px;color:#6b7280">{{ t('appointment_status_done') }}</div>
+        <div style="font-size:24px;font-weight:600">{{ completed_count }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="card">
+  {% if patients %}
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:separate;border-spacing:0 8px;text-align:center;margin:0 auto">
+      <thead>
+        <tr>
+          <th style="font-weight:700;color:#374151;padding:10px;width:16%">{{ t('file_no') }}</th>
+          <th style="font-weight:700;color:#374151;padding:10px;width:38%">{{ t('name') }}</th>
+          <th style="font-weight:700;color:#374151;padding:10px;width:20%">{{ t('phone') }}</th>
+          <th style="font-weight:700;color:#374151;padding:10px;width:16%">{{ t('balance') }}</th>
+          <th style="width:10%"></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in patients %}
+        <tr>
+          <td style="background:#fff;border:1px solid #e5e7eb;padding:10px;border-radius:10px 0 0 10px">{{ p.short_id }}</td>
+          <td style="background:#fff;border:1px solid #e5e7eb;padding:10px">{{ p.full_name }}</td>
+          <td style="background:#fff;border:1px solid #e5e7eb;padding:10px">{{ p.phone or '—' }}</td>
+          <td style="background:#fff;border:1px solid #e5e7eb;padding:10px">
+            <div class="bal-box {{ 'bal-0' if p.balance_cents==0 else 'bal-pos' }}">{{ '{:.2f}'.format(p.balance_cents/100) }}</div>
+          </td>
+          <td style="background:#fff;border:1px solid #e5e7eb;padding:10px;border-radius:0 10px 10px 0">
+            <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=p.id) }}">{{ t('open') }}</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<div style="color:#6b7280;text-align:center">{{ t('no_patients') }}</div>{% endif %}
+</div>
+{% endblock %}

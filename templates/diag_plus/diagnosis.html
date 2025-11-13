@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en" dir="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagnosis — Palmer (MedLite)</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='diag_plus/style.css') }}">
+</head>
+<body>
+<div class="wrap">
+<div class="head">
+    <div class="hgroup">
+      <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=pid) }}">← Back</a>
+      <strong>Diagnosis — Palmer ({{ 'Adult 1–8' if chart_type=='adult' else 'Child A–E' }})</strong>
+    </div>
+    <div class="hgroup">
+      <a class="btn {% if chart_type=='adult' %}secondary{% endif %}" href="{{ url_for('palmer_plus.diag_page', pid=pid, chart='adult') }}">Adult</a>
+      <a class="btn {% if chart_type=='child' %}secondary{% endif %}" href="{{ url_for('palmer_plus.diag_page', pid=pid, chart='child') }}">Child</a>
+      <a class="btn" href="{{ url_for('palmer_plus.med_page', pid=pid) }}">Medical</a><a class="btn" style="background:#eef6ff;border:1px solid #dbeafe;margin-left:8px" href="{{ url_for('palmer_plus.images_page', pid=pid, chart_type=chart_type) }}">Images</a>
+  </div>
+  </div>
+
+
+
+<div class="card patient-card">
+  <div class="patient-avatar">{{ (patient.full_name or patient.short_id or 'P')[0] if patient else 'P' }}</div>
+  <div class="patient-meta">
+    <div class="patient-name">{{ patient.full_name if patient else 'Patient' }}</div>
+    <div class="patient-sub">
+      <span>ID: {{ patient.short_id if patient else pid }}</span>
+      {% if patient and patient.phone %}<span>• {{ patient.phone }}</span>{% endif %}
+      {% if patient and patient.created_at %}<span>• since {{ patient.created_at[:10] }}</span>{% endif %}
+    </div>
+    {% if patient and patient.notes %}
+    <div class="patient-notes">{{ patient.notes }}</div>
+    {% endif %}
+  </div>
+</div>
+
+
+
+  <div class="card legend">
+    <div class="quick">
+      <span>Quick-Pick:</span>
+      <button class="qbtn qbtn-none" data-status="">White</button>
+      {% for key,label in status_choices if key %}
+        <button class="qbtn" data-status="{{key}}" style="--c: {{ colors.get(key, '#fff') }}">{{label}}</button>
+      {% endfor %}
+    </div>
+    <div class="legend-keys">
+      {% for key,label in status_choices %}
+        <span class="tag"><span class="swatch" style="background: {{ colors.get(key,'#fff') }}"></span>{{ label }}</span>
+      {% endfor %}
+  </div>
+  </div>
+
+  <div class="card">
+    <div class="quadbar"><div>UR</div><div>UL</div></div>
+    <div class="arch {{ 'child' if chart_type=='child' else 'adult' }}">
+      {% for code,label in UR %}
+        {% set s = state_short.get(code,'') %}
+        <div class="tooth" data-code="{{code}}" data-hasnote="{{ 1 if (states.get(code,{}).get('note','').strip()) else 0 }}" data-status="{{ s }}"
+             title="{{code}} • {{ states.get(code,{}).get('updated_at','') }}&#10;{{ states.get(code,{}).get('note','') }}"
+             onclick="openEditor(this)">
+          <div class="note-dot"></div><div class="label">{{label}}</div>
+          <div class="badge">{{ s }}</div>
+        </div>
+      {% endfor %}
+      <div class="midline"></div>
+      {% for code,label in UL %}
+        {% set s = state_short.get(code,'') %}
+        <div class="tooth" data-code="{{code}}" data-hasnote="{{ 1 if (states.get(code,{}).get('note','').strip()) else 0 }}" data-status="{{ s }}"
+             title="{{code}} • {{ states.get(code,{}).get('updated_at','') }}&#10;{{ states.get(code,{}).get('note','') }}"
+             onclick="openEditor(this)">
+          <div class="note-dot"></div><div class="label">{{label}}</div>
+          <div class="badge">{{ s }}</div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="splitline"></div>
+    <div class="quadbar"><div>LR</div><div>LL</div></div>
+
+    <div class="arch {{ 'child' if chart_type=='child' else 'adult' }}">
+      {% for code,label in LR %}
+        {% set s = state_short.get(code,'') %}
+        <div class="tooth" data-code="{{code}}" data-hasnote="{{ 1 if (states.get(code,{}).get('note','').strip()) else 0 }}" data-status="{{ s }}"
+             title="{{code}} • {{ states.get(code,{}).get('updated_at','') }}&#10;{{ states.get(code,{}).get('note','') }}"
+             onclick="openEditor(this)">
+          <div class="note-dot"></div><div class="label">{{label}}</div>
+          <div class="badge">{{ s }}</div>
+        </div>
+      {% endfor %}
+      <div class="midline"></div>
+      {% for code,label in LL %}
+        {% set s = state_short.get(code,'') %}
+        <div class="tooth" data-code="{{code}}" data-hasnote="{{ 1 if (states.get(code,{}).get('note','').strip()) else 0 }}" data-status="{{ s }}"
+             title="{{code}} • {{ states.get(code,{}).get('updated_at','') }}&#10;{{ states.get(code,{}).get('note','') }}"
+             onclick="openEditor(this)">
+          <div class="note-dot"></div><div class="label">{{label}}</div>
+          <div class="badge">{{ s }}</div>
+        </div>
+      {% endfor %}
+  </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-ov" id="ov">
+  <div class="modal">
+    <h3 id="mTitle">Tooth</h3>
+    <div class="row">
+      <label>Status</label>
+      <select id="status">
+        {% for key,label in status_choices %}
+          <option value="{{key}}">{{label}}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="row">
+      <label>Notes</label>
+      <textarea id="note" placeholder="Optional notes..."></textarea>
+    </div>
+    <div class="actions">
+      <button class="btn secondary" onclick="closeEditor()">Cancel</button>
+      <button class="btn" onclick="save()">Save</button>
+      <button class="btn danger" onclick="clearTooth()">Clear</button>
+  </div>
+  </div>
+</div>
+
+<script>
+const CSRF_TOKEN = "{{ csrf_token() }}";
+const DATA = {{ js|tojson }};
+let active = null;
+
+function qs(s){ return document.querySelector(s); }
+function qsa(s){ return Array.from(document.querySelectorAll(s)); }
+
+// Toggleable Quick-Pick
+let quickStatus = null;
+qsa('.qbtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const val = btn.getAttribute('data-status');
+    if(quickStatus === val){
+      quickStatus = null;
+      qsa('.qbtn').forEach(b=>b.classList.remove('on'));
+      return;
+    }
+    quickStatus = val;
+    qsa('.qbtn').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+  });
+});
+
+function openEditor(el){
+  active = el.getAttribute('data-code');
+  if(quickStatus !== null){
+    applyQuick(active, quickStatus);
+    return;
+  }
+  qs('#mTitle').textContent = "Tooth " + active;
+  const info = DATA.states[active] || {};
+  qs('#status').value = info.status || el.getAttribute('data-status') || "";
+  qs('#note').value = info.note || "";
+  qs('#ov').style.display = "flex";
+}
+function closeEditor(){ qs('#ov').style.display = "none"; }
+async function _post(body){
+  if(body && typeof body === 'object'){
+    body.csrf_token = CSRF_TOKEN;
+  }
+  const r = await fetch("{{ url_for('palmer_plus.diag_set', pid=pid) }}", {
+    method:"POST",
+    headers:{
+      'Content-Type':'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify(body)
+  });
+  return await r.json();
+}
+function _applyUI(code, state){
+  const cell = document.querySelector('.tooth[data-code="'+code+'"]');
+  if(!cell) return;
+  const st = state && state.status ? state.status : "";
+  cell.setAttribute('data-status', st);
+  const hasNote = (state && state.note && String(state.note).trim() !== '') ? '1' : '0';
+  cell.setAttribute('data-hasnote', hasNote);
+  cell.querySelector('.badge').textContent = st;
+  DATA.states[code] = state || {};
+}
+async function save(){
+  if(!active) return;
+  const body = {
+    chart_type: "{{ chart_type }}",
+    tooth_code: active,
+    status: qs('#status').value,
+    note: qs('#note').value
+  };
+  const r = await _post(body);
+  if(r.ok){ _applyUI(active, r.state); closeEditor(); } else { alert(r.error||"Failed"); }
+}
+async function clearTooth(){
+  if(!active) return;
+  const r = await _post({ chart_type: "{{ chart_type }}", tooth_code: active, clear: true });
+  if(r.ok){ _applyUI(active, null); closeEditor(); } else { alert(r.error||"Failed"); }
+}
+async function applyQuick(code, status){
+  const r = await _post({ chart_type: "{{ chart_type }}", tooth_code: code, status: status, note: "" });
+  if(r.ok){ _applyUI(code, r.state); } else { alert(r.error||"Failed"); }
+}
+</script>
+</body>
+</html>

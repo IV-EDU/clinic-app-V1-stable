@@ -1,0 +1,27 @@
+{% extends '_base.html' %}
+{% block content %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div><a class="btn secondary" href="{{ back_href or back_url() }}">← {{ t('back') }}</a></div>
+    <div><strong>{{ title }}</strong></div>
+    <div><a class="btn" href="{{ export_url }}">{{ t('export') }}</a></div>
+  </div>
+</div>
+<div class="card">
+  {% if rows %}
+    <table style="width:100%;border-collapse:separate;border-spacing:0 8px;text-align:center;margin:0 auto">
+      <thead><tr><th>{{ t('date') }}</th><th>Patient</th><th>{{ t('amount') }}</th><th>{{ t('method') }}</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="c">{{ r['paid_at'] }}</td>
+          <td class="c">{{ r['full_name'] }}</td>
+          <td class="c">{{ '{:.2f}'.format((r['amount_cents'] or 0)/100) }}</td>
+          <td class="c">{{ r['method'] or '' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}<div style="text-align:center;color:#6b7280">{{ t('no_rows') }}</div>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% set next_path = request.full_path if request.query_string else request.path %}
+{% if not next_path %}
+  {% set next_path = '/' %}
+{% endif %}
+<div class="header">
+  <div class="bar">
+    <div class="start">
+      {% if current_user %}
+      <div class="kebab" id="kebab">
+        <button class="kebab-btn" onclick="toggleKebab(event, this)">⋮</button>
+        <div class="kebab-menu">
+          {% if user_has_permission(current_user, 'reports:view') %}
+            <a class="secondary" href="{{ url_for('reports.collections') }}">{{ t('collections') }}</a>
+          {% endif %}
+          {% if user_has_permission(current_user, 'patients:edit') %}
+            <a class="secondary" href="{{ url_for('patients.export_patients_csv') }}">{{ t('export_patients') }}</a>
+          {% endif %}
+          {% if user_has_permission(current_user, 'payments:edit') %}
+            <a class="secondary" href="{{ url_for('payments.export_payments_csv') }}">{{ t('export_payments') }}</a>
+          {% endif %}
+          {% if user_has_permission(current_user, 'admin.user.manage') %}
+            <a class="secondary" href="{{ url_for('admin_users.index') }}">Manage Users</a>
+            <a class="secondary" href="{{ url_for('admin_roles.index') }}">{{ t('roles_manage_title') }}</a>
+            <a class="secondary" href="{{ url_for('admin_doctors.doctor_colors') }}">Doctor Colors</a>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+      {% if show_back %}
+        <a class="btn secondary back-btn" href="{{ back_url(p) }}">← {{ t('back') }}</a>
+      {% endif %}
+      <a class="btn secondary home-btn" href="{{ url_for('index') }}">{{ t('home') }}</a>
+      {% if current_user and user_has_permission(current_user, 'appointments:view') %}
+        <a class="btn secondary" href="{{ url_for('appointments.table') }}">{{ t('appointments') }}</a>
+      {% endif %}
+      {% if current_user and user_has_permission(current_user, 'receipts:view') %}
+        <a class="btn secondary" href="{{ url_for('receipts.index') }}">{{ t('receipts') }}</a>
+      {% endif %}
+      {% if current_user and user_has_permission(current_user, 'expenses:view') %}
+        <a class="btn secondary" href="{{ url_for('expenses.index') }}">
+          <i class="fa fa-receipt"></i>
+          <span>Expense Receipts</span>
+        </a>
+      {% endif %}
+    </div>
+    <div class="center"><div class="title">{{ t('app_title') }}</div></div>
+    <div class="end" style="justify-content:flex-end">
+      <div class="lang-toggle" style="display:flex;gap:4px;align-items:center">
+        <form method="post" action="{{ url_for('core.set_lang') }}" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="lang" value="en">
+          <input type="hidden" name="next" value="{{ next_path }}">
+          <button type="submit" class="secondary {{ 'active' if lang == 'en' else '' }}">English</button>
+        </form>
+        <form method="post" action="{{ url_for('core.set_lang') }}" style="display:inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="lang" value="ar">
+          <input type="hidden" name="next" value="{{ next_path }}">
+          <button type="submit" class="secondary {{ 'active' if lang == 'ar' else '' }}">العربية</button>
+        </form>
+      </div>
+      {% if current_user %}
+        {% set role_name = current_user.primary_role_name %}
+        <div class="user-meta">{{ current_user.username }}{% if role_name %} ({{ role_name }}){% endif %}
+          <form method="post" action="{{ url_for('auth.logout') }}" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="secondary">{{ t('logout') }}</button>
+          </form>
+        </div>
+      {% else %}
+        <a class="secondary" href="{{ url_for('auth.login') }}">{{ t('login') }}</a>
+      {% endif %}
+    </div>
+  </div>
+</div>

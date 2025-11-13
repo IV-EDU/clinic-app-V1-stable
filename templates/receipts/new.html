@@ -1,0 +1,34 @@
+{% extends '_base.html' %}
+{% block content %}
+<div class="card receipt-form">
+  <h1>{{ t('receipts_new') }}</h1>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <label>
+        <span>{{ t('receipts_patient_placeholder') }}</span>
+        <input name="patient_lookup" required placeholder="P000123" value="{{ defaults.patient_lookup if defaults else '' }}">
+      </label>
+      <label>
+        <span>{{ t('receipts_amount') }}</span>
+        <input name="amount" type="number" step="0.01" min="0" required value="{{ defaults.amount if defaults else '' }}">
+      </label>
+      <label>
+        <span>{{ t('receipts_locale') }}</span>
+        <select name="locale">
+          <option value="en" {% if defaults.locale == 'en' %}selected{% endif %}>{{ t('lang_en') }}</option>
+          <option value="ar" {% if defaults.locale == 'ar' %}selected{% endif %}>{{ t('lang_ar') }}</option>
+        </select>
+      </label>
+      <label class="notes-field">
+        <span>{{ t('receipt_description_label') }}</span>
+        <textarea name="description" placeholder="{{ t('receipts_description_placeholder') }}">{{ defaults.description if defaults else '' }}</textarea>
+      </label>
+    </div>
+    <div class="form-actions">
+      <button class="btn">{{ t('receipts_new') }}</button>
+      <a class="btn secondary" href="{{ url_for('receipts.index') }}">{{ t('back') }}</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

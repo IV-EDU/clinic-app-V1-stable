@@ -1,0 +1,80 @@
+{% extends 'expenses/base.html' %}
+
+{% block title %}Materials{% endblock %}
+
+{% block actions %}
+<a href="{{ url_for('expenses.new_material') }}" class="btn primary">
+  <i class="fa fa-plus"></i> New Material
+</a>
+{% endblock %}
+
+{% block expenses_content %}
+<div class="card">
+  <div class="card-header">
+    <h3>Materials ({{ materials|length }})</h3>
+  </div>
+  <div class="card-body">
+    {% if materials %}
+      <div class="materials-table">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Unit</th>
+              <th>Price per Unit</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for material in materials %}
+            <tr>
+              <td>
+                <strong>{{ material.name }}</strong>
+                {% if material.description %}
+                  <br><small class="text-muted">{{ material.description[:50] }}{% if material.description|length > 50 %}...{% endif %}</small>
+                {% endif %}
+              </td>
+              <td>{{ material.category_name or '—' }}</td>
+              <td>{{ material.unit or '—' }}</td>
+              <td class="amount-cell">
+                {% if material.price_per_unit %}
+                  {{ "%.2f"|format(material.price_per_unit) }} EGP
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if material.is_active %}
+                  <span class="badge badge-success">Active</span>
+                {% else %}
+                  <span class="badge badge-inactive">Inactive</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <a href="{{ url_for('expenses.edit_material', material_id=material.id) }}" 
+                     class="btn btn-sm secondary" title="Edit">
+                    <i class="fa fa-edit"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <i class="fa fa-box empty-icon"></i>
+        <h3>No Materials Found</h3>
+        <p>Create your first material to get started.</p>
+        <a href="{{ url_for('expenses.new_material') }}" class="btn primary">
+          <i class="fa fa-plus"></i> Create First Material
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

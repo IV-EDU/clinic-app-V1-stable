@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="{{ lang }}" dir="{{ dir }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{{ t('app_title') }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/print-receipts.css') }}">
+  <script src="{{ url_for('static', filename='js/patient-receipts.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/status-chip.js') }}"></script>
+  
+</head>
+<body class="{{ 'rtl' if lang == 'ar' else '' }}">
+  {% include '_nav.html' %}
+  <div class="wrap">
+    {% include '_flash.html' %}
+    {% block content %}{% endblock %}
+  </div>
+  <script>
+  function toggleKebab(evt, btn){
+    try{
+      if(evt){ evt.preventDefault(); evt.stopPropagation(); }
+      var k = btn.closest ? btn.closest('.kebab') : null;
+      if(!k){ k = document.getElementById('kebab'); }
+      if(!k) return;
+      var menu = k.querySelector('.kebab-menu');
+      if(!menu) return;
+      document.querySelectorAll('.kebab.open').forEach(function(el){ if(el!==k) el.classList.remove('open'); });
+      var isOpen = k.classList.contains('open');
+      if(isOpen){ k.classList.remove('open'); return; }
+      k.classList.add('open');
+      menu.style.position = 'absolute';
+      menu.style.left = ''; menu.style.right = ''; menu.style.top = '';
+      var gap = 6;
+      menu.style.top = (btn.offsetTop + btn.offsetHeight + gap) + 'px';
+      var dirAttr = (document.documentElement.getAttribute('dir') || document.body.getAttribute('dir') || '').toLowerCase();
+      if(dirAttr === 'rtl'){
+        var right = (k.clientWidth - (btn.offsetLeft + btn.offsetWidth));
+        menu.style.right = right + 'px';
+        menu.style.left = 'auto';
+      }else{
+        menu.style.left = btn.offsetLeft + 'px';
+        menu.style.right = 'auto';
+      }
+    }catch(e){
+      if(window.console){ console.warn('toggleKebab error', e); }
+    }
+  }
+  document.addEventListener('click', function(e){
+    var open = document.querySelector('.kebab.open');
+    if(!open) return;
+    if(open.contains(e.target)) return;
+    open.classList.remove('open');
+  });
+  (function(){
+    window.__payToggle = function(id){
+      var d = document.getElementById('details-'+id);
+      var b = document.getElementById('view-'+id);
+      if(!d||!b) return;
+      var show = d.style.display!=='block';
+      d.style.display = show ? 'block' : 'none';
+      b.classList.toggle('active', show);
+      b.textContent = show ? '{{ t("hide") }}' : '{{ t("view") }}';
+    };
+    function autogrowTA(ta){ ta.style.height='auto'; ta.style.height=ta.scrollHeight+'px'; }
+    document.addEventListener('DOMContentLoaded', function(){
+      document.querySelectorAll('textarea').forEach(function(ta){
+        autogrowTA(ta); ta.addEventListener('input', function(){ autogrowTA(ta); });
+      });
+      var total = document.getElementById('total_amount');
+      var vt = document.getElementById('visit_type');
+      var eff = document.getElementById('total_amount_effective');
+      var bonus = document.getElementById('bonus_badge');
+      var down = document.querySelector('input[name="down_payment"]');
+      var disc = document.querySelector('input[name="discount"]');
+      var rem  = document.getElementById('remaining_amount');
+      function parseMoney(v){ try { return parseFloat((v||'').replace(/,/g,'')) || 0; } catch(e){ return 0; } }
+      function fmt2(n){ return (Math.round(n*100)/100).toFixed(2); }
+      function update(){
+        if(!total || !rem) return;
+        var base = parseMoney(total.value);
+        var add = (vt && vt.value === 'exam') ? 100 : 0;
+        var totalEff = base + add;
+        if(eff) eff.value = fmt2(totalEff);
+        if(bonus){ bonus.style.display = add ? 'inline-block' : 'none'; }
+        var discount = parseMoney(disc ? disc.value : '0');
+        if(discount < 0) discount = 0;
+        if(discount > totalEff) discount = totalEff;
+        var due = totalEff - discount;
+        var paid = parseMoney(down ? down.value : '0');
+        var remaining = due - paid;
+        if(remaining < 0) remaining = 0;
+        rem.value = fmt2(remaining);
+      }
+      ['input','change'].forEach(function(evt){
+        if(total) total.addEventListener(evt, update);
+        if(vt) vt.addEventListener(evt, update);
+        if(down) down.addEventListener(evt, update);
+        if(disc) disc.addEventListener(evt, update);
+      });
+      update();
+    });
+  })();
+  </script>
+</body>
+</html>

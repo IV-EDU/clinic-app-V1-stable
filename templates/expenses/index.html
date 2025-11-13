@@ -1,0 +1,120 @@
+{% extends 'expenses/base.html' %}
+
+{% block title %}Expense Receipts{% endblock %}
+
+{% block expenses_content %}
+<!-- Search and Filter Form -->
+<div class="card">
+  <div class="card-header">
+    <h3>Search & Filter</h3>
+  </div>
+  <div class="card-body">
+    <form method="GET" class="expense-search-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="supplier_id">Supplier:</label>
+          <select name="supplier_id" id="supplier_id" class="form-control">
+            <option value="">All Suppliers</option>
+            {% for supplier in suppliers %}
+            <option value="{{ supplier.id }}" {% if current_filters.supplier_id == supplier.id %}selected{% endif %}>
+              {{ supplier.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="start_date">Start Date:</label>
+          <input type="date" name="start_date" id="start_date" class="form-control" 
+                 value="{{ current_filters.start_date or '' }}">
+        </div>
+        <div class="form-group">
+          <label for="end_date">End Date:</label>
+          <input type="date" name="end_date" id="end_date" class="form-control"
+                 value="{{ current_filters.end_date or '' }}">
+        </div>
+        <div class="form-group">
+          <label for="search_query">Search:</label>
+          <input type="text" name="search_query" id="search_query" class="form-control" 
+                 placeholder="Search receipts..." value="{{ current_filters.search_query or '' }}">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn primary">Search</button>
+        <a href="{{ url_for('expenses.index') }}" class="btn secondary">Clear Filters</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Expense Receipts List -->
+<div class="card">
+  <div class="card-header">
+    <h3>Expense Receipts</h3>
+  </div>
+  <div class="card-body">
+    {% if receipts %}
+      <div class="expense-receipts-table">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Receipt Number</th>
+              <th>Supplier</th>
+              <th>Date</th>
+              <th>Items</th>
+              <th>Total Amount</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for receipt in receipts %}
+            <tr>
+              <td>
+                <strong>{{ receipt.serial_number }}</strong>
+              </td>
+              <td>{{ receipt.supplier_name }}</td>
+              <td>{{ receipt.receipt_date }}</td>
+              <td>
+                <span class="badge">{{ receipt.item_count }} items</span>
+              </td>
+              <td class="amount-cell">
+                <span class="amount">{{ receipt.total_amount_fmt }}</span>
+                <span class="currency">EGP</span>
+              </td>
+              <td class="actions-cell">
+                <div class="action-buttons">
+                  <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}" 
+                     class="btn btn-sm secondary" title="View Details">
+                    <i class="fa fa-eye"></i>
+                  </a>
+                  <a href="{{ url_for('expenses.print_receipt', expense_id=receipt.id) }}" 
+                     class="btn btn-sm secondary" title="Print Receipt">
+                    <i class="fa fa-print"></i>
+                  </a>
+                  <a href="{{ url_for('expenses.edit_receipt', expense_id=receipt.id) }}" 
+                     class="btn btn-sm secondary" title="Edit">
+                    <i class="fa fa-edit"></i>
+                  </a>
+                  <a href="{{ url_for('expenses.delete_receipt_confirm', expense_id=receipt.id) }}" 
+                     class="btn btn-sm danger" title="Delete">
+                    <i class="fa fa-trash"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <i class="fa fa-receipt empty-icon"></i>
+        <h3>No Expense Receipts Found</h3>
+        <p>Create your first expense receipt to get started.</p>
+        <a href="{{ url_for('expenses.new_receipt') }}" class="btn primary">
+          <i class="fa fa-plus"></i> Create First Receipt
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

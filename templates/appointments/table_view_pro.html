@@ -1,0 +1,871 @@
+{% extends '_base.html' %}
+{% block content %}
+<style>
+/* Professional Appointments Table View */
+
+/* Header Section */
+.appointments-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+  border-radius: 0 0 16px 16px;
+}
+
+.appointments-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  text-align: center;
+}
+
+.appointments-header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin: 0;
+  text-align: center;
+}
+
+/* Controls Section */
+.controls-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.control-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.control-input {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+.control-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.control-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+  padding-right: 2.5rem;
+}
+
+/* View Toggle */
+.view-toggle {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.view-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #6b7280;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.view-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.view-btn.active {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+/* Date Cards */
+.date-cards-container {
+  margin: 1.5rem 0;
+  border-radius: 12px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.date-cards-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.date-card {
+  min-width: 90px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.date-card.selected {
+  border-color: #667eea;
+  background: #667eea;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+}
+
+.date-card__date {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.date-card__dow {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.date-card__stats {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.date-card__stat {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Stats Cards */
+.stats-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Appointments Cards Container */
+.appointments-container {
+  display: grid;
+  gap: 1rem;
+}
+
+.appointment-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  border-left: 4px solid #e5e7eb;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.appointment-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.appointment-card.time-upcoming {
+  background: linear-gradient(120deg, #fffbeb, #fff);
+}
+
+.appointment-card.time-in-progress {
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.appointment-card.time-overdue {
+  background: linear-gradient(120deg, #fef2f2, #fff);
+  border-left-color: #ef4444;
+}
+
+.appointment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.patient-primary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.patient-avatar {
+  width: 40px;
+  height: 40px;
+  background: #667eea;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.patient-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.patient-name:hover {
+  color: #667eea;
+}
+
+.patient-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.patient-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.appointment-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.meta-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.meta-value {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.appointment-treatment {
+  margin-bottom: 1rem;
+}
+
+.treatment-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.treatment-notes {
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.appointment-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-section {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.status-toggle {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.status-chip {
+  border: none;
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.status-chip.is-active,
+.status-chip.is-done {
+  background: #10b981;
+  color: white;
+}
+
+.status-chip.is-scheduled {
+  background: #6b7280;
+  color: white;
+}
+
+.status-chip.saving {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.status-chip.error {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Action Buttons */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.action-btn:hover {
+  transform: scale(1.1);
+}
+
+.action-btn.edit {
+  background: #667eea;
+  color: white;
+}
+
+.action-btn.edit:hover {
+  background: #5a67d8;
+}
+
+.action-btn.delete {
+  background: #ef4444;
+  color: white;
+}
+
+.action-btn.delete:hover {
+  background: #dc2626;
+}
+
+.action-btn.status {
+  background: #10b981;
+  color: white;
+}
+
+.action-btn.status:hover {
+  background: #059669;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.empty-description {
+  margin-bottom: 2rem;
+}
+
+/* New Appointment Button */
+.new-appointment-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #667eea;
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.new-appointment-btn:hover {
+  background: #5a67d8;
+}
+
+{% if doctor_colors -%}
+{% for doc_id, color in doctor_colors.items() -%}
+.appointment-card.doctor-{{ doc_id }} {
+  border-left-color: {{ color }};
+}
+{% endfor -%}
+{% endif -%}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .appointment-row {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-section {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .appointments-header h1 {
+    font-size: 2rem;
+  }
+
+  .stats-section {
+    grid-template-columns: 1fr;
+  }
+
+  .view-toggle {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .actions-cell {
+    justify-content: center;
+  }
+}
+
+/* Arabic/RTL Support */
+[dir="rtl"] .patient-info,
+[dir="rtl"] .time-info,
+[dir="rtl"] .doctor-info {
+  text-align: right;
+}
+
+[dir="rtl"] .actions-cell {
+  justify-content: flex-start;
+}
+
+[dir="rtl"] .view-toggle {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .control-select {
+  background-position: left 0.75rem center;
+}
+
+/* Loading States */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid #667eea;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Print Styles */
+@media print {
+  .controls-section,
+  .view-toggle,
+  .actions-cell {
+    display: none;
+  }
+
+  .appointment-row {
+    border-bottom: 1px solid #000;
+  }
+}
+</style>
+
+<div class="appointments-header">
+  <h1>{{ t('appointments') }}</h1>
+  <p>{{ t('manage_appointments_description') }}</p>
+</div>
+
+<!-- Controls Section -->
+<div class="controls-section">
+  <form method="get" class="controls-grid">
+    <input type="hidden" name="view" value="table">
+    <div class="control-group">
+      <label class="control-label">{{ t('date') }}</label>
+      <input type="date" name="day" value="{{ day }}" class="control-input">
+    </div>
+
+    <div class="control-group">
+      <label class="control-label">{{ t('doctor') }}</label>
+      <select name="doctor" class="control-input control-select">
+        {% for value, label in doctors %}
+          <option value="{{ value }}" {% if value == selected_doctor %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label class="control-label">{{ t('range') if t('range') != 'range' else 'Range' }}</label>
+      <select name="range" class="control-input control-select">
+        {% for value, label in range_choices %}
+          <option value="{{ value }}" {% if value == selected_range %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label class="control-label">{{ t('show') }}</label>
+      <select name="show" class="control-input control-select">
+        {% for value, label in show_choices %}
+          <option value="{{ value }}" {% if value == selected_show %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="control-group">
+      <label class="control-label">{{ t('search') }}</label>
+      <input type="text" name="q" value="{{ search_query }}" placeholder="{{ t('search_appointments') }}" class="control-input">
+    </div>
+
+    <div class="control-group">
+      <button type="submit" class="new-appointment-btn" style="margin-top: 1.5rem;">
+        🔍 {{ t('filter') }}
+      </button>
+    </div>
+  </form>
+
+  <!-- View Toggle -->
+  <div class="view-toggle">
+    <a href="{{ url_for('appointments.table',
+                        day=day,
+                        doctor=selected_doctor,
+                        range=selected_range,
+                        show=selected_show,
+                        q=search_query or None) }}" class="view-btn active">
+      📊 {{ t('table_view') }}
+    </a>
+    <a href="{{ url_for('appointments.multi_doctor',
+                        day=day,
+                        range=selected_range,
+                        show=selected_show,
+                        q=search_query or None) }}" class="view-btn">
+      👥 {{ t('multi_doctor_view') }}
+    </a>
+  </div>
+</div>
+
+{% if date_cards %}
+<div class="date-cards-container">
+  <div class="date-cards-scroll">
+    {% for card in date_cards %}
+      <button type="button"
+              class="date-card {% if card.date == day %}selected{% endif %}"
+              onclick="updateDateSelection('{{ card.date }}')">
+        <div class="date-card__date">{{ card.date[5:] }}</div>
+        <div class="date-card__dow">{{ card.day_of_week }}</div>
+        {% if card.stats %}
+          <div class="date-card__stats">
+            <span class="date-card__stat">{{ card.stats.total }}</span>
+            <span class="date-card__stat">{{ card.stats.done }} ✅</span>
+          </div>
+        {% endif %}
+      </button>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Statistics -->
+<div class="stats-section">
+  {% for label, value in stats %}
+    <div class="stat-card">
+      <div class="stat-value">{{ value }}</div>
+      <div class="stat-label">{{ t(label) }}</div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Appointments Cards -->
+<div class="appointments-container">
+  {% if appts %}
+    {% for appt in appts %}
+      <div class="appointment-card doctor-{{ appt.doctor_id or 'default' }} time-{{ appt.time_status }}">
+        <div class="appointment-header">
+          <div>
+            <div class="patient-primary">
+              <div class="patient-avatar">
+                {%- if appt.patient_name and appt.patient_name|length > 0 -%}
+                  {{ appt.patient_name[0]|upper }}
+                {%- else -%}
+                  ?
+                {%- endif -%}
+              </div>
+              <div class="patient-name" onclick="viewPatient('{{ appt.patient_id }}')" title="{{ t('click_to_view_patient') }}">
+                {{ appt.patient_name or 'Unknown Patient' }}
+              </div>
+            </div>
+
+            <div class="patient-details">
+              {% if appt.patient_phone %}
+                <div class="patient-detail-item">
+                  <span>📞</span>
+                  <span>{{ appt.patient_phone }}</span>
+                </div>
+              {% endif %}
+              {% if appt.patient_short_id %}
+                <div class="patient-detail-item">
+                  <span>🏷️</span>
+                  <span>{{ t('file') }}: {{ appt.patient_short_id }}</span>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="status-section">
+            <span class="status-badge status-{{ appt.status }}">
+              {{ t('appointment_status_' + appt.status) }}
+            </span>
+          </div>
+        </div>
+
+        <div class="appointment-meta">
+          <div class="meta-item">
+            <div class="meta-label">{{ t('time') }}</div>
+            <div class="meta-value">{{ appt.start_label }} → {{ appt.end_label }}</div>
+          </div>
+
+          <div class="meta-item">
+            <div class="meta-label">{{ t('doctor') }}</div>
+            <div class="meta-value">{{ appt.doctor_label }}</div>
+          </div>
+        </div>
+
+        <div class="appointment-treatment">
+          <div class="treatment-title">{{ appt.title }}</div>
+          {% if appt.notes %}
+            <div class="treatment-notes">
+              {{ appt.notes[:100] }}{% if appt.notes|length > 100 %}...{% endif %}
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="appointment-actions">
+          {% set normalized_status = 'done' if appt.status == 'done' else 'scheduled' %}
+          <form class="status-toggle"
+                method="post"
+                action="{{ url_for('appointments.status', appt_id=appt.id) }}"
+                data-appt-id="{{ appt.id }}"
+                data-status="{{ normalized_status }}"
+                data-status-url="{{ url_for('appointments.status', appt_id=appt.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+            <button type="submit"
+                    name="status"
+                    value="scheduled"
+                    class="status-chip status-option {{ 'is-active is-scheduled' if normalized_status == 'scheduled' else '' }}"
+                    data-status-choice="scheduled"
+                    aria-pressed="{{ 'true' if normalized_status == 'scheduled' else 'false' }}">
+              {{ t('appointment_status_scheduled') }}
+            </button>
+            <button type="submit"
+                    name="status"
+                    value="done"
+                    class="status-chip status-option {{ 'is-active is-done' if normalized_status == 'done' else '' }}"
+                    data-status-choice="done"
+                    aria-pressed="{{ 'true' if normalized_status == 'done' else 'false' }}">
+              {{ t('appointment_status_done') }}
+            </button>
+          </form>
+
+          <div class="action-buttons">
+            <button class="action-btn edit" onclick="editAppointment('{{ appt.id }}')" title="{{ t('edit_appointment') }}">
+              ✏️
+            </button>
+            <button class="action-btn delete" onclick="deleteAppointment('{{ appt.id }}', '{{ appt.patient_name }}')" title="{{ t('delete_appointment') }}">
+              🗑️
+            </button>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">📅</div>
+      <div class="empty-title">{{ t('no_appointments_found') }}</div>
+      <div class="empty-description">{{ t('no_appointments_description') }}</div>
+      <a href="{{ url_for('appointments.new', day=day) }}" class="new-appointment-btn">
+        ➕ {{ t('new_appointment') }}
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<script>
+// Professional JavaScript for table interactions
+
+function viewPatient(patientId) {
+    if (patientId) {
+        window.location.href = `/patients/${patientId}`;
+    }
+}
+
+function editAppointment(appointmentId) {
+    window.location.href = `/appointments/${appointmentId}/edit`;
+}
+
+function deleteAppointment(appointmentId, patientName) {
+    if (confirm(`{{ t('confirm_delete_appointment') }} ${patientName}?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/appointments/${appointmentId}/delete`;
+        form.style.display = 'none';
+
+        form.innerHTML = `
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.full_path }}">
+        `;
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function updateDateSelection(newDate) {
+    if (!newDate) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('day', newDate);
+    url.searchParams.set('view', 'table');
+    const keep = ['doctor', 'range', 'show', 'q'];
+    keep.forEach((key) => {
+        const val = url.searchParams.get(key);
+        if (val === null || val === '') {
+            return;
+        }
+        url.searchParams.set(key, val);
+    });
+    window.location.href = url.toString();
+}
+
+// Enhanced form interactions
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit on filter changes for better UX
+    const filterInputs = document.querySelectorAll('input[name="day"], select[name="doctor"], select[name="range"], select[name="show"]');
+    filterInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            this.closest('form').submit();
+        });
+    });
+
+    // Search with debounce
+    let searchTimeout;
+    const searchInput = document.querySelector('input[name="q"]');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                this.closest('form').submit();
+            }, 500);
+        });
+    }
+});
+</script>
+
+{% endblock %}

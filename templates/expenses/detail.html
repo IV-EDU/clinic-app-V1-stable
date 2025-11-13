@@ -1,0 +1,161 @@
+{% extends 'expenses/base.html' %}
+
+{% block title %}Expense Receipt Details - {{ receipt.serial_number }}{% endblock %}
+
+{% block expenses_content %}
+<div class="expense-detail-container">
+  <div class="receipt-header">
+    <div class="receipt-info">
+      <h2>Expense Receipt - {{ receipt.serial_number }}</h2>
+      <p class="receipt-date">Date: {{ receipt.receipt_date }}</p>
+    </div>
+    <div class="receipt-actions">
+      <a href="{{ url_for('expenses.print_receipt', expense_id=receipt.id) }}" class="btn primary">
+        <i class="fa fa-print"></i> Print Receipt
+      </a>
+      {% if current_user and user_has_permission(current_user, 'expenses:edit') %}
+      <a href="{{ url_for('expenses.edit_receipt', expense_id=receipt.id) }}" class="btn secondary">
+        <i class="fa fa-edit"></i> Edit
+      </a>
+      <a href="{{ url_for('expenses.delete_receipt_confirm', expense_id=receipt.id) }}" class="btn danger">
+        <i class="fa fa-trash"></i> Delete
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="receipt-info-grid">
+    <div class="info-group">
+      <h4>Supplier Information</h4>
+      <div class="info-item">
+        <label>Name:</label>
+        <span>{{ receipt.supplier_name }}</span>
+      </div>
+      {% if receipt.supplier_phone %}
+      <div class="info-item">
+        <label>Phone:</label>
+        <span>{{ receipt.supplier_phone }}</span>
+      </div>
+      {% endif %}
+      {% if receipt.supplier_email %}
+      <div class="info-item">
+        <label>Email:</label>
+        <span>{{ receipt.supplier_email }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="info-group">
+      <h4>Receipt Details</h4>
+      <div class="info-item">
+        <label>Serial Number:</label>
+        <span>{{ receipt.serial_number }}</span>
+      </div>
+      <div class="info-item">
+        <label>Date:</label>
+        <span>{{ receipt.receipt_date }}</span>
+      </div>
+      <div class="info-item">
+        <label>Items Count:</label>
+        <span>{{ receipt.items|length }} items</span>
+      </div>
+    </div>
+
+    <div class="info-group">
+      <h4>Financial Summary</h4>
+      <div class="info-item">
+        <label>Subtotal:</label>
+        <span>{{ "%.2f"|format((receipt.total_amount - receipt.tax_amount) / 100) }} EGP</span>
+      </div>
+      <div class="info-item">
+        <label>Tax Amount:</label>
+        <span>{{ "%.2f"|format(receipt.tax_amount / 100) }} EGP</span>
+      </div>
+      <div class="info-item total">
+        <label>Total Amount:</label>
+        <span>{{ "%.2f"|format(receipt.total_amount / 100) }} EGP</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Items Section -->
+  <div class="card">
+    <div class="card-header">
+      <h3>Receipt Items</h3>
+    </div>
+    <div class="card-body">
+      {% if receipt.items %}
+      <div class="items-table">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Material Name</th>
+              <th>Quantity</th>
+              <th>Unit Price</th>
+              <th>Total Price</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in receipt.items %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ item.material_name }}</td>
+              <td>{{ "%.2f"|format(item.quantity) }}</td>
+              <td class="amount-cell">{{ "%.2f"|format(item.unit_price / 100) }} EGP</td>
+              <td class="amount-cell">{{ "%.2f"|format(item.total_price / 100) }} EGP</td>
+              <td>
+                {% if item.notes %}
+                  <span class="notes-preview" title="{{ item.notes }}">{{ item.notes[:50] }}{% if item.notes|length > 50 %}...{% endif %}</span>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" class="amount-cell"><strong>Subtotal:</strong></td>
+              <td class="amount-cell"><strong>{{ "%.2f"|format((receipt.total_amount - receipt.tax_amount) / 100) }} EGP</strong></td>
+              <td></td>
+            </tr>
+            <tr>
+              <td colspan="4" class="amount-cell"><strong>Tax (14%):</strong></td>
+              <td class="amount-cell"><strong>{{ "%.2f"|format(receipt.tax_amount / 100) }} EGP</strong></td>
+              <td></td>
+            </tr>
+            <tr class="total-row">
+              <td colspan="4" class="amount-cell"><strong>Total Amount:</strong></td>
+              <td class="amount-cell"><strong>{{ "%.2f"|format(receipt.total_amount / 100) }} EGP</strong></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <p>No items found in this receipt.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Notes Section -->
+  {% if receipt.notes %}
+  <div class="notes-section">
+    <h4>Notes</h4>
+    <div class="notes-content">{{ receipt.notes }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Receipt Metadata -->
+  <div class="receipt-metadata">
+    <small class="text-muted">
+      Created: {{ receipt.created_at[:19] }} | 
+      Receipt ID: {{ receipt.id }}
+    </small>
+  </div>
+</div>
+{% endblock %}

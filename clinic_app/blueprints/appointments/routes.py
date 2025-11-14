@@ -408,21 +408,67 @@ def appointments_table():
         # Sort date groups chronologically (past to future) for all ranges
         date_groups.sort(key=lambda group: group['date'])
 
+        # Generate stats for enhanced template
+        stats = []
+        total_appointments = len(appts)
+        if total_appointments > 0:
+            stats = [
+                ("Total Appointments", total_appointments),
+            ]
+
+        # Generate selected doctor label
+        selected_doctor_label = None
+        for doc_id, doc_label in doctors_list:
+            if str(doc_id) == str(doctor):
+                selected_doctor_label = doc_label
+                break
+
+        # Prepare date groups for card view
+        date_groups = []
+        for date_key in sorted(appointments_by_date.keys()):
+            appointments = appointments_by_date[date_key]
+            appointments.sort(key=lambda appt: appt.get('starts_at', ''))
+
+            # Count scheduled vs done
+            scheduled_count = sum(1 for appt in appointments if appt.get('status') == 'scheduled')
+            done_count = sum(1 for appt in appointments if appt.get('status') == 'done')
+
+            try:
+                date_obj = date.fromisoformat(date_key)
+                today = date.today()
+                if date_key == today.isoformat():
+                    date_display = "Today"
+                elif date_key == (today - timedelta(days=1)).isoformat():
+                    date_display = "Yesterday"
+                elif date_key == (today + timedelta(days=1)).isoformat():
+                    date_display = "Tomorrow"
+                else:
+                    date_display = date_obj.strftime("%A, %B %d, %Y")
+            except:
+                date_display = date_key
+
+            date_groups.append({
+                'date': date_key,
+                'display': date_display,
+                'appointments': appointments,
+                'scheduled_count': scheduled_count,
+                'done_count': done_count,
+                'total_count': len(appointments),
+                'is_today': date_key == date.today().isoformat()
+            })
+
         return render_page(
-            "appointments/table_view_pro.html",
+            "appointments/card_view.html",
             day=day,
-            doctor=doctor,
-            doctors=[("all", "All Doctors")] + doctors_list,
-            date_groups=date_groups,
+            end_day=filter_end_date if filter_end_date != filter_start_date else None,
+            doctors=[("all", T("appointments_doctor_all"))] + doctors_list,
             doctor_colors=doctor_colors,
             selected_doctor=doctor,
-            selected_range=range_key,
-            selected_show=show_mode,
-            show_choices=_show_choices(),
-            search_query=search,
-            date_from=date_from,
-            date_to=date_to,
-            is_range=is_range,
+            selected_doctor_label=selected_doctor_label,
+            show=show_mode,
+            search=search,
+            date_groups=date_groups,
+            stats=stats,
         )
     except Exception as exc:
         print(f"DEBUG: Exception in table route: {exc}")
@@ -739,4 +785,39 @@ def api_auto_generate_end():
         return jsonify({"end_time": end_time})
     except Exception as exc:
         record_exception("api.auto_generate_end", exc)
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@bp.route("/api/appointments/<appt_id>", methods=["GET"], endpoint="api_appointment_details")
+@require_permission("appointments:view")
+def api_appointment_details(appt_id):
+    """API endpoint to get full appointment details for modal display."""
+    try:
+        from clinic_app.services.appointments import get_appointment_by_id
+
+        appointment = get_appointment_by_id(appt_id)
+        if not appointment:
+            return jsonify({"error": "Appointment not found"}), 404
+
+        # Format time ranges
+        start_time = appointment["starts_at"][11:16] if len(appointment["starts_at"]) > 11 else appointment["starts_at"]
+        end_time = appointment["ends_at"][11:16] if len(appointment["ends_at"]) > 11 else appointment["ends_at"]
+
+        return jsonify({
+            "id": appointment["id"],
+            "patient_name": appointment.get("patient_name", "N/A"),
+            "patient_phone": appointment.get("patient_phone", "N/A"),
+            "patient_short_id": appointment.get("patient_short_id", "N/A"),
+            "doctor_label": appointment.get("doctor_label", "N/A"),
+            "title": appointment.get("title", "N/A"),
+            "notes": appointment.get("notes", ""),
+            "date": appointment["starts_at"][:10] if len(appointment["starts_at"]) > 10 else "N/A",
+            "start_time": start_time,
+            "end_time": end_time,
+            "status": appointment.get("status", "scheduled"),
+            "created_at": appointment.get("created_at", "N/A"),
+            "updated_at": appointment.get("updated_at", "N/A")
+        })
+    except Exception as exc:
+        record_exception("api.appointment_details", exc)
         return jsonify({"error": "Internal server error"}), 500

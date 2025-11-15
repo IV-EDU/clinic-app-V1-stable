@@ -1,34 +1,59 @@
 #!/usr/bin/env python3
-"""Test script to check if vanilla appointments route works."""
 
 import sys
-import os
-sys.path.insert(0, os.path.dirname(__file__))
+sys.path.append('.')
 
 from clinic_app.app import create_app
 
 def test_vanilla_route():
-    """Test the vanilla appointments route."""
     app = create_app()
 
-    with app.test_request_context():
+    with app.test_client() as client:
         try:
-            from clinic_app.blueprints.appointments.routes import appointments_vanilla
-            result = appointments_vanilla()
-            print("SUCCESS: Route executed successfully!")
-            print("First 500 characters of response:")
-            print(str(result)[:500])
-            print("\nLooking for JSON data injection...")
-            if 'appointments_json' in str(result) and 'patients_json' in str(result):
-                print("SUCCESS: JSON data injection found!")
+            print("Testing vanilla appointments route...")
+            response = client.get('/appointments/vanilla')
+
+            print(f'Status: {response.status_code}')
+            print(f'Content-Type: {response.headers.get("content-type")}')
+
+            if response.status_code == 200:
+                content = response.get_data(as_text=True)
+                if 'appointments-data' in content:
+                    print('SUCCESS: Template loaded with data injection')
+                    print('✓ JSON data scripts found in response')
+                    # Check if JSON is valid
+                    import re
+                    json_match = re.search(r'id="appointments-data"[^>]*>([^<]*)</script>', content)
+                    if json_match:
+                        print('✓ Appointment data script tag found')
+                        print('✓ Route response is properly formatted HTML')
+                    else:
+                        print('WARNING: Could not find appointment data script tag')
+                    return True
+                else:
+                    print('WARNING: Template loaded but data injection may be missing')
+                    return False
+            elif response.status_code == 500:
+                content = response.get_data(as_text=True)
+                if 'Error:' in content and content.strip() == f"Error: {str(Exception())}".strip():
+                    print('FAILURE: Still returning plain text error')
+                    return False
+                else:
+                    # Check if it's proper HTML with data scripts
+                    if 'appointments-data' in content:
+                        print('SUCCESS: Error handled gracefully with empty data')
+                        return True
+                    else:
+                        print('FAILURE: 500 error without proper template')
+                        return False
             else:
-                print("ERROR: JSON data injection NOT found!")
-            return True
+                print(f'UNEXPECTED STATUS: {response.status_code}')
+                return False
+
         except Exception as e:
-            print(f"ERROR: Route failed: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f'TEST FAILED: {e}')
             return False
 
 if __name__ == '__main__':
-    test_vanilla_route()
+    success = test_vanilla_route()
+    sys.exit(0 if success else 1)

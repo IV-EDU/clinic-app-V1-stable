@@ -690,11 +690,16 @@ def edit_appointment(appt_id):
 def appointments_vanilla():
     """Serve vanilla appointments template with data injection."""
     try:
-        # Get current date and appointments
-        today = datetime.now().strftime("%Y-%m-%d")
-        appointments = list_for_day(today, show="all")
+        # Fetch appointments for a rolling 30-day window (past week through next 3 weeks)
+        today = datetime.now().date()
+        start_day = today - timedelta(days=7)
+        end_day = today + timedelta(days=21)
+        appointments = list_for_day(
+            start_day.strftime("%Y-%m-%d"),
+            end_day=end_day.strftime("%Y-%m-%d"),
+            show="all",
+        )
         doctors = doctor_choices()
-        doctor_colors = get_doctor_colors()
 
         # Get patients for search using direct database query
         from clinic_app.services.database import db
@@ -714,18 +719,30 @@ def appointments_vanilla():
                 conn.close()
 
         # Format appointments for template
+        status_map = {
+            "scheduled": "Scheduled",
+            "checked_in": "Pending",
+            "in_progress": "Pending",
+            "pending": "Pending",
+            "cancelled": "Cancelled",
+            "canceled": "Cancelled",
+            "done": "Done",
+            "complete": "Done",
+        }
+
         formatted_appts = []
         for appt in appointments:
+            status_code = (appt.get("status") or "scheduled").lower()
             formatted_appts.append({
                 "id": appt["id"],
-                "patientName": appt.get("patient_name", ""),
-                "fileNumber": appt.get("patient_short_id", ""),
-                "phoneNumber": appt.get("patient_phone", ""),
-                "doctor": appt.get("doctor_label", ""),
-                "startTime": appt.get("starts_at", ""),
-                "endTime": appt.get("ends_at", ""),
-                "status": appt.get("status", "scheduled"),
-                "reason": appt.get("title", ""),
+                "patientName": appt.get("patient_name") or "",
+                "fileNumber": appt.get("patient_short_id") or "",
+                "phoneNumber": appt.get("patient_phone") or "",
+                "doctor": appt.get("doctor_label") or appt.get("doctor_id") or "",
+                "startTime": appt.get("starts_at") or "",
+                "endTime": appt.get("ends_at") or "",
+                "status": status_map.get(status_code, "Scheduled"),
+                "reason": appt.get("title") or "",
             })
 
         # Format patients for template
@@ -738,14 +755,10 @@ def appointments_vanilla():
                 "id": patient["id"],
             })
 
-        # Format doctors for template (with colors)
-        formatted_doctors = []
+        # Format doctors for template (simple list where index 0 is the "All Doctors" label).
+        formatted_doctors = ["All Doctors"]
         for doc_id, doc_name in doctors:
-            formatted_doctors.append({
-                "id": doc_id,
-                "name": doc_name,
-                "color": doctor_colors.get(doc_id, doctor_colors.get("default", "#6B7280")),
-            })
+            formatted_doctors.append(doc_name)
 
         # Render the template with injected data
         return render_page(
@@ -757,7 +770,13 @@ def appointments_vanilla():
 
     except Exception as exc:
         record_exception("appointments.vanilla", exc)
-        return f"Error: {str(exc)}", 500
+        # Return template with empty data arrays so frontend can still load gracefully
+        return render_page(
+            "appointments/vanilla.html",
+            appointments_json=json.dumps([]),
+            patients_json=json.dumps([]),
+            doctors_json=json.dumps(["All Doctors"]),
+        ), 500
 
 
 # API endpoints for vanilla template

@@ -6,7 +6,10 @@
 <!-- Load Lucide icons -->
 <script src="https://unpkg.com/lucide@latest"></script>
 
-<!-- DATA INJECTION: Data from Flask backend -->
+<!-- 
+  DATA INJECTION: 
+  These script tags will be filled by the data from your Flask route.
+-->
 <script type="application/json" id="appointments-data">{{ appointments_json | safe }}</script>
 <script type="application/json" id="patients-data">{{ patients_json | safe }}</script>
 <script type="application/json" id="doctors-data">{{ doctors_json | safe }}</script>
@@ -38,15 +41,54 @@
     <!-- This is the root container for the app -->
     <div id="app-root"></div>
 
-    <!-- 4. All JavaScript logic is contained here -->
-    <!-- This is the complete, correct script from our conversation -->
+    <!-- 
+      All JavaScript logic is contained here.
+      It reads the data injected into the <head>.
+    -->
     <script type="module">
         // === ICON LOADER ===
         // Lucide icons need to be manually initialized
         const loadIcons = () => {
-            // Call createIcons without parameters. 
-            // It automatically finds all elements with `data-lucide` attributes.
-            lucide.createIcons();
+            try {
+                if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                    lucide.createIcons();
+                } else {
+                    console.warn('Lucide icons library not loaded, icons will not display');
+                }
+            } catch (error) {
+                console.warn('Error loading Lucide icons:', error);
+            }
+        };
+
+        // Fallback icon function for when Lucide fails
+        const createFallbackIcon = (iconName) => {
+            const fallbackIcons = {
+                'eye': '👁️',
+                'edit': '✏️',
+                'trash-2': '🗑️',
+                'plus': '+',
+                'search': '🔍',
+                'calendar': '📅',
+                'clock': '🕐',
+                'user': '👤',
+                'x': '✕'
+            };
+            return fallbackIcons[iconName] || '•';
+        };
+
+        // Enhanced icon function that handles Lucide failures
+        const createIcon = (iconName) => {
+            try {
+                if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                    const icon = document.createElement('i');
+                    icon.setAttribute('data-lucide', iconName);
+                    icon.className = 'w-4 h-4'; // Default size classes
+                    return icon.outerHTML;
+                }
+            } catch (e) {
+                // Fall back to emoji
+            }
+            return `<span class="fallback-icon">${createFallbackIcon(iconName)}</span>`;
         };
 
         // === TRANSLATIONS ===
@@ -149,9 +191,9 @@
         function safeJsonParse(elementId, fallback = '[]') {
             const element = document.getElementById(elementId);
             const content = element ? element.textContent.trim() : '';
-            
+
             // Check for empty, "None", or an un-rendered template variable
-            if (!content || content.toLowerCase() === 'none' || content.startsWith('{{')) {
+            if (!content || content.toLowerCase() === 'none' || content.indexOf('{{') === 0) {
                 return JSON.parse(fallback);
             }
             try {
@@ -172,6 +214,7 @@
         const getISODate = (dateStr) => new Date(dateStr).toISOString().split('T')[0];
 
         const formatTime = (dateStr, locale = 'en-US') => {
+          if (!dateStr) return '';
           return new Date(dateStr).toLocaleTimeString(locale, {
             hour: 'numeric',
             minute: '2-digit',
@@ -239,7 +282,12 @@
             saveStateToLocalStorage();
             
             // Re-render the app
-            renderApp();
+            // We prevent re-render if only accordion state is changing
+            if (newState.openAccordions && Object.keys(newState).length === 1) {
+                // This is just an accordion toggle, don't re-render the whole app
+            } else {
+                 renderApp();
+            }
         }
         
         function saveStateToLocalStorage() {
@@ -250,6 +298,8 @@
             localStorage.setItem('appt_customEndDate', state.customEndDate);
             localStorage.setItem('appt_useDateRange', JSON.stringify(state.useDateRange));
             localStorage.setItem('appt_searchTerm', state.searchTerm);
+            // We don't save modal state, but we could save accordion state
+            // localStorage.setItem('appt_openAccordions', JSON.stringify(state.openAccordions));
         }
         
         function loadStateFromLocalStorage() {
@@ -266,8 +316,9 @@
                 isEditModalOpen: false,
                 isAddModalOpen: false,
                 selectedAppointment: null,
-                isDeleteModalOpen: false, // Add state for delete modal
-                appointmentToDelete: null, // Add state for appointment ID to delete
+                isDeleteModalOpen: false, 
+                appointmentToDelete: null, 
+                openAccordions: {}, // Added to save accordion state
             };
         }
 
@@ -281,7 +332,6 @@
         
         function handleStatusChange(apptId, newStatus) {
             // This function should be updated to call your API
-            // For now, it just updates local state
             console.log(`API Call (Simulation): Update appointment ${apptId} to ${newStatus}`);
             const newAppointments = state.appointments.map(appt =>
                 appt.id === apptId ? { ...appt, status: newStatus } : appt
@@ -290,22 +340,42 @@
         }
 
         function handleOpenViewModal(appt) {
-            setState({ isViewModalOpen: true, selectedAppointment: appt });
+            // MODIFIED: Don't call setState, just render the modal.
+            // This prevents the whole app from re-rendering and accordions closing.
+            const modalContainer = document.getElementById('modal-container');
+            modalContainer.innerHTML = ''; // Clear any existing modal
+            modalContainer.appendChild(createViewModal(appt));
+            loadIcons();
         }
         
         function handleOpenEditModal(appt) {
-            setState({ isEditModalOpen: true, selectedAppointment: appt });
+            // MODIFIED: Don't call setState
+            const modalContainer = document.getElementById('modal-container');
+            modalContainer.innerHTML = '';
+            modalContainer.appendChild(createEditModal(appt));
+            loadIcons();
+        }
+        
+        function handleOpenAddModal() {
+             // MODIFIED: Don't call setState
+            const modalContainer = document.getElementById('modal-container');
+            modalContainer.innerHTML = '';
+            modalContainer.appendChild(createAddModal());
+            loadIcons();
+        }
+
+        function handleOpenDeleteModal(apptId) {
+             // MODIFIED: Don't call setState
+            const modalContainer = document.getElementById('modal-container');
+            modalContainer.innerHTML = '';
+            modalContainer.appendChild(createDeleteModal(apptId));
+            loadIcons();
         }
         
         function handleCloseModals() {
-            setState({ 
-                isViewModalOpen: false, 
-                isEditModalOpen: false, 
-                isAddModalOpen: false,
-                isDeleteModalOpen: false, // Close delete modal
-                selectedAppointment: null,
-                appointmentToDelete: null, // Clear appointment to delete
-            });
+            // MODIFIED: Don't call setState, just clear the modal container
+            const modalContainer = document.getElementById('modal-container');
+            modalContainer.innerHTML = '';
         }
 
         function handleUpdateAppointment(updatedAppt) {
@@ -314,6 +384,7 @@
             const newAppointments = state.appointments.map(appt => 
                 appt.id === updatedAppt.id ? updatedAppt : appt
             );
+            // Now we call setState to update the list
             setState({ appointments: newAppointments });
             handleCloseModals();
         }
@@ -333,24 +404,20 @@
         }
 
         function handleDeleteAppointment(apptId) {
-            // Instead of deleting, open the confirmation modal
-            setState({ isDeleteModalOpen: true, appointmentToDelete: apptId });
+            handleOpenDeleteModal(apptId);
         }
         
-        function handleConfirmDelete() {
-            const apptId = state.appointmentToDelete;
+        function handleConfirmDelete(apptId) {
             if (!apptId) return;
 
             // This function should be updated to call your API
             console.log("API Call (Simulation): DELETE confirmed:", apptId);
             const newAppointments = state.appointments.filter(a => a.id !== apptId);
             
-            // Set new state and close modal
             setState({ 
-                appointments: newAppointments, 
-                isDeleteModalOpen: false, 
-                appointmentToDelete: null 
+                appointments: newAppointments
             });
+            handleCloseModals();
         }
         
         function handleDateFilterClick(filter) {
@@ -363,7 +430,6 @@
         }
 
         // === HTML TEMPLATE FUNCTIONS ===
-        // These functions generate HTML strings or DOM elements.
         
         /** Creates a DOM element from an HTML string */
         function createElement(html) {
@@ -418,20 +484,26 @@
                       <!-- StatusBadge will be appended here -->
                     </div>
                     
+                    <!-- MODIFIED: Patient Info Chip -->
                     <div class="mb-3">
                        <a href="#" class="group" data-filenumber="${appt.fileNumber}">
-                        <span class="inline-block bg-blue-100 text-blue-800 text-base font-semibold px-4 py-1 rounded-full group-hover:bg-blue-200 transition-colors">
-                          ${appt.patientName}
+                        <span class="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-4 py-2 rounded-lg group-hover:bg-blue-200 transition-colors">
+                          <strong class="block text-base">${appt.patientName}</strong>
+                          <span class="block text-xs font-normal mt-1">📁 ${t('file')}: ${appt.fileNumber}</span>
+                          <span class="block text-xs font-normal">📞 ${appt.phoneNumber}</span>
                         </span>
-                        <div class="flex items-center gap-4 text-sm text-gray-600 mt-2 ms-1">
-                          <span class="text-xs">📁 ${t('file')}: ${appt.fileNumber}</span>
-                          <span class="text-xs">📞 ${appt.phoneNumber}</span>
-                        </div>
                       </a>
                     </div>
 
                     <p class="text-sm text-gray-600 mb-4 pt-1">${appt.reason || ''}</p>
                     <div class="space-y-3 text-sm">
+                      <!-- NEW: Date Chip -->
+                      <div class="flex items-center text-gray-700">
+                        <i data-lucide="calendar" class="w-4 h-4 me-2 text-blue-500"></i>
+                        <span class="bg-gray-200 text-gray-800 px-3 py-1 rounded-full text-xs font-medium">
+                          ${new Date(appt.startTime).toLocaleDateString(locale, { weekday: 'long', month: 'long', day: 'numeric' })}
+                        </span>
+                      </div>
                       <div class="flex items-center text-gray-700">
                         <i data-lucide="clock" class="w-4 h-4 me-2 text-blue-500"></i>
                         <span>
@@ -484,7 +556,12 @@
         function createDateGroup(date, appointments) {
             const locale = state.language === 'ar' ? 'ar-EG' : 'en-US';
             const today = getISODate(new Date());
+            
+            // MODIFIED: Read open state from global state
             const defaultOpen = date === today && state.activeDateFilter === 'Today';
+            // On first load, openAccordions[date] will be undefined, so use defaultOpen.
+            // After that, use the stored state.
+            let isOpen = state.openAccordions[date] === undefined ? defaultOpen : state.openAccordions[date];
             
             const totalCount = appointments.length;
             const doneCount = appointments.filter(a => a.status === 'Done').length;
@@ -515,10 +592,12 @@
             const content = group.querySelector('.p-4.bg-white');
             const chevron = group.querySelector('[data-lucide="chevron-down"]');
             
-            // Toggle logic
-            let isOpen = defaultOpen;
+            // MODIFIED: Toggle logic now updates global state
             const toggle = () => {
-                isOpen = !isOpen;
+                isOpen = !isOpen; // Update local-in-closure state
+                // Update global state
+                state.openAccordions[date] = isOpen;
+                // Manually update UI instead of full re-render
                 content.style.display = isOpen ? 'block' : 'none';
                 chevron.style.transform = isOpen ? 'rotate(180deg)' : '';
             };
@@ -531,8 +610,8 @@
                 cardContainer.appendChild(createAppointmentCard(appt));
             });
 
-            // Set initial state
-            if (defaultOpen) {
+            // MODIFIED: Set initial state based on state-aware 'isOpen'
+            if (isOpen) {
                 content.style.display = 'block';
                 chevron.style.transform = 'rotate(180deg)';
             }
@@ -543,7 +622,7 @@
         function createModal({ title, contentElement, onClose }) {
             const modal = createElement(String.raw`
                 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-                  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
+                  <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden" id="modal-content-wrapper">
                     <div class="flex justify-between items-center p-4 border-b">
                       <h2 class="text-xl font-semibold">${title}</h2>
                       <button class="close-btn text-gray-500 hover:text-gray-700">
@@ -561,7 +640,10 @@
             
             // Close logic
             modal.addEventListener('click', (e) => {
-                if (e.target === modal) onClose();
+                if (e.target === modal) onClose(); // Only close if clicking overlay
+            });
+            modal.querySelector('#modal-content-wrapper').addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent clicks inside modal from closing it
             });
             modal.querySelector('.close-btn').addEventListener('click', onClose);
             
@@ -703,7 +785,7 @@
             return createModal({ title: t('edit') + ' ' + t('appointments'), contentElement: content, onClose: handleCloseModals });
         }
         
-        function createDeleteModal() {
+        function createDeleteModal(apptId) {
             const content = createElement(String.raw`
                 <div>
                   <p class="text-sm text-gray-700">
@@ -721,7 +803,7 @@
             `);
             
             content.querySelector('#cancel-btn').addEventListener('click', handleCloseModals);
-            content.querySelector('#confirm-delete-btn').addEventListener('click', handleConfirmDelete);
+            content.querySelector('#confirm-delete-btn').addEventListener('click', () => handleConfirmDelete(apptId));
 
             return createModal({ title: t('Delete Appointment'), contentElement: content, onClose: handleCloseModals });
         }
@@ -829,8 +911,8 @@
                         
                         const filtered = mockPatients.filter(p =>
                           p.name.toLowerCase().includes(term) ||
-                          p.fileNumber.toLowerCase().includes(term) ||
-                          p.phoneNumber.includes(term)
+                          (p.fileNumber && p.fileNumber.toLowerCase().includes(term)) ||
+                          (p.phoneNumber && p.phoneNumber.includes(term))
                         ).slice(0, 5);
                         
                         resultsBox.innerHTML = '';
@@ -867,7 +949,7 @@
                 
                 const formData = new FormData(e.target);
                 const newApptData = {
-                    patientName: selectedPatient.name, // Add patient data
+                    patientName: selectedPatient.name, 
                     phoneNumber: selectedPatient.phoneNumber,
                     fileNumber: selectedPatient.fileNumber,
                     doctor: formData.get('doctor'),
@@ -979,7 +1061,7 @@
                             class="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                           />
                           <div id="date-range-end" class="flex-1" style="display: ${state.useDateRange ? 'flex' : 'none'};">
-                            <span class_ignored="text-center text-gray-500 self-center px-2">${t('to')}</span>
+                            <span class="text-center text-gray-500 self-center px-2">${t('to')}</span>
                             <input
                               type="date"
                               id="customEndDate"
@@ -1043,7 +1125,7 @@
             document.documentElement.lang = state.language;
             document.documentElement.dir = state.language === 'ar' ? 'rtl' : 'ltr';
 
-            // --- Filtering Logic (from React useMemo) ---
+            // --- Filtering Logic ---
             const today = getISODate(new Date());
             const tomorrow = getISODate(new Date(Date.now() + 24 * 60 * 60 * 1000));
             const yesterday = getISODate(new Date(Date.now() - 24 * 60 * 60 * 1000));
@@ -1052,8 +1134,8 @@
             const filteredAppointments = state.appointments.filter((appt) => {
               if (lowerSearchTerm) {
                 if (!appt.patientName.toLowerCase().includes(lowerSearchTerm) &&
-                    !appt.fileNumber.toLowerCase().includes(lowerSearchTerm) &&
-                    !appt.phoneNumber.toLowerCase().includes(lowerSearchTerm)) {
+                    (!appt.fileNumber || !appt.fileNumber.toLowerCase().includes(lowerSearchTerm)) &&
+                    (!appt.phoneNumber || !appt.phoneNumber.toLowerCase().includes(lowerSearchTerm))) {
                   return false;
                 }
               }
@@ -1079,7 +1161,7 @@
               }
             });
 
-            // --- Grouping Logic (from React useMemo) ---
+            // --- Grouping Logic ---
             const groupedAppointments = filteredAppointments.reduce((acc, appt) => {
               const date = getISODate(appt.startTime);
               if (!acc[date]) acc[date] = [];
@@ -1113,7 +1195,7 @@
             
             // Add Appointment Button
             appContainer.querySelector('#add-appointment-btn').addEventListener('click', () => {
-                setState({ isAddModalOpen: true });
+                handleOpenAddModal();
             });
             
             // Filter Bar
@@ -1135,20 +1217,9 @@
                 `;
             }
             
-            // Modals
+            // Modals container
             const modalContainer = appContainer.querySelector('#modal-container');
-            if (state.isViewModalOpen && state.selectedAppointment) {
-                modalContainer.appendChild(createViewModal(state.selectedAppointment));
-            }
-            if (state.isEditModalOpen && state.selectedAppointment) {
-                modalContainer.appendChild(createEditModal(state.selectedAppointment));
-            }
-            if (state.isAddModalOpen) {
-                modalContainer.appendChild(createAddModal());
-            }
-            if (state.isDeleteModalOpen && state.appointmentToDelete) {
-                modalContainer.appendChild(createDeleteModal());
-            }
+            // Modals are now added/removed by the event handlers, not on full render
 
             // Append the fully built app to the root
             appRoot.appendChild(appContainer);
@@ -1160,6 +1231,8 @@
         // === INITIALIZATION ===
         
         // This function will be called by your external button
+        // You need to find your button in your _base.html or navigation
+        // and add onclick="window.toggleAppLanguage()"
         window.toggleAppLanguage = () => {
             const newLang = state.language === 'en' ? 'ar' : 'en';
             setState({ language: newLang });
@@ -1168,17 +1241,28 @@
         // Load the app on startup
         document.addEventListener('DOMContentLoaded', () => {
             try {
+                console.log('Initializing appointments app...');
                 state = loadStateFromLocalStorage();
+                console.log('State loaded successfully');
                 renderApp();
+                console.log('App rendered successfully');
             } catch (error) {
                 console.error("Failed to initialize appointments app:", error);
-                document.getElementById('app-root').innerHTML = `
-                    <div class="p-4 bg-red-100 border border-red-300 rounded-md">
-                        <h3 class="font-bold text-red-800">Error Loading Application</h3>
-                        <p class="text-red-700">Could not load application data. This might be due to a server-side data injection error.</p>
-                        <pre class="mt-2 text-sm text-red-600">${error.message}</pre>
-                    </div>
-                `;
+                const appRoot = document.getElementById('app-root');
+                if (appRoot) {
+                    const safeErrorMessage = error.message ? error.message.replace(/[<>]/g, '') : 'Unknown error';
+                    appRoot.innerHTML = `
+                        <div class="max-w-4xl mx-auto p-4 md:p-8">
+                            <div class="p-4 bg-red-100 border border-red-300 rounded-md">
+                                <h3 class="font-bold text-red-800">Error Loading Application</h3>
+                                <p class="text-red-700 mb-2">Could not load application data. This might be due to a server-side data injection error.</p>
+                                <button onclick="location.reload()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                                    Reload Page
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
             }
         });
     </script>

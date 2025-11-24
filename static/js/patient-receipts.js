@@ -14,49 +14,24 @@ function initializeReceiptPrint() {
             const paymentId = button.dataset.paymentId;
             const patientId = button.dataset.patientId;
             
-            showPrintModal(paymentId, patientId, 'full');
-        }
-        
-        // Format-specific print buttons
-        if (e.target.matches('.format-btn') || e.target.closest('.format-btn')) {
-            e.preventDefault();
-            const button = e.target.matches('.format-btn') ? e.target : e.target.closest('.format-btn');
-            const paymentId = button.dataset.paymentId;
-            const patientId = button.dataset.patientId;
-            const format = button.dataset.format;
-            
-            printReceipt(paymentId, patientId, format);
+            showPrintModal(paymentId, patientId);
         }
     });
 }
 
 function initializePrintModal() {
     const modal = document.getElementById('printReceiptModal');
-    const printBtn = document.getElementById('printReceiptBtn');
-    
-    if (printBtn) {
-        printBtn.addEventListener('click', function() {
-            const selectedFormat = document.querySelector('input[name="format"]:checked')?.value || 'full';
-            const paymentId = modal.dataset.paymentId;
-            const patientId = modal.dataset.patientId;
-            
-            if (paymentId && patientId) {
-                printReceipt(paymentId, patientId, selectedFormat);
-                hidePrintModal();
-            }
-        });
-    }
     
     // Preview button
     const previewBtn = document.getElementById('previewReceiptBtn');
     if (previewBtn) {
         previewBtn.addEventListener('click', function() {
-            const selectedFormat = document.querySelector('input[name="format"]:checked')?.value || 'full';
             const paymentId = modal.dataset.paymentId;
             const patientId = modal.dataset.patientId;
             
             if (paymentId && patientId) {
-                printPreview(paymentId, patientId, selectedFormat);
+                const options = gatherPrintOptions();
+                printPreview(paymentId, patientId, options);
             }
         });
     }
@@ -65,12 +40,12 @@ function initializePrintModal() {
     const downloadBtn = document.getElementById('downloadReceiptBtn');
     if (downloadBtn) {
         downloadBtn.addEventListener('click', function() {
-            const selectedFormat = document.querySelector('input[name="format"]:checked')?.value || 'full';
             const paymentId = modal.dataset.paymentId;
             const patientId = modal.dataset.patientId;
             
             if (paymentId && patientId) {
-                printReceipt(paymentId, patientId, selectedFormat);
+                const options = gatherPrintOptions();
+                printReceipt(paymentId, patientId, 'full', options);
                 hidePrintModal();
             }
         });
@@ -92,19 +67,13 @@ function initializePrintModal() {
     }
 }
 
-function showPrintModal(paymentId, patientId, defaultFormat = 'full') {
+function showPrintModal(paymentId, patientId) {
     const modal = document.getElementById('printReceiptModal');
     if (!modal) return;
     
     // Store payment and patient IDs in modal
     modal.dataset.paymentId = paymentId;
     modal.dataset.patientId = patientId;
-    
-    // Set default format
-    const formatRadio = document.querySelector(`input[name="format"][value="${defaultFormat}"]`);
-    if (formatRadio) {
-        formatRadio.checked = true;
-    }
     
     // Show modal
     modal.style.display = 'block';
@@ -125,30 +94,40 @@ function hidePrintModal() {
     document.body.style.overflow = '';
     
     // Clear stored data
-    delete modal.dataset.paymentId;
-    delete modal.dataset.patientId;
+delete modal.dataset.paymentId;
+delete modal.dataset.patientId;
 }
 
-async function printReceipt(paymentId, patientId, format) {
+function gatherPrintOptions() {
+    const lang = document.querySelector('input[name="receipt-lang"]:checked')?.value || 'current';
+    return {
+        lang,
+        include_qr: document.getElementById('include-qr')?.checked ?? true,
+        include_notes: document.getElementById('include-notes')?.checked ?? true,
+        include_treatment: document.getElementById('include-treatment')?.checked ?? true,
+        watermark: document.getElementById('watermark')?.checked ?? false
+    };
+}
+
+function buildParams(options) {
+    const params = new URLSearchParams();
+    if (options.lang && options.lang !== 'current') {
+        params.set('lang', options.lang);
+    }
+    params.set('include_qr', (!!options.include_qr).toString());
+    params.set('include_notes', (!!options.include_notes).toString());
+    params.set('include_treatment', (!!options.include_treatment).toString());
+    params.set('watermark', (!!options.watermark).toString());
+    return params.toString();
+}
+
+async function printReceipt(paymentId, patientId, format = 'full', options = {}) {
     try {
         // Show loading indicator
         showPrintLoading();
-        
-        // Collect print options from modal checkboxes
-        const includeQr = document.getElementById('include-qr')?.checked ?? true;
-        const includeNotes = document.getElementById('include-notes')?.checked ?? true;
-        const includeTreatment = document.getElementById('include-treatment')?.checked ?? true;
-        const addWatermark = document.getElementById('watermark')?.checked ?? false;
-        
-        // Build URL with print options as query parameters
-        const params = new URLSearchParams({
-            include_qr: includeQr.toString(),
-            include_notes: includeNotes.toString(),
-            include_treatment: includeTreatment.toString(),
-            watermark: addWatermark.toString()
-        });
-        
-        const url = `/patients/${patientId}/payments/${paymentId}/print/${format}?${params}`;
+
+        const query = buildParams(options);
+        const url = `/patients/${patientId}/payments/${paymentId}/print/${format}` + (query ? `?${query}` : '');
         
         // Generate PDF via API with print options
         const response = await fetch(url, {
@@ -249,25 +228,14 @@ function showMessage(message, type) {
 }
 
 // Print preview functionality
-function printPreview(paymentId, patientId, format) {
-    const includeQr = document.getElementById('include-qr')?.checked ?? true;
-    const includeNotes = document.getElementById('include-notes')?.checked ?? true;
-    const includeTreatment = document.getElementById('include-treatment')?.checked ?? true;
-    const addWatermark = document.getElementById('watermark')?.checked ?? false;
-
-    const params = new URLSearchParams({
-        include_qr: includeQr.toString(),
-        include_notes: includeNotes.toString(),
-        include_treatment: includeTreatment.toString(),
-        watermark: addWatermark.toString()
-    });
-
-    const previewUrl = `/patients/${patientId}/payments/${paymentId}/print/${format}/preview?${params}`;
-    window.open(previewUrl, '_blank', 'width=800,height=600');
+function printPreview(paymentId, patientId, options = {}, format = 'full') {
+    const query = buildParams(options);
+    const previewUrl = `/patients/${patientId}/payments/${paymentId}/print/${format}/preview` + (query ? `?${query}` : '');
+    window.open(previewUrl, '_blank', 'width=900,height=700');
 }
 
 // Batch print functionality
-function batchPrintPayments(paymentIds, format = 'summary') {
+function batchPrintPayments(paymentIds, format = 'full') {
     if (!paymentIds || paymentIds.length === 0) {
         showErrorMessage('No payments selected for printing');
         return;

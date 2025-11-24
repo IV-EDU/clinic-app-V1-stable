@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import sqlite3
 import uuid
-from typing import Sequence
+import hashlib
+from typing import Sequence, Optional
 
 from flask import current_app
 
@@ -29,6 +30,32 @@ class ExpenseReceiptNotFound(ExpenseReceiptError):
     """Raised when an expense receipt cannot be located."""
 
 
+class FileAttachmentError(ExpenseReceiptError):
+    """Raised when file attachment operations fail."""
+
+
+class CategoryNotFound(ExpenseReceiptError):
+    """Raised when a category cannot be located."""
+
+def _write_audit_event_safe(actor_user_id: str | None, action: str, *, entity: str | None = None, entity_id: str | None = None, meta: dict | None = None) -> None:
+    """Write audit event safely - only if user exists in database."""
+    try:
+        if not actor_user_id:
+            return
+        
+        # Check if user exists in database
+        conn = db()
+        try:
+            user_exists = conn.execute("SELECT id FROM users WHERE id = ?", (actor_user_id,)).fetchone()
+            if user_exists:
+                from clinic_app.services.audit import write_event
+                write_event(actor_user_id, action, entity=entity, entity_id=entity_id, meta=meta)
+        finally:
+            conn.close()
+    except Exception:
+        # Silently ignore audit errors to avoid breaking core functionality
+        pass
+
 def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
     row = conn.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
@@ -40,10 +67,10 @@ def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
 def _ensure_expense_tables(conn: sqlite3.Connection) -> None:
     """Ensure all expense-related tables exist."""
     required_tables = [
-        'suppliers', 
-        'expense_categories', 
-        'materials', 
-        'expense_receipts', 
+        'suppliers',
+        'expense_categories',
+        'materials',
+        'expense_receipts',
         'expense_receipt_items',
         'expense_sequences',
         'receipt_settings'
@@ -52,6 +79,37 @@ def _ensure_expense_tables(conn: sqlite3.Connection) -> None:
     for table in required_tables:
         if not _table_exists(conn, table):
             raise ExpenseReceiptError(f"required_table_missing:{table}")
+    
+    # Ensure default categories exist
+    _ensure_default_categories(conn)
+
+
+def _ensure_default_categories(conn: sqlite3.Connection) -> None:
+    """Ensure default expense categories exist."""
+    default_categories = [
+        ('Travel', 'Travel expenses including transportation and accommodation', '#3498db'),
+        ('Meals', 'Business meals and dining expenses', '#e67e22'),
+        ('Office Supplies', 'Office supplies and administrative materials', '#9b59b6'),
+        ('Software', 'Software licenses and subscriptions', '#1abc9c'),
+        ('Equipment', 'Equipment purchases and maintenance', '#34495e'),
+        ('Maintenance', 'Equipment and facility maintenance', '#95a5a6'),
+        ('Utilities', 'Utility bills and services', '#f39c12'),
+        ('Professional Services', 'Professional consulting and services', '#8e44ad'),
+        ('Marketing', 'Marketing and advertising expenses', '#27ae60'),
+        ('Training', 'Training and education expenses', '#e74c3c')
+    ]
+    
+    for name, description, color in default_categories:
+        existing = conn.execute(
+            "SELECT id FROM expense_categories WHERE name = ?",
+            (name,)
+        ).fetchone()
+        
+        if not existing:
+            conn.execute(
+                "INSERT INTO expense_categories (name, description, color) VALUES (?, ?, ?)",
+                (name, description, color)
+            )
 
 
 def generate_expense_serial(conn: sqlite3.Connection, receipt_date: str) -> str:
@@ -138,7 +196,8 @@ def create_supplier(form_data: dict[str, str], *, actor_id: str) -> str:
         )
         conn.commit()
         
-        write_event(actor_id, "suppliers:create", entity="supplier", entity_id=supplier_id)
+        # Only write audit event if actor_id exists in users table
+        _write_audit_event_safe(actor_id, "suppliers:create", entity="supplier", entity_id=supplier_id)
         return supplier_id
     except Exception:
         conn.rollback()
@@ -220,19 +279,21 @@ def create_expense_receipt(form_data: dict[str, str], items: list[dict[str, str]
         conn.execute(
             """
             INSERT INTO expense_receipts(
-                id, serial_number, supplier_id, receipt_date, total_amount, tax_amount,
-                notes, receipt_image_path, created_by, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                id, serial_number, supplier_id, category_id, receipt_date, total_amount, tax_amount,
+                notes, receipt_image_path, receipt_status, created_by, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 expense_receipt_id,
                 serial_number,
                 form_data['supplier_id'],
+                form_data.get('category_id'),
                 form_data['receipt_date'],
                 totals['total_amount'],
                 totals['tax_amount'],
                 form_data.get('notes', '').strip() or None,
                 form_data.get('receipt_image_path', '').strip() or None,
+                form_data.get('receipt_status', 'pending'),
                 actor_id,
                 created_at,
                 created_at
@@ -262,8 +323,8 @@ def create_expense_receipt(form_data: dict[str, str], items: list[dict[str, str]
         
         conn.commit()
         
-        write_event(actor_id, "expenses:create", entity="expense_receipt", entity_id=expense_receipt_id, 
-                   meta={"serial_number": serial_number, "total_amount": totals['total_amount']})
+        _write_audit_event_safe(actor_id, "expenses:create", entity="expense_receipt", entity_id=expense_receipt_id,
+                               meta={"serial_number": serial_number, "total_amount": totals['total_amount']})
         
         return expense_receipt_id
     except Exception:
@@ -273,11 +334,16 @@ def create_expense_receipt(form_data: dict[str, str], items: list[dict[str, str]
         conn.close()
 
 
-def list_expense_receipts(limit: int = 50, offset: int = 0, 
-                          supplier_id: str | None = None, 
+def list_expense_receipts(limit: int = 50, offset: int = 0,
+                          supplier_id: str | None = None,
+                          category_id: str | None = None,
+                          receipt_status: str | None = None,
                           start_date: str | None = None,
-                          end_date: str | None = None) -> list[dict[str, str]]:
-    """Get paginated list of expense receipts."""
+                          end_date: str | None = None,
+                          min_amount: str | None = None,
+                          max_amount: str | None = None,
+                          search_query: str | None = None) -> list[dict[str, str]]:
+    """Get paginated list of expense receipts with advanced filtering."""
     conn = db()
     try:
         _ensure_expense_tables(conn)
@@ -289,6 +355,14 @@ def list_expense_receipts(limit: int = 50, offset: int = 0,
             where_conditions.append("er.supplier_id = ?")
             params.append(supplier_id)
         
+        if category_id:
+            where_conditions.append("er.category_id = ?")
+            params.append(category_id)
+        
+        if receipt_status:
+            where_conditions.append("er.receipt_status = ?")
+            params.append(receipt_status)
+        
         if start_date:
             where_conditions.append("er.receipt_date >= ?")
             params.append(start_date)
@@ -297,17 +371,33 @@ def list_expense_receipts(limit: int = 50, offset: int = 0,
             where_conditions.append("er.receipt_date <= ?")
             params.append(end_date)
         
+        if min_amount:
+            where_conditions.append("er.total_amount >= ?")
+            params.append(float(min_amount))
+        
+        if max_amount:
+            where_conditions.append("er.total_amount <= ?")
+            params.append(float(max_amount))
+        
+        if search_query:
+            where_conditions.append("(LOWER(er.notes) LIKE ? OR LOWER(s.name) LIKE ?)")
+            search_pattern = f"%{search_query.lower()}%"
+            params.extend([search_pattern, search_pattern])
+        
         where_clause = ""
         if where_conditions:
             where_clause = "WHERE " + " AND ".join(where_conditions)
         
         query = f"""
             SELECT er.id, er.serial_number, er.receipt_date, er.total_amount, er.tax_amount,
-                   er.notes, er.created_at, s.name as supplier_name,
-                   COUNT(eri.id) as item_count
+                   er.notes, er.created_at, er.receipt_status, er.category_id,
+                   s.name as supplier_name,
+                   COUNT(eri.id) as item_count,
+                   COUNT(era.id) as files_count
             FROM expense_receipts er
             JOIN suppliers s ON s.id = er.supplier_id
             LEFT JOIN expense_receipt_items eri ON eri.expense_receipt_id = er.id
+            LEFT JOIN expense_receipts_attachments era ON era.expense_receipt_id = er.id
             {where_clause}
             GROUP BY er.id
             ORDER BY er.created_at DESC
@@ -327,7 +417,10 @@ def list_expense_receipts(limit: int = 50, offset: int = 0,
                 'total_amount': row['total_amount'],
                 'tax_amount': row['tax_amount'],
                 'notes': row['notes'],
+                'receipt_status': row['receipt_status'],
+                'category_id': row['category_id'],
                 'item_count': row['item_count'],
+                'files_count': row['files_count'],
                 'created_at': row['created_at']
             })
         
@@ -522,7 +615,7 @@ def update_expense_receipt(expense_receipt_id: str, form_data: dict[str, str],
         
         conn.commit()
         
-        write_event(actor_id, "expenses:edit", entity="expense_receipt", entity_id=expense_receipt_id)
+        _write_audit_event_safe(actor_id, "expenses:edit", entity="expense_receipt", entity_id=expense_receipt_id)
         
     except Exception:
         conn.rollback()
@@ -560,7 +653,7 @@ def delete_expense_receipt(expense_receipt_id: str, *, actor_id: str) -> None:
         
         conn.commit()
         
-        write_event(actor_id, "expenses:delete", entity="expense_receipt", entity_id=expense_receipt_id)
+        _write_audit_event_safe(actor_id, "expenses:delete", entity="expense_receipt", entity_id=expense_receipt_id)
         
     except Exception:
         conn.rollback()
@@ -568,6 +661,479 @@ def delete_expense_receipt(expense_receipt_id: str, *, actor_id: str) -> None:
     finally:
         conn.close()
 
+
+def attach_receipt_file(expense_receipt_id: str, file_data: dict, *, actor_id: str) -> str:
+    """Attach a file to an expense receipt."""
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        # Verify receipt exists
+        receipt = conn.execute(
+            "SELECT id FROM expense_receipts WHERE id=?",
+            (expense_receipt_id,)
+        ).fetchone()
+        if not receipt:
+            raise ExpenseReceiptNotFound(expense_receipt_id)
+        
+        attachment_id = str(uuid.uuid4())
+        upload_date = datetime.now(timezone.utc).isoformat()
+        
+        # Calculate file hash
+        file_hash = hashlib.md5(file_data['filename'].encode()).hexdigest()
+        
+        conn.execute(
+            """
+            INSERT INTO expense_receipts_attachments (
+                id, expense_receipt_id, filename, original_filename, file_path,
+                file_type, file_size, file_hash, mime_type, upload_date, uploaded_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                attachment_id,
+                expense_receipt_id,
+                file_data['filename'],
+                file_data.get('original_filename', file_data['filename']),
+                file_data['file_path'],
+                file_data['file_type'],
+                file_data.get('file_size', 0),
+                file_hash,
+                file_data.get('mime_type'),
+                upload_date,
+                actor_id
+            )
+        )
+        
+        conn.commit()
+        write_event(actor_id, "expenses:attach_file", entity="expense_receipt", entity_id=expense_receipt_id)
+        return attachment_id
+        
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def get_receipt_files(expense_receipt_id: str) -> list[dict[str, str]]:
+    """Get all files attached to an expense receipt."""
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        rows = conn.execute(
+            """
+            SELECT id, filename, original_filename, file_type, file_size,
+                   mime_type, upload_date, uploaded_by
+            FROM expense_receipts_attachments
+            WHERE expense_receipt_id = ?
+            ORDER BY upload_date DESC
+            """,
+            (expense_receipt_id,)
+        ).fetchall()
+        
+        result = []
+        for row in rows:
+            result.append({
+                'id': row['id'],
+                'filename': row['filename'],
+                'original_filename': row['original_filename'],
+                'file_type': row['file_type'],
+                'file_size': row['file_size'],
+                'mime_type': row['mime_type'],
+                'upload_date': row['upload_date'],
+                'uploaded_by': row['uploaded_by'],
+                'file_url': f"/expense-receipts/files/{row['filename']}"
+            })
+        
+        return result
+        
+    finally:
+        conn.close()
+
+
+def create_category(form_data: dict[str, str], *, actor_id: str) -> str:
+    """Create a new expense category."""
+    required_fields = ['name']
+    for field in required_fields:
+        if not form_data.get(field, '').strip():
+            raise ExpenseReceiptError(f"category_{field}_required")
+    
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        # Check if category name already exists
+        existing = conn.execute(
+            "SELECT id FROM expense_categories WHERE lower(name) = lower(?)",
+            (form_data['name'].strip(),)
+        ).fetchone()
+        if existing:
+            raise ExpenseReceiptError("category_name_exists")
+        
+        category_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        
+        conn.execute(
+            """
+            INSERT INTO expense_categories(id, name, description, color, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                category_id,
+                form_data['name'].strip(),
+                form_data.get('description', '').strip() or None,
+                form_data.get('color', '#3498db').strip() or '#3498db',
+                now
+            )
+        )
+        
+        conn.commit()
+        write_event(actor_id, "expenses:create_category", entity="expense_category", entity_id=category_id)
+        return category_id
+        
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def list_categories() -> list[dict[str, str]]:
+    """List all expense categories."""
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        rows = conn.execute(
+            """
+            SELECT ec.*,
+                   COUNT(er.id) as receipt_count,
+                   SUM(er.total_amount) as total_amount
+            FROM expense_categories ec
+            LEFT JOIN expense_receipts er ON er.category_id = ec.id
+            GROUP BY ec.id
+            ORDER BY ec.name ASC
+            """
+        ).fetchall()
+        
+        result = []
+        for row in rows:
+            result.append({
+                'id': row['id'],
+                'name': row['name'],
+                'description': row['description'],
+                'color': row['color'],
+                'receipt_count': row['receipt_count'] or 0,
+                'total_amount': row['total_amount'] or 0,
+                'created_at': row['created_at'] if 'created_at' in row.keys() else None
+            })
+        
+        return result
+        
+    finally:
+        conn.close()
+
+
+def get_category(category_id: str) -> dict[str, str]:
+    """Get detailed expense category information."""
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        row = conn.execute(
+            """
+            SELECT ec.*,
+                   COUNT(er.id) as receipt_count,
+                   SUM(er.total_amount) as total_amount
+            FROM expense_categories ec
+            LEFT JOIN expense_receipts er ON er.category_id = ec.id
+            WHERE ec.id = ?
+            GROUP BY ec.id
+            """,
+            (category_id,)
+        ).fetchone()
+        
+        if not row:
+            raise CategoryNotFound(category_id)
+        
+        return {
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['description'],
+            'color': row['color'],
+            'receipt_count': row['receipt_count'] or 0,
+            'total_amount': row['total_amount'] or 0,
+            'created_at': row['created_at'] if 'created_at' in row.keys() else None
+        }
+        
+    finally:
+        conn.close()
+
+
+def update_category(category_id: str, form_data: dict[str, str], *, actor_id: str) -> None:
+    """Update expense category."""
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        # Check if category exists
+        existing = conn.execute(
+            "SELECT id FROM expense_categories WHERE id=?",
+            (category_id,)
+        ).fetchone()
+        if not existing:
+            raise CategoryNotFound(category_id)
+        
+        # Check for name conflicts
+        if form_data.get('name'):
+            name_conflict = conn.execute(
+                "SELECT id FROM expense_categories WHERE lower(name) = lower(?) AND id != ?",
+                (form_data['name'].strip(), category_id)
+            ).fetchone()
+            if name_conflict:
+                raise ExpenseReceiptError("category_name_exists")
+        
+        # Build update query
+        update_fields = []
+        params = []
+        
+        if form_data.get('name'):
+            update_fields.append("name = ?")
+            params.append(form_data['name'].strip())
+        
+        if 'description' in form_data:
+            update_fields.append("description = ?")
+            params.append(form_data.get('description', '').strip() or None)
+        
+        if form_data.get('color'):
+            update_fields.append("color = ?")
+            params.append(form_data['color'].strip())
+        
+        if not update_fields:
+            return
+        
+        update_fields.append("updated_at = ?")
+        params.append(datetime.now(timezone.utc).isoformat())
+        params.append(category_id)
+        
+        conn.execute(
+            f"UPDATE expense_categories SET {', '.join(update_fields)} WHERE id = ?",
+            params
+        )
+        
+        conn.commit()
+        write_event(actor_id, "expenses:update_category", entity="expense_category", entity_id=category_id)
+        
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def delete_category(category_id: str, *, actor_id: str) -> None:
+    """Delete expense category (only if no receipts are associated)."""
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        # Check if category exists and has no receipts
+        category = conn.execute(
+            """
+            SELECT ec.id, COUNT(er.id) as receipt_count
+            FROM expense_categories ec
+            LEFT JOIN expense_receipts er ON er.category_id = ec.id
+            WHERE ec.id = ?
+            GROUP BY ec.id
+            """,
+            (category_id,)
+        ).fetchone()
+        
+        if not category:
+            raise CategoryNotFound(category_id)
+        
+        if category['receipt_count'] > 0:
+            raise ExpenseReceiptError("category_has_receipts")
+        
+        conn.execute("DELETE FROM expense_categories WHERE id = ?", (category_id,))
+        conn.commit()
+        write_event(actor_id, "expenses:delete_category", entity="expense_category", entity_id=category_id)
+        
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def set_receipt_category(expense_receipt_id: str, category_id: str, *, actor_id: str) -> None:
+    """Set category for an expense receipt."""
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        # Verify both receipt and category exist
+        receipt = conn.execute(
+            "SELECT id FROM expense_receipts WHERE id=?",
+            (expense_receipt_id,)
+        ).fetchone()
+        if not receipt:
+            raise ExpenseReceiptNotFound(expense_receipt_id)
+        
+        category = conn.execute(
+            "SELECT id FROM expense_categories WHERE id=?",
+            (category_id,)
+        ).fetchone()
+        if not category:
+            raise CategoryNotFound(category_id)
+        
+        conn.execute(
+            "UPDATE expense_receipts SET category_id = ?, updated_at = ? WHERE id = ?",
+            (category_id, datetime.now(timezone.utc).isoformat(), expense_receipt_id)
+        )
+        
+        conn.commit()
+        write_event(actor_id, "expenses:set_category", entity="expense_receipt", entity_id=expense_receipt_id)
+        
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def delete_receipt_file(attachment_id: str, *, actor_id: str) -> None:
+    """Delete a file attachment."""
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        # Get attachment info before deletion
+        attachment = conn.execute(
+            "SELECT filename, expense_receipt_id FROM expense_receipts_attachments WHERE id=?",
+            (attachment_id,)
+        ).fetchone()
+        
+        if not attachment:
+            raise ExpenseReceiptError("attachment_not_found")
+        
+        # Delete from database
+        conn.execute("DELETE FROM expense_receipts_attachments WHERE id=?", (attachment_id,))
+        conn.commit()
+        
+        # Delete physical file
+        file_manager = get_receipt_file_manager()
+        file_manager.delete_file(attachment['filename'])
+        
+        write_event(actor_id, "expenses:delete_file", entity="expense_receipt",
+                   entity_id=attachment['expense_receipt_id'])
+        
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def update_receipt_status(expense_receipt_id: str, status: str, approval_notes: Optional[str] = None, *, actor_id: str) -> None:
+    """Update receipt status (pending, approved, rejected)."""
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        # Verify receipt exists
+        receipt = conn.execute(
+            "SELECT id FROM expense_receipts WHERE id=?",
+            (expense_receipt_id,)
+        ).fetchone()
+        if not receipt:
+            raise ExpenseReceiptNotFound(expense_receipt_id)
+        
+        valid_statuses = ['pending', 'approved', 'rejected']
+        if status not in valid_statuses:
+            raise ExpenseReceiptError(f"invalid_status_{status}")
+        
+        update_data = {
+            'receipt_status': status,
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }
+        
+        if status == 'approved':
+            update_data['approval_date'] = datetime.now(timezone.utc).isoformat()
+            update_data['approved_by'] = actor_id
+            if approval_notes:
+                update_data['approval_notes'] = approval_notes
+        elif status == 'pending':
+            # Clear approval data when setting back to pending
+            update_data['approval_date'] = None
+            update_data['approved_by'] = None
+            update_data['approval_notes'] = None
+        
+        # Build update query
+        set_clause = ", ".join(f"{key} = ?" for key in update_data.keys())
+        params = list(update_data.values()) + [expense_receipt_id]
+        
+        conn.execute(
+            f"UPDATE expense_receipts SET {set_clause} WHERE id = ?",
+            params
+        )
+        
+        conn.commit()
+        write_event(actor_id, f"expenses:status_{status}", entity="expense_receipt", entity_id=expense_receipt_id)
+        
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def get_receipt_statistics() -> dict[str, any]:
+    """Get expense receipt statistics."""
+    conn = db()
+    try:
+        _ensure_expense_tables(conn)
+        
+        # Total receipts and amounts by status
+        status_stats = conn.execute("""
+            SELECT receipt_status, COUNT(*) as count, SUM(total_amount) as total_amount
+            FROM expense_receipts
+            GROUP BY receipt_status
+        """).fetchall()
+        
+        # Monthly totals (last 12 months)
+        monthly_stats = conn.execute("""
+            SELECT substr(receipt_date, 1, 7) as month,
+                   COUNT(*) as count, SUM(total_amount) as total_amount
+            FROM expense_receipts
+            WHERE receipt_date >= date('now', '-12 months')
+            GROUP BY substr(receipt_date, 1, 7)
+            ORDER BY month DESC
+        """).fetchall()
+        
+        result = {
+            'by_status': {},
+            'monthly': []
+        }
+        
+        for row in status_stats:
+            result['by_status'][row['receipt_status']] = {
+                'count': row['count'],
+                'total_amount': row['total_amount'] or 0
+            }
+        
+        for row in monthly_stats:
+            result['monthly'].append({
+                'month': row['month'],
+                'count': row['count'],
+                'total_amount': row['total_amount'] or 0
+            })
+        
+        return result
+        
+    finally:
+        conn.close()
 
 def list_suppliers(active_only: bool = True) -> list[dict[str, str]]:
     """List all suppliers."""

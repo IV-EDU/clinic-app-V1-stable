@@ -1,0 +1,439 @@
+{% extends 'expenses/base.html' %}
+
+{% block title %}Receipt Details - {{ receipt.serial_number }}{% endblock %}
+
+{% block expenses_content %}
+<div class="receipt-detail-container">
+    <!-- Receipt Header with Status -->
+    <div class="receipt-header">
+        <div class="receipt-title">
+            <h1>Expense Receipt #{{ receipt.serial_number }}</h1>
+            <div class="receipt-meta">
+                <span class="receipt-date">{{ receipt.receipt_date }}</span>
+                <span class="receipt-amount">{{ receipt.total_amount_fmt }} EGP</span>
+            </div>
+        </div>
+        <div class="receipt-actions">
+            {% if current_user.has_permission('expenses:edit') %}
+                <a href="{{ url_for('expenses.edit_receipt', expense_id=receipt.id) }}" class="btn primary">
+                    <i class="fa fa-edit"></i> Edit
+                </a>
+                <a href="{{ url_for('expenses.update_receipt_status_route', expense_id=receipt.id) }}" class="btn secondary">
+                    <i class="fa fa-check-circle"></i> Update Status
+                </a>
+            {% endif %}
+            <a href="{{ url_for('expenses.view_receipt_files', expense_id=receipt.id) }}" class="btn secondary">
+                <i class="fa fa-paperclip"></i> Files ({{ receipt.files|length if receipt.files else 0 }})
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Indicator -->
+    {% if receipt.receipt_status %}
+        <div class="status-section">
+            <div class="status-chip {{ receipt.receipt_status }}">
+                <i class="fa fa-{{ 'clock' if receipt.receipt_status == 'pending' else 'check' if receipt.receipt_status == 'approved' else 'times' }}"></i>
+                {{ receipt.receipt_status.title() }}
+            </div>
+            {% if receipt.approval_date %}
+                <span class="approval-info">
+                    Approved on {{ receipt.approval_date }}
+                    {% if receipt.approved_by %}
+                        by {{ receipt.approved_by }}
+                    {% endif %}
+                </span>
+            {% endif %}
+            {% if receipt.approval_notes %}
+                <div class="approval-notes">
+                    <strong>Approval Notes:</strong> {{ receipt.approval_notes }}
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- Receipt Information Grid -->
+    <div class="receipt-info-grid">
+        <div class="info-group">
+            <h4>Supplier Information</h4>
+            <div class="info-item">
+                <label>Name:</label>
+                <span>{{ receipt.supplier_name }}</span>
+            </div>
+            {% if receipt.supplier_phone %}
+                <div class="info-item">
+                    <label>Phone:</label>
+                    <span>{{ receipt.supplier_phone }}</span>
+                </div>
+            {% endif %}
+            {% if receipt.supplier_email %}
+                <div class="info-item">
+                    <label>Email:</label>
+                    <span>{{ receipt.supplier_email }}</span>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="info-group">
+            <h4>Financial Details</h4>
+            <div class="info-item">
+                <label>Subtotal:</label>
+                <span>{{ receipt.total_amount_fmt }} EGP</span>
+            </div>
+            <div class="info-item">
+                <label>Tax Amount:</label>
+                <span>{{ receipt.tax_amount_fmt }} EGP</span>
+            </div>
+            <div class="info-item total">
+                <label>Total Amount:</label>
+                <span>{{ receipt.total_amount_fmt }} EGP</span>
+            </div>
+        </div>
+
+        {% if receipt.category_name %}
+        <div class="info-group">
+            <h4>Category</h4>
+            <div class="info-item">
+                <label>Category:</label>
+                <span class="category-badge" style="background-color: {{ receipt.category_color or '#3498db' }}; color: white;">
+                    {{ receipt.category_name }}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Receipt Items -->
+    {% if receipt.items %}
+    <div class="items-section">
+        <h4>Receipt Items</h4>
+        <div class="items-table">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Item Description</th>
+                        <th>Quantity</th>
+                        <th>Unit Price</th>
+                        <th>Total Price</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in receipt.items %}
+                    <tr>
+                        <td>{{ item.material_name }}</td>
+                        <td>{{ "%.2f"|format(item.quantity) }}</td>
+                        <td>{{ item.unit_price_fmt }} EGP</td>
+                        <td>{{ item.total_price_fmt }} EGP</td>
+                        <td class="notes-preview">{{ item.notes or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Receipt Files Section -->
+    <div class="files-section">
+        <div class="section-header">
+            <h4>Receipt Files</h4>
+            {% if current_user.has_permission('expenses:edit') %}
+                <button type="button" class="btn btn-sm primary" onclick="showFileUpload()">
+                    <i class="fa fa-plus"></i> Add File
+                </button>
+            {% endif %}
+        </div>
+        
+        {% if receipt.files %}
+            <div class="files-grid">
+                {% for file in receipt.files %}
+                <div class="file-item">
+                    <div class="file-icon">
+                        {% if file.file_type in ['jpg', 'jpeg', 'png'] %}
+                            <i class="fa fa-file-image text-primary"></i>
+                        {% elif file.file_type == 'pdf' %}
+                            <i class="fa fa-file-pdf text-danger"></i>
+                        {% else %}
+                            <i class="fa fa-file text-secondary"></i>
+                        {% endif %}
+                    </div>
+                    <div class="file-info">
+                        <div class="file-name">{{ file.original_filename }}</div>
+                        <div class="file-size">{{ (file.file_size / 1024)|round(1) }} KB</div>
+                    </div>
+                    <div class="file-actions">
+                        <a href="{{ file.file_url }}" target="_blank" class="btn btn-sm secondary" title="View">
+                            <i class="fa fa-eye"></i>
+                        </a>
+                        <a href="{{ file.file_url }}" download="{{ file.original_filename }}" class="btn btn-sm secondary" title="Download">
+                            <i class="fa fa-download"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-files">
+                <i class="fa fa-paperclip empty-icon"></i>
+                <p>No files attached to this receipt</p>
+                {% if current_user.has_permission('expenses:edit') %}
+                    <button type="button" class="btn primary" onclick="showFileUpload()">
+                        <i class="fa fa-plus"></i> Attach Files
+                    </button>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Notes Section -->
+    {% if receipt.notes %}
+    <div class="notes-section">
+        <h4>Notes</h4>
+        <div class="notes-content">{{ receipt.notes }}</div>
+    </div>
+    {% endif %}
+
+    <!-- File Upload Section (Hidden by default) -->
+    <div class="file-upload-section" id="fileUploadSection" style="display: none;">
+        <div class="file-upload-container">
+            <div class="section-header">
+                <h4>Upload Receipt Files</h4>
+                <button type="button" class="btn btn-sm danger" onclick="hideFileUpload()">
+                    <i class="fa fa-times"></i> Cancel
+                </button>
+            </div>
+            <div id="expense-file-upload" data-receipt-id="{{ receipt.id }}"></div>
+        </div>
+    </div>
+</div>
+
+<!-- File Preview Modal -->
+<div class="file-preview-modal" id="filePreviewModal">
+    <div class="file-preview-content">
+        <div class="file-preview-header">
+            <h3 class="file-preview-title">File Preview</h3>
+            <button class="file-preview-close" onclick="closeFilePreview()">&times;</button>
+        </div>
+        <div class="file-preview-body">
+            <iframe id="pdfViewer" class="file-preview-pdf" style="display: none;"></iframe>
+            <img id="imageViewer" class="file-preview-image" style="display: none;">
+        </div>
+    </div>
+</div>
+
+<!-- Include CSS for file upload -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/expense-file-upload.css') }}">
+
+<script>
+// File upload functionality
+function showFileUpload() {
+    const section = document.getElementById('fileUploadSection');
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth' });
+    
+    // Initialize file upload if not already done
+    if (!window.expenseFileUpload) {
+        const uploadContainer = document.getElementById('expense-file-upload');
+        window.expenseFileUpload = new ExpenseFileUpload('expense-file-upload', {
+            receiptId: uploadContainer.dataset.receiptId,
+            onUpload: function(file) {
+                // Reload page to show new file
+                window.location.reload();
+            },
+            onError: function(error) {
+                alert('Upload failed: ' + error.message);
+            }
+        });
+    }
+}
+
+function hideFileUpload() {
+    const section = document.getElementById('fileUploadSection');
+    section.style.display = 'none';
+}
+
+function previewFile(url, filename) {
+    const modal = document.getElementById('filePreviewModal');
+    const pdfViewer = document.getElementById('pdfViewer');
+    const imageViewer = document.getElementById('imageViewer');
+    const title = modal.querySelector('.file-preview-title');
+    
+    title.textContent = filename;
+    
+    // Determine file type and show appropriate viewer
+    const extension = filename.split('.').pop().toLowerCase();
+    
+    if (extension === 'pdf') {
+        pdfViewer.src = url;
+        pdfViewer.style.display = 'block';
+        imageViewer.style.display = 'none';
+    } else if (['jpg', 'jpeg', 'png', 'gif'].includes(extension)) {
+        imageViewer.src = url;
+        imageViewer.style.display = 'block';
+        pdfViewer.style.display = 'none';
+    }
+    
+    modal.classList.add('active');
+}
+
+function closeFilePreview() {
+    const modal = document.getElementById('filePreviewModal');
+    modal.classList.remove('active');
+}
+
+// Close modal when clicking outside
+document.getElementById('filePreviewModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeFilePreview();
+    }
+});
+
+// Status chip styling
+document.addEventListener('DOMContentLoaded', function() {
+    // Add click handlers for file actions
+    const fileItems = document.querySelectorAll('.file-item');
+    fileItems.forEach(item => {
+        const previewBtn = item.querySelector('[title="View"]');
+        if (previewBtn) {
+            previewBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const fileName = item.querySelector('.file-name').textContent;
+                const fileUrl = previewBtn.href;
+                previewFile(fileUrl, fileName);
+            });
+        }
+    });
+});
+</script>
+
+<!-- Include JavaScript for file upload -->
+<script src="{{ url_for('static', filename='js/expense-file-upload.js') }}"></script>
+
+<style>
+/* Enhanced Detail View Styles */
+.receipt-detail-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.receipt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.receipt-title h1 {
+    margin: 0 0 8px 0;
+    color: #1f2937;
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.receipt-meta {
+    display: flex;
+    gap: 20px;
+    font-size: 1.1rem;
+}
+
+.receipt-date {
+    color: #6b7280;
+}
+
+.receipt-amount {
+    color: #059669;
+    font-weight: 600;
+}
+
+.receipt-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.status-section {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 24px;
+}
+
+.approval-info {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-left: 12px;
+}
+
+.approval-notes {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    font-size: 0.875rem;
+}
+
+.category-badge {
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.empty-files {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+}
+
+.files-section {
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.file-upload-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.file-upload-container .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.section-header h4 {
+    margin: 0;
+    color: #374151;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .receipt-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .receipt-actions {
+        justify-content: center;
+    }
+    
+    .receipt-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
+</style>
+{% endblock %}

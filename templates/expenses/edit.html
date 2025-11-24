@@ -3,25 +3,34 @@
 {% block title %}Edit Expense Receipt{% endblock %}
 
 {% block expenses_content %}
-<div class="card">
-  <div class="card-header">
-    <h3>Edit Expense Receipt - {{ receipt.serial_number }}</h3>
+<div class="expense-shell">
+  <div class="summary-card">
+    <div class="summary-content">
+      <div>
+        <p class="eyebrow">Edit expense</p>
+        <h3>{{ receipt.serial_number }}</h3>
+        <p class="mini-help">Adjust the date, total paid, or description.</p>
+      </div>
+      <div class="summary-amount" id="totalAmountDisplay">{{ form.total_amount.data or receipt.total_amount_fmt }} EGP</div>
+    </div>
   </div>
-  <div class="card-body">
-    <form method="POST" class="expense-form" id="expenseForm">
-      {{ form.hidden_tag() }}
-      
-      <!-- Receipt Information -->
-      <div class="form-section">
-        <h4>Receipt Information</h4>
-        <div class="form-row">
-          <div class="form-group">
-            {{ form.supplier_id.label(class="form-label") }}
-            {{ form.supplier_id(class="form-control") }}
-            {% for error in form.supplier_id.errors %}
-              <div class="field-error">{{ error }}</div>
-            {% endfor %}
-          </div>
+
+  <div class="card expense-card">
+    <div class="card-body">
+      <form method="POST" class="expense-form" id="expenseForm" onsubmit="return validateExpenseForm()">
+        {{ form.hidden_tag() }}
+
+        {% if form.errors %}
+        <div class="form-error alert alert-danger">
+          Please check the fields below and try again.
+        </div>
+        {% endif %}
+
+        {{ form.supplier_id(type="hidden") }}
+        <input type="hidden" name="tax_rate" value="0">
+        <input type="hidden" name="items-min_entries" value="0">
+
+        <div class="form-section simple-grid">
           <div class="form-group">
             {{ form.receipt_date.label(class="form-label") }}
             {{ form.receipt_date(class="form-control", type="date") }}
@@ -30,105 +39,30 @@
             {% endfor %}
           </div>
           <div class="form-group">
-            {{ form.tax_rate.label(class="form-label") }}
-            {{ form.tax_rate(class="form-control", placeholder="14.0") }}
-            {% for error in form.tax_rate.errors %}
+            {{ form.total_amount.label(class="form-label") }}
+            {{ form.total_amount(class="form-control total-input", placeholder="0.00", inputmode="decimal") }}
+            <small class="help-text">How much you paid for these materials.</small>
+            {% for error in form.total_amount.errors %}
               <div class="field-error">{{ error }}</div>
             {% endfor %}
           </div>
         </div>
-        <div class="form-group">
+
+        <div class="form-section">
           {{ form.notes.label(class="form-label") }}
-          {{ form.notes(class="form-control", rows="3", placeholder="Additional notes...") }}
+          {{ form.notes(class="form-control", rows="4", placeholder="List everything you bought...") }}
           {% for error in form.notes.errors %}
             <div class="field-error">{{ error }}</div>
           {% endfor %}
         </div>
-      </div>
 
-      <!-- Items Section -->
-      <div class="form-section">
-        <div class="section-header">
-          <h4>Expense Items</h4>
-          <button type="button" class="btn secondary" id="addItemBtn">
-            <i class="fa fa-plus"></i> Add Item
-          </button>
+        <div class="form-actions">
+          {{ form.submit(class="btn primary", value="Save Changes") }}
+          <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}" class="btn secondary">Cancel</a>
+          <a href="{{ url_for('expenses.delete_receipt_confirm', expense_id=receipt.id) }}" class="btn danger">Delete Receipt</a>
         </div>
-        
-        <div id="itemsContainer">
-          {% for item_form in form.items %}
-            <div class="expense-item" data-item-index="{{ loop.index0 }}">
-              <div class="item-header">
-                <span class="item-title">Item {{ loop.index }}</span>
-                <button type="button" class="btn btn-sm danger remove-item-btn" onclick="removeItem(this)">
-                  <i class="fa fa-trash"></i>
-                </button>
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  {{ item_form.material_name.label(class="form-label") }}
-                  {{ item_form.material_name(class="form-control material-name") }}
-                  {% for error in item_form.material_name.errors %}
-                    <div class="field-error">{{ error }}</div>
-                  {% endfor %}
-                </div>
-                <div class="form-group">
-                  {{ item_form.quantity.label(class="form-label") }}
-                  {{ item_form.quantity(class="form-control quantity-input", placeholder="1.00") }}
-                  {% for error in item_form.quantity.errors %}
-                    <div class="field-error">{{ error }}</div>
-                  {% endfor %}
-                </div>
-                <div class="form-group">
-                  {{ item_form.unit_price.label(class="form-label") }}
-                  {{ item_form.unit_price(class="form-control unit-price", placeholder="0.00") }}
-                  {% for error in item_form.unit_price.errors %}
-                    <div class="field-error">{{ error }}</div>
-                  {% endfor %}
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Total Price</label>
-                  <div class="total-price-display">0.00 EGP</div>
-                </div>
-              </div>
-              <div class="form-group">
-                {{ item_form.notes.label(class="form-label") }}
-                {{ item_form.notes(class="form-control", placeholder="Item notes...") }}
-                {% for error in item_form.notes.errors %}
-                  <div class="field-error">{{ error }}</div>
-                {% endfor %}
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-
-      <!-- Summary Section -->
-      <div class="form-section summary-section">
-        <h4>Summary</h4>
-        <div class="summary-grid">
-          <div class="summary-item">
-            <label>Subtotal:</label>
-            <span id="subtotalDisplay">0.00 EGP</span>
-          </div>
-          <div class="summary-item">
-            <label>Tax Amount:</label>
-            <span id="taxAmountDisplay">0.00 EGP</span>
-          </div>
-          <div class="summary-item total">
-            <label>Total Amount:</label>
-            <span id="totalAmountDisplay">0.00 EGP</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Form Actions -->
-      <div class="form-actions">
-        {{ form.submit(class="btn primary") }}
-        <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}" class="btn secondary">Cancel</a>
-        <a href="{{ url_for('expenses.delete_receipt_confirm', expense_id=receipt.id) }}" class="btn danger">Delete Receipt</a>
-      </div>
-    </form>
+      </form>
+    </div>
   </div>
 </div>
 {% endblock %}

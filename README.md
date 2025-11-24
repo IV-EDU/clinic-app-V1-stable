@@ -159,6 +159,10 @@ Inside the virtual environment you can install them manually with:
     - appointments-data
     - patients-data
     - doctors-data
+- For simple expenses (minimal flow):
+  - Backend: clinic_app/blueprints/simple_expenses.py
+  - Frontend: templates/simple_expenses/
+  - Assets: static/css/simple-expenses.css, static/js/simple-expenses.js
 - Always start by showing a short plan before making changes.
 - Prefer small, local edits over big refactors.
 

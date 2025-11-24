@@ -2,34 +2,32 @@
 
 from __future__ import annotations
 
-import io
-import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from flask import Blueprint, flash, redirect, request, send_file, url_for, jsonify, current_app
-from werkzeug.utils import secure_filename
+from flask import Blueprint, flash, redirect, request, url_for, jsonify, make_response
+from flask_login import current_user
 
-from clinic_app.services.database import db
-from clinic_app.services.i18n import T
 from clinic_app.services.ui import render_page
 from clinic_app.services.security import require_permission
 from clinic_app.services.expense_receipts import (
     create_supplier, create_expense_receipt, list_expense_receipts, get_expense_receipt,
     update_expense_receipt, delete_expense_receipt, list_suppliers, list_materials,
+    update_receipt_status, get_receipt_files, attach_receipt_file, delete_receipt_file,
+    create_category, list_categories, get_category, set_receipt_category, get_receipt_statistics,
     ExpenseReceiptError, SupplierNotFound, MaterialNotFound, ExpenseReceiptNotFound
 )
-from clinic_app.services.pdf import ReceiptPDF
 from clinic_app.forms.expenses import (
-    ExpenseReceiptForm, ExpenseReceiptEditForm, SupplierForm, MaterialForm, ExpenseSearchForm
+    ExpenseReceiptForm, ExpenseReceiptEditForm, SupplierForm, MaterialForm, ExpenseSearchForm,
+    ExpenseStatusForm, ExpenseCategoryForm
 )
 
 bp = Blueprint("expenses", __name__)
 
 
 def _format_money(cents: float) -> str:
-    """Format money in cents to display string."""
-    return f"{cents/100:.2f}"
+    """Format money value to display string."""
+    return f"{cents:.2f}"
 
 
 def _populate_supplier_choices() -> list[tuple[str, str]]:
@@ -44,6 +42,23 @@ def _populate_material_choices() -> list[tuple[str, str]]:
     return [(m['id'], m['name']) for m in materials]
 
 
+def _populate_category_choices() -> list[tuple[str, str]]:
+    """Get list of expense categories for form choices."""
+    categories = list_categories()
+    return [('', 'No Category')] + [(c['id'], c['name']) for c in categories]
+
+
+def _get_default_supplier_id(actor_id: str) -> str:
+    """Ensure a default supplier exists and return its id."""
+    suppliers = list_suppliers()
+    for supplier in suppliers:
+        if supplier['name'].lower() == "general clinic expenses":
+            return supplier['id']
+
+    # Create the default supplier if missing
+    return create_supplier({'name': 'General Clinic Expenses'}, actor_id=actor_id)
+
+
 # Expense Receipt Routes
 @bp.route("/", methods=["GET"])
 @require_permission("expenses:view")
@@ -55,51 +70,86 @@ def index():
     
     # Get filter parameters
     supplier_id = request.args.get("supplier_id")
+    category_id = request.args.get("category_id")
+    receipt_status = request.args.get("receipt_status")
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
+    min_amount = request.args.get("min_amount")
+    max_amount = request.args.get("max_amount")
     search_query = request.args.get("search_query")
     
     try:
         receipts = list_expense_receipts(
-            limit=per_page, 
+            limit=per_page,
             offset=offset,
             supplier_id=supplier_id,
+            category_id=category_id,
+            receipt_status=receipt_status,
             start_date=start_date,
-            end_date=end_date
+            end_date=end_date,
+            min_amount=min_amount,
+            max_amount=max_amount,
+            search_query=search_query
         )
         
-        # Format monetary values
+        # Format monetary values and add category info
+        categories = list_categories()
+        categories_dict = {c['id']: c for c in categories}
+        
         for receipt in receipts:
             receipt['total_amount_fmt'] = _format_money(receipt['total_amount'])
             receipt['tax_amount_fmt'] = _format_money(receipt['tax_amount'])
+            
+            # Add category information
+            if receipt.get('category_id'):
+                receipt['category_name'] = categories_dict.get(receipt['category_id'], {}).get('name', 'Unknown')
+                receipt['category_color'] = categories_dict.get(receipt['category_id'], {}).get('color', '#3498db')
+            else:
+                receipt['category_name'] = 'Uncategorized'
+                receipt['category_color'] = '#95a5a6'
         
         # Calculate pagination info
         total_receipts = len(receipts)
         total_pages = (total_receipts + per_page - 1) // per_page
-        
-        # Get suppliers for filter dropdown
-        suppliers = list_suppliers()
+
+        # Monthly total (simple recent summary)
+        today = date.today()
+        month_start = today.replace(day=1).isoformat()
+        month_receipts = list_expense_receipts(
+            limit=500,
+            offset=0,
+            start_date=month_start,
+            end_date=today.isoformat()
+        )
+        month_total = sum(r.get("total_amount", 0) or 0 for r in month_receipts)
         
         search_form = ExpenseSearchForm()
         search_form.supplier_id.choices = [('', 'All Suppliers')] + _populate_supplier_choices()
+        search_form.category_id.choices = [('', 'All Categories')] + _populate_category_choices()
         
-        if supplier_id:
-            search_form.supplier_id.data = supplier_id
         if start_date:
             search_form.start_date.data = datetime.strptime(start_date, "%Y-%m-%d").date()
         if end_date:
             search_form.end_date.data = datetime.strptime(end_date, "%Y-%m-%d").date()
         if search_query:
             search_form.search_query.data = search_query
+        if category_id:
+            search_form.category_id.data = category_id
+        if receipt_status:
+            search_form.receipt_status.data = receipt_status
+        if min_amount:
+            search_form.min_amount.data = Decimal(min_amount)
+        if max_amount:
+            search_form.max_amount.data = Decimal(max_amount)
         
         return render_page(
             "expenses/index.html",
             receipts=receipts,
-            suppliers=suppliers,
             search_form=search_form,
             page=page,
             per_page=per_page,
             total_pages=total_pages,
+            month_total=_format_money(month_total),
             current_filters={
                 'supplier_id': supplier_id,
                 'start_date': start_date,
@@ -114,47 +164,60 @@ def index():
         return render_page("expenses/index.html", receipts=[], suppliers=[], show_back=True)
 
 
-@bp.route("/expenses/new", methods=["GET", "POST"])
+@bp.route("/new", methods=["GET", "POST"])
 @require_permission("expenses:edit")
 def new_receipt():
     """Create new expense receipt form."""
     form = ExpenseReceiptForm()
+
+    default_supplier_id = _get_default_supplier_id(current_user.id)
     
-    # Populate supplier choices
-    form.supplier_id.choices = _populate_supplier_choices()
+    # Populate category choices
+    form.category_id.choices = _populate_category_choices()
     
-    if request.method == "POST" and form.validate():
+    if request.method == "GET":
+        form.process(
+            supplier_id=default_supplier_id,
+            tax_rate=Decimal("0.0"),
+        )
+        if not form.receipt_date.data:
+            form.receipt_date.data = date.today()
+
+    if request.method == "POST":
+        # Force hidden defaults into raw_data so validators pass
+        form.supplier_id.data = default_supplier_id
+        form.supplier_id.raw_data = [default_supplier_id]
+        form.tax_rate.data = Decimal("0.0")
+        form.tax_rate.raw_data = ["0"]
+
+    if request.method == "POST" and form.validate_on_submit():
         try:
-            # Process form data
+            if not form.total_amount.data or form.total_amount.data <= 0:
+                flash("Please enter how much you paid.", "err")
+                return render_page("expenses/new.html", form=form, show_back=True)
+
             form_data = {
-                'supplier_id': form.supplier_id.data,
+                'supplier_id': default_supplier_id,
                 'receipt_date': form.receipt_date.data.isoformat(),
                 'notes': form.notes.data,
-                'tax_rate': str(form.tax_rate.data)
+                'tax_rate': "0",
+                'category_id': form.category_id.data if form.category_id.data else None,
             }
-            
-            # Process items
-            items = []
-            for item_form in form.items:
-                if item_form.material_name.data:  # Only include non-empty items
-                    items.append({
-                        'material_name': item_form.material_name.data,
-                        'quantity': str(item_form.quantity.data),
-                        'unit_price': str(item_form.unit_price.data),
-                        'notes': item_form.notes.data
-                    })
-            
-            if not items:
-                flash("At least one item is required", "err")
-                return render_page("expenses/new.html", form=form, show_back=True)
-            
-            # Create receipt
+
+            # Always create a single simple item using the total amount
+            items = [{
+                'material_name': "Materials purchase",
+                'quantity': "1",
+                'unit_price': str(form.total_amount.data),
+                'notes': form.notes.data
+            }]
+
             expense_id = create_expense_receipt(
-                form_data, 
-                items, 
-                actor_id=request.user.id
+                form_data,
+                items,
+                actor_id=current_user.id
             )
-            
+
             flash("Expense receipt created successfully", "ok")
             return redirect(url_for("expenses.view_receipt", expense_id=expense_id))
             
@@ -162,6 +225,8 @@ def new_receipt():
             flash(f"Error creating receipt: {str(e)}", "err")
         except Exception as e:
             flash(f"Unexpected error: {str(e)}", "err")
+    elif request.method == "POST":
+        flash("Please fix the highlighted errors and try again.", "err")
     
     # GET request or validation failed
     # Add initial empty item for the form
@@ -172,24 +237,24 @@ def new_receipt():
     return render_page("expenses/new.html", form=form, show_back=True)
 
 
-@bp.route("/expenses/<expense_id>", methods=["GET"])
+@bp.route("/<expense_id>", methods=["GET"])
 @require_permission("expenses:view")
 def view_receipt(expense_id):
     """View expense receipt details."""
     try:
         receipt = get_expense_receipt(expense_id)
-        
+
         # Format monetary values
         receipt['total_amount_fmt'] = _format_money(receipt['total_amount'])
         receipt['tax_amount_fmt'] = _format_money(receipt['tax_amount'])
-        
+
         for item in receipt['items']:
             item['unit_price_fmt'] = _format_money(item['unit_price'])
             item['total_price_fmt'] = _format_money(item['total_price'])
         
         return render_page(
-            "expenses/detail.html", 
-            receipt=receipt, 
+            "expenses/detail_enhanced.html",
+            receipt=receipt,
             show_back=True
         )
         
@@ -201,68 +266,60 @@ def view_receipt(expense_id):
         return redirect(url_for("expenses.index"))
 
 
-@bp.route("/expenses/<expense_id>/edit", methods=["GET", "POST"])
+@bp.route("/<expense_id>/edit", methods=["GET", "POST"])
 @require_permission("expenses:edit")
 def edit_receipt(expense_id):
     """Edit expense receipt."""
     try:
         receipt = get_expense_receipt(expense_id)
-        
+
         if request.method == "GET":
             form = ExpenseReceiptEditForm()
-            form.supplier_id.choices = _populate_supplier_choices()
-            form.supplier_id.data = receipt['supplier_id']
-            form.receipt_date.data = datetime.strptime(receipt['receipt_date'], "%Y-%m-%d").date()
-            form.notes.data = receipt['notes'] or ""
-            form.tax_rate.data = Decimal("14.0")  # Default tax rate
-            
-            # Populate items
-            from clinic_app.forms.expenses import ExpenseItemForm
-            for item in receipt['items']:
-                item_form = ExpenseItemForm()
-                item_form.material_name.data = item['material_name']
-                item_form.quantity.data = Decimal(str(item['quantity']))
-                item_form.unit_price.data = Decimal(str(item['unit_price']))
-                item_form.notes.data = item['notes'] or ""
-                form.items.append_entry(item_form)
+            default_supplier_id = _get_default_supplier_id(current_user.id)
+            form.process(
+                supplier_id=default_supplier_id,
+                receipt_date=datetime.strptime(receipt['receipt_date'], "%Y-%m-%d").date(),
+                notes=receipt['notes'] or "",
+                tax_rate=Decimal("0.0"),
+                total_amount=Decimal(str(receipt['total_amount']))
+            )
             
             return render_page("expenses/edit.html", form=form, receipt=receipt, show_back=True)
         
         else:  # POST request
             form = ExpenseReceiptEditForm()
-            form.supplier_id.choices = _populate_supplier_choices()
+            default_supplier_id = _get_default_supplier_id(current_user.id)
+            form.supplier_id.data = default_supplier_id
+            form.supplier_id.raw_data = [default_supplier_id]
+            form.tax_rate.data = Decimal("0.0")
+            form.tax_rate.raw_data = ["0"]
             
-            if form.validate():
+            if form.validate_on_submit():
                 try:
-                    # Process form data
+                    if not form.total_amount.data or form.total_amount.data <= 0:
+                        flash("Please enter how much you paid.", "err")
+                        return render_page("expenses/edit.html", form=form, receipt=receipt, show_back=True)
+
                     form_data = {
-                        'supplier_id': form.supplier_id.data,
+                        'supplier_id': default_supplier_id,
                         'receipt_date': form.receipt_date.data.isoformat(),
                         'notes': form.notes.data,
-                        'tax_rate': str(form.tax_rate.data)
+                        'tax_rate': "0",
                     }
-                    
-                    # Process items
-                    items = []
-                    for item_form in form.items:
-                        if item_form.material_name.data:  # Only include non-empty items
-                            items.append({
-                                'material_name': item_form.material_name.data,
-                                'quantity': str(item_form.quantity.data),
-                                'unit_price': str(item_form.unit_price.data),
-                                'notes': item_form.notes.data
-                            })
-                    
-                    if not items:
-                        flash("At least one item is required", "err")
-                        return render_page("expenses/edit.html", form=form, receipt=receipt, show_back=True)
-                    
+
+                    items = [{
+                        'material_name': "Materials purchase",
+                        'quantity': "1",
+                        'unit_price': str(form.total_amount.data),
+                        'notes': form.notes.data
+                    }]
+
                     # Update receipt
                     update_expense_receipt(
                         expense_id,
                         form_data, 
                         items, 
-                        actor_id=request.user.id
+                        actor_id=current_user.id
                     )
                     
                     flash("Expense receipt updated successfully", "ok")
@@ -284,7 +341,7 @@ def edit_receipt(expense_id):
         return redirect(url_for("expenses.index"))
 
 
-@bp.route("/expenses/<expense_id>/delete", methods=["GET"])
+@bp.route("/<expense_id>/delete", methods=["GET"])
 @require_permission("expenses:edit")
 def delete_receipt_confirm(expense_id):
     """Delete expense receipt confirmation."""
@@ -300,12 +357,12 @@ def delete_receipt_confirm(expense_id):
         return redirect(url_for("expenses.index"))
 
 
-@bp.route("/expenses/<expense_id>/delete", methods=["POST"])
+@bp.route("/<expense_id>/delete", methods=["POST"])
 @require_permission("expenses:edit")
 def delete_receipt(expense_id):
     """Delete expense receipt."""
     try:
-        delete_expense_receipt(expense_id, actor_id=request.user.id)
+        delete_expense_receipt(expense_id, actor_id=current_user.id)
         flash("Expense receipt deleted successfully", "ok")
     except ExpenseReceiptNotFound:
         flash("Expense receipt not found", "err")
@@ -315,65 +372,8 @@ def delete_receipt(expense_id):
     return redirect(url_for("expenses.index"))
 
 
-@bp.route("/expenses/<expense_id>/print", methods=["GET"])
-@require_permission("expenses:view")
-def print_receipt(expense_id):
-    """Generate and serve expense receipt PDF."""
-    try:
-        receipt = get_expense_receipt(expense_id)
-        
-        # Generate PDF
-        pdf = ReceiptPDF(font_path="static/fonts/DejaVuSans.ttf")
-        pdf.heading("Expense Receipt", "فاتورة مصروفات")
-        
-        # Receipt header info
-        pdf.kv_block([
-            ("Receipt Number", receipt['serial_number']),
-            ("Date", receipt['receipt_date']),
-            ("Supplier", receipt['supplier_name']),
-        ])
-        
-        # Items table
-        pdf.set_font(pdf._family, "B", 12)
-        pdf.cell(0, 8, "Items:", pdf.ln())
-        
-        pdf.set_font(pdf._family, "", 10)
-        for item in receipt['items']:
-            pdf.multi_cell(0, 6, f"{item['material_name']} - {item['quantity']} x {_format_money(item['unit_price'])} = {_format_money(item['total_price'])}")
-        
-        # Totals
-        pdf.ln(4)
-        pdf.set_font(pdf._family, "B", 12)
-        pdf.kv_block([
-            ("Subtotal", _format_money(receipt['total_amount'] - receipt['tax_amount'])),
-            ("Tax Amount", _format_money(receipt['tax_amount'])),
-            ("Total Amount", _format_money(receipt['total_amount'])),
-        ])
-        
-        if receipt['notes']:
-            pdf.note(f"Notes: {receipt['notes']}")
-        
-        pdf_output = pdf.render()
-        
-        # Serve PDF
-        filename = f"expense_{receipt['serial_number']}.pdf"
-        return send_file(
-            io.BytesIO(pdf_output),
-            mimetype="application/pdf",
-            as_attachment=True,
-            download_name=filename
-        )
-        
-    except ExpenseReceiptNotFound:
-        flash("Expense receipt not found", "err")
-        return redirect(url_for("expenses.index"))
-    except Exception as e:
-        flash(f"Error generating PDF: {str(e)}", "err")
-        return redirect(url_for("expenses.view_receipt", expense_id=expense_id))
-
-
 # Supplier Management Routes
-@bp.route("/expenses/suppliers", methods=["GET"])
+@bp.route("/suppliers", methods=["GET"])
 @require_permission("expenses:view")
 def suppliers():
     """List all suppliers."""
@@ -389,7 +389,7 @@ def suppliers():
         return render_page("expenses/suppliers.html", suppliers=[], show_back=True)
 
 
-@bp.route("/expenses/suppliers/new", methods=["GET", "POST"])
+@bp.route("/suppliers/new", methods=["GET", "POST"])
 @require_permission("expenses:edit")
 def new_supplier():
     """Create new supplier."""
@@ -407,7 +407,7 @@ def new_supplier():
                     'tax_number': form.tax_number.data,
                     'is_active': '1' if form.is_active.data else '0'
                 },
-                actor_id=request.user.id
+                actor_id=current_user.id
             )
             
             flash("Supplier created successfully", "ok")
@@ -421,7 +421,7 @@ def new_supplier():
     return render_page("expenses/supplier_form.html", form=form, show_back=True)
 
 
-@bp.route("/expenses/suppliers/<supplier_id>/edit", methods=["GET", "POST"])
+@bp.route("/suppliers/<supplier_id>/edit", methods=["GET", "POST"])
 @require_permission("expenses:edit")
 def edit_supplier(supplier_id):
     """Edit supplier."""
@@ -431,7 +431,7 @@ def edit_supplier(supplier_id):
 
 
 # Material Management Routes
-@bp.route("/expenses/materials", methods=["GET"])
+@bp.route("/materials", methods=["GET"])
 @require_permission("expenses:view")
 def materials():
     """List all materials."""
@@ -447,7 +447,7 @@ def materials():
         return render_page("expenses/materials.html", materials=[], show_back=True)
 
 
-@bp.route("/expenses/materials/new", methods=["GET", "POST"])
+@bp.route("/materials/new", methods=["GET", "POST"])
 @require_permission("expenses:edit")
 def new_material():
     """Create new material."""
@@ -465,7 +465,7 @@ def new_material():
     return render_page("expenses/material_form.html", form=form, show_back=True)
 
 
-@bp.route("/expenses/materials/<material_id>/edit", methods=["GET", "POST"])
+@bp.route("/materials/<material_id>/edit", methods=["GET", "POST"])
 @require_permission("expenses:edit")
 def edit_material(material_id):
     """Edit material."""
@@ -540,5 +540,410 @@ def autocomplete_materials():
         
         return jsonify(filtered_materials[:10])
         
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# Export Routes
+@bp.route("/export/csv", methods=["GET"])
+@require_permission("expenses:view")
+def export_csv():
+    """Export expense receipts to CSV format."""
+    try:
+        # Get current filters from URL parameters
+        supplier_id = request.args.get("supplier_id")
+        category_id = request.args.get("category_id")
+        receipt_status = request.args.get("receipt_status")
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        min_amount = request.args.get("min_amount")
+        max_amount = request.args.get("max_amount")
+        search_query = request.args.get("search_query")
+        
+        # Get all matching receipts (without pagination)
+        receipts = list_expense_receipts(
+            limit=10000,  # High limit for export
+            offset=0,
+            supplier_id=supplier_id,
+            category_id=category_id,
+            receipt_status=receipt_status,
+            start_date=start_date,
+            end_date=end_date,
+            min_amount=min_amount,
+            max_amount=max_amount,
+            search_query=search_query
+        )
+        
+        # Import CSV module
+        import csv
+        from io import StringIO
+        
+        # Create CSV content
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            'Serial Number', 'Date', 'Supplier', 'Category', 'Status',
+            'Total Amount (EGP)', 'Tax Amount (EGP)', 'Notes', 'Created At'
+        ])
+        
+        # Get category info
+        categories = list_categories()
+        categories_dict = {c['id']: c for c in categories}
+        
+        # Write data rows
+        for receipt in receipts:
+            category_name = categories_dict.get(receipt.get('category_id'), {}).get('name', 'Uncategorized')
+            status = receipt.get('receipt_status', 'pending').title()
+            
+            writer.writerow([
+                receipt['serial_number'],
+                receipt['receipt_date'],
+                receipt['supplier_name'],
+                category_name,
+                status,
+                f"{receipt['total_amount']:.2f}",
+                f"{receipt['tax_amount']:.2f}",
+                receipt.get('notes', ''),
+                receipt['created_at'][:19]  # Remove microseconds
+            ])
+        
+        # Prepare response
+        output.seek(0)
+        filename = f"expense_receipts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+        
+        return response
+        
+    except Exception as e:
+        flash(f"Error exporting CSV: {str(e)}", "err")
+        return redirect(url_for("expenses.index"))
+
+
+@bp.route("/export/pdf", methods=["GET"])
+@require_permission("expenses:view")
+def export_pdf():
+    """Export expense receipts summary to PDF format."""
+    try:
+        # Get current filters
+        supplier_id = request.args.get("supplier_id")
+        category_id = request.args.get("category_id")
+        receipt_status = request.args.get("receipt_status")
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+        min_amount = request.args.get("min_amount")
+        max_amount = request.args.get("max_amount")
+        search_query = request.args.get("search_query")
+        
+        # Get matching receipts
+        receipts = list_expense_receipts(
+            limit=1000,
+            offset=0,
+            supplier_id=supplier_id,
+            category_id=category_id,
+            receipt_status=receipt_status,
+            start_date=start_date,
+            end_date=end_date,
+            min_amount=min_amount,
+            max_amount=max_amount,
+            search_query=search_query
+        )
+        
+        # Get statistics
+        stats = get_receipt_statistics()
+        categories = list_categories()
+        suppliers = list_suppliers()
+        
+        # Calculate totals
+        total_amount = sum(r['total_amount'] for r in receipts)
+        total_count = len(receipts)
+        
+        # Group by status for summary
+        status_summary = {}
+        for receipt in receipts:
+            status = receipt.get('receipt_status', 'pending')
+            if status not in status_summary:
+                status_summary[status] = {'count': 0, 'amount': 0}
+            status_summary[status]['count'] += 1
+            status_summary[status]['amount'] += receipt['total_amount']
+        
+        # Generate PDF using the existing PDF service
+        from clinic_app.services.pdf_enhanced import ExpenseReceiptPDF
+        from flask import current_app
+        
+        pdf_service = ExpenseReceiptPDF()
+        pdf_service.add_title("Expense Receipts Report")
+        
+        # Add summary section
+        pdf_service.add_summary_section({
+            'total_receipts': total_count,
+            'total_amount': total_amount,
+            'date_range': f"{start_date or 'All'} to {end_date or 'All'}",
+            'status_breakdown': status_summary
+        })
+        
+        # Add receipts table
+        pdf_data = []
+        categories_dict = {c['id']: c['name'] for c in categories}
+        suppliers_dict = {s['id']: s['name'] for s in suppliers}
+        
+        for receipt in receipts:
+            pdf_data.append({
+                'serial': receipt['serial_number'],
+                'date': receipt['receipt_date'],
+                'supplier': suppliers_dict.get(receipt.get('supplier_id'), receipt.get('supplier_name', 'Unknown')),
+                'category': categories_dict.get(receipt.get('category_id'), 'Uncategorized'),
+                'status': receipt.get('receipt_status', 'pending').title(),
+                'amount': receipt['total_amount']
+            })
+        
+        pdf_service.add_receipts_table(pdf_data)
+        
+        # Generate PDF
+        pdf_content = pdf_service.generate()
+        
+        # Prepare response
+        filename = f"expense_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        
+        response = make_response(pdf_content)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+        
+        return response
+        
+    except Exception as e:
+        flash(f"Error generating PDF: {str(e)}", "err")
+        return redirect(url_for("expenses.index"))
+
+
+# Status Management Routes
+@bp.route("/<expense_id>/status", methods=["GET", "POST"])
+@require_permission("expenses:edit")
+def update_receipt_status_route(expense_id):
+    """Update receipt status and approval workflow."""
+    form = ExpenseStatusForm()
+    
+    if request.method == "GET":
+        try:
+            receipt = get_expense_receipt(expense_id)
+            form.process(
+                receipt_status=receipt.get('receipt_status', 'pending'),
+                approval_notes=receipt.get('approval_notes', '')
+            )
+            return render_page(
+                "expenses/status.html",
+                form=form,
+                receipt=receipt,
+                show_back=True
+            )
+        except ExpenseReceiptNotFound:
+            flash("Expense receipt not found", "err")
+            return redirect(url_for("expenses.index"))
+    
+    elif request.method == "POST" and form.validate():
+        try:
+            update_receipt_status(
+                expense_id,
+                form.receipt_status.data,
+                form.approval_notes.data,
+                actor_id=current_user.id
+            )
+            flash("Receipt status updated successfully", "ok")
+            return redirect(url_for("expenses.view_receipt", expense_id=expense_id))
+        except ExpenseReceiptError as e:
+            flash(f"Error updating status: {str(e)}", "err")
+    
+    # Validation failed
+    try:
+        receipt = get_expense_receipt(expense_id)
+        return render_page(
+            "expenses/status.html",
+            form=form,
+            receipt=receipt,
+            show_back=True
+        )
+    except ExpenseReceiptNotFound:
+        flash("Expense receipt not found", "err")
+        return redirect(url_for("expenses.index"))
+
+
+# Category Management Routes
+@bp.route("/categories", methods=["GET"])
+@require_permission("expenses:view")
+def categories():
+    """List all expense categories."""
+    try:
+        categories_list = list_categories()
+        return render_page(
+            "expenses/categories.html",
+            categories=categories_list,
+            show_back=True
+        )
+    except Exception as e:
+        flash(f"Error loading categories: {str(e)}", "err")
+        return render_page("expenses/categories.html", categories=[], show_back=True)
+
+
+@bp.route("/categories/new", methods=["GET", "POST"])
+@require_permission("expenses:edit")
+def new_category():
+    """Create new expense category."""
+    form = ExpenseCategoryForm()
+    
+    if request.method == "POST" and form.validate():
+        try:
+            category_id = create_category(
+                {
+                    'name': form.name.data,
+                    'description': form.description.data,
+                    'color': form.color.data
+                },
+                actor_id=current_user.id
+            )
+            
+            flash("Expense category created successfully", "ok")
+            return redirect(url_for("expenses.categories"))
+            
+        except ExpenseReceiptError as e:
+            flash(f"Error creating category: {str(e)}", "err")
+        except Exception as e:
+            flash(f"Unexpected error: {str(e)}", "err")
+    
+    return render_page("expenses/category_form.html", form=form, show_back=True)
+
+
+@bp.route("/categories/<category_id>", methods=["GET"])
+@require_permission("expenses:view")
+def view_category(category_id):
+    """View expense category details with associated receipts."""
+    try:
+        category = get_category(category_id)
+        
+        # Get receipts in this category
+        receipts = list_expense_receipts(limit=50, offset=0)
+        category_receipts = [r for r in receipts if r.get('category_id') == category_id]
+        
+        # Format monetary values
+        for receipt in category_receipts:
+            receipt['total_amount_fmt'] = _format_money(receipt['total_amount'])
+            receipt['tax_amount_fmt'] = _format_money(receipt['tax_amount'])
+        
+        return render_page(
+            "expenses/category_detail.html",
+            category=category,
+            receipts=category_receipts,
+            show_back=True
+        )
+    except ExpenseReceiptError as e:
+        flash(f"Error loading category: {str(e)}", "err")
+        return redirect(url_for("expenses.categories"))
+
+
+# Enhanced Receipt Detail with Files
+@bp.route("/<expense_id>/files", methods=["GET"])
+@require_permission("expenses:view")
+def view_receipt_files(expense_id):
+    """View files attached to a receipt."""
+    try:
+        receipt = get_expense_receipt(expense_id)
+        files = get_receipt_files(expense_id)
+        
+        return render_page(
+            "expenses/receipt_files.html",
+            receipt=receipt,
+            files=files,
+            show_back=True
+        )
+        
+    except ExpenseReceiptNotFound:
+        flash("Expense receipt not found", "err")
+        return redirect(url_for("expenses.index"))
+    except Exception as e:
+        flash(f"Error loading files: {str(e)}", "err")
+        return redirect(url_for("expenses.view_receipt", expense_id=expense_id))
+
+
+# API Routes for Enhanced Functionality
+@bp.route("/api/expenses/categories", methods=["GET"])
+@require_permission("expenses:view")
+def api_categories():
+    """API endpoint for getting expense categories."""
+    try:
+        categories = list_categories()
+        return jsonify([{
+            'id': cat['id'],
+            'name': cat['name'],
+            'color': cat['color'],
+            'receipt_count': cat['receipt_count']
+        } for cat in categories])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/expenses/receipts/<receipt_id>/files", methods=["GET"])
+@require_permission("expenses:view")
+def api_receipt_files(receipt_id):
+    """API endpoint for getting receipt files."""
+    try:
+        files = get_receipt_files(receipt_id)
+        return jsonify({"files": files})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/expenses/receipts/<receipt_id>/status", methods=["POST"])
+@require_permission("expenses:edit")
+def api_update_receipt_status(receipt_id):
+    """API endpoint for updating receipt status."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        status = data.get("status")
+        notes = data.get("approval_notes", "")
+        
+        if not status or status not in ["pending", "approved", "rejected"]:
+            return jsonify({"error": "Invalid status"}), 400
+        
+        update_receipt_status(receipt_id, status, notes, actor_id=current_user.id)
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/expenses/receipts/<receipt_id>/category", methods=["POST"])
+@require_permission("expenses:edit")
+def api_set_receipt_category(receipt_id):
+    """API endpoint for setting receipt category."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+        
+        category_id = data.get("category_id")
+        if not category_id:
+            return jsonify({"error": "Category ID required"}), 400
+        
+        set_receipt_category(receipt_id, category_id, actor_id=current_user.id)
+        return jsonify({"success": True})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@bp.route("/api/expenses/statistics", methods=["GET"])
+@require_permission("expenses:view")
+def api_expense_statistics():
+    """API endpoint for expense statistics."""
+    try:
+        from clinic_app.services.expense_receipts import get_receipt_statistics
+        stats = get_receipt_statistics()
+        return jsonify(stats)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

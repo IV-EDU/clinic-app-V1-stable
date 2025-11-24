@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/print-receipts.css') }}">
   <script src="{{ url_for('static', filename='js/patient-receipts.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/status-chip.js') }}"></script>
+  {% block extra_css %}{% endblock %}
   {% endblock %}
   
 </head>
@@ -105,5 +106,6 @@
     });
   })();
   </script>
+  {% block extra_js %}{% endblock %}
 </body>
 </html>

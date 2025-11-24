@@ -13,12 +13,17 @@ class Base(DeclarativeBase):
     """Declarative base for clinic domain models."""
 
 
-class QueryMixin:
-    """Provide a Flask-SQLAlchemy-style query attribute."""
+class _QueryDescriptor:
+    """Provide a Flask-SQLAlchemy-style `Model.query` attribute."""
 
-    @classmethod
-    def query(cls):  # type: ignore[override]
-        return db.session().query(cls)
+    def __get__(self, instance, owner):
+        return db.session().query(owner)
+
+
+class QueryMixin:
+    """Mixin that adds a `.query` attribute backed by the shared session."""
+
+    query = _QueryDescriptor()
 
 
 class Patient(QueryMixin, Base):

@@ -329,35 +329,104 @@ def export_patients_csv():
 def search_patients():
     """API endpoint to search patients for appointment form autocomplete."""
     query = (request.args.get("q") or "").strip()
+    print(f"DEBUG: Searching for patients with query: '{query}'")
+    
     if not query or len(query) < 2:
+        print(f"DEBUG: Query too short, returning empty list")
         return jsonify([])
     
     conn = db()
     try:
+        # First check if we have any patients in the database
+        all_patients = conn.execute("SELECT COUNT(*) as count FROM patients").fetchone()
+        print(f"DEBUG: Total patients in database: {all_patients['count']}")
+        
         # Search by name, phone, or short_id (file number)
         search_term = f"%{query.lower()}%"
+        print(f"DEBUG: Using search term: '%{search_term}%'")
+        
         rows = conn.execute(
             """
-            SELECT id, full_name, phone, short_id
-            FROM patients
-            WHERE lower(full_name) LIKE ?
-               OR lower(phone) LIKE ?
-               OR lower(short_id) LIKE ?
-            ORDER BY full_name
+            SELECT p.id, p.full_name, p.phone, p.short_id, p.created_at,
+                   a.start_time as last_visit
+            FROM patients p
+            LEFT JOIN (
+                SELECT patient_id, MAX(start_time) as start_time
+                FROM appointments
+                WHERE patient_id IS NOT NULL
+                GROUP BY patient_id
+            ) a ON p.id = a.patient_id
+            WHERE lower(p.full_name) LIKE ?
+               OR lower(p.phone) LIKE ?
+               OR lower(p.short_id) LIKE ?
+            ORDER BY p.full_name
             LIMIT 10
             """,
             (search_term, search_term, search_term)
         ).fetchall()
         
+        print(f"DEBUG: Raw query returned {len(rows)} rows")
+        
         patients = []
         for row in rows:
-            patients.append({
+            # Calculate age based on created_at (approximate)
+            age = None
+            if row["created_at"]:
+                from datetime import datetime
+                try:
+                    if isinstance(row["created_at"], str):
+                        created_date = datetime.fromisoformat(row["created_at"])
+                    else:
+                        created_date = row["created_at"]
+                    age_years = (datetime.now() - created_date).days // 365
+                    age = age_years if age_years > 0 else None
+                except Exception as e:
+                    print(f"DEBUG: Error calculating age: {e}")
+                    age = None
+            
+            # Generate initials for avatar
+            initials = ''
+            try:
+                if row["full_name"]:
+                    names = row["full_name"].split()
+                    initials = ''.join([name[0].upper() for name in names[:2]])
+                else:
+                    initials = '?'
+            except Exception as e:
+                print(f"DEBUG: Error generating initials: {e}")
+                initials = '?'
+            
+            # Format last visit
+            last_visit = None
+            if row["last_visit"]:
+                try:
+                    from datetime import datetime
+                    if isinstance(row["last_visit"], str):
+                        last_visit_date = datetime.fromisoformat(row["last_visit"])
+                    else:
+                        last_visit_date = row["last_visit"]
+                    last_visit = last_visit_date.strftime("%b %d, %Y")
+                except Exception as e:
+                    print(f"DEBUG: Error formatting last visit: {e}")
+                    last_visit = None
+            
+            patient_data = {
                 "id": row["id"],
-                "full_name": row["full_name"],
-                "phone": row["phone"],
-                "short_id": row["short_id"]
-            })
+                "full_name": row["full_name"] or "Unknown Patient",
+                "phone": row["phone"] or "No phone",
+                "short_id": row["short_id"] or "N/A",
+                "age": age,
+                "initials": initials,
+                "last_visit": last_visit
+            }
+            patients.append(patient_data)
         
+        print(f"DEBUG: Found {len(patients)} patients for query '{query}': {patients}")
         return jsonify(patients)
+    except Exception as e:
+        print(f"DEBUG: Search error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify([])
     finally:
         conn.close()

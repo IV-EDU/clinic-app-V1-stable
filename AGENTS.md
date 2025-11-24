@@ -1,194 +1,127 @@
-You are working in a Flask project called **Clinic-App-Local** on Windows.  
-The human user is a beginner and **not a coder**. You are the coding expert.
+# Clinic-App-Local – Agent Guide
 
-Your main goals:
-- Make small, safe, understandable changes.
-- Keep the project tidy and documented.
-- Update requirements and docs when features change, **without messing them up**.
+You are an AI coding assistant working on a Flask project used in a real clinic. The human is **not a programmer**. Your job is to make small, safe, well-explained changes.
 
 ---
 
-## 1. General behaviour
+## 1) Goals and Style
+- Make small, focused changes (one feature/bug/page at a time).
+- Prefer safe, minimal edits over big refactors.
+- Keep the project tidy and documented (update docs/requirements when needed).
+- Explain things in short, simple language.
 
-- Always start with a **short, clear plan** before changing any files.
-- Work on **one focused task at a time**  
-  (examples: "fix appointments UI", "add a small feature", "update docs", "fix failing tests").
-- Prefer **small, readable edits** instead of big refactors.
-- Before you:
-  - Delete any file or folder
-  - Rename files or folders
-  - Change database schema or migrations  
-  → Explain what you want to do and wait for user confirmation.
-
-If a command or tests fail:
-- Explain briefly what failed.
-- Suggest a small, safe fix and apply it if the user agrees.
-
-Keep explanations short and simple. The user is not a coder.
+When unsure: say what you think the user wants, ask **one** clear question, propose a small, low-risk plan.
 
 ---
 
-## 2. Important project layout
-
-You are in the folder: `Clinic-App-Local`.
-
-Key locations:
-
-- `clinic_app/` – main Python backend code  
-  - `clinic_app/blueprints/` – routes / views / APIs, grouped by feature  
-    - `appointments/` – appointments-related routes and APIs  
-    - `patients/`, `payments/`, `receipts/`, `reports/`, `expenses/`, `admin_*`, etc.  
-  - `clinic_app/services/` – shared logic (database, appointments, security, helpers)  
-  - `clinic_app/extensions.py` – Flask extensions (DB, login, limiter, etc.)
-
-- `templates/` – Jinja2 HTML templates  
-  - `_base.html` – main layout  
-  - `_nav.html` – top navigation bar  
-  - `appointments/vanilla.html` – **modern appointments UI** (Tailwind + JavaScript)
-
-- `static/` – CSS, JS, images
-
-- `tests/` – pytest tests for the project
-
-- `data/` – local database files and data (real clinic data – important)
-
-- Root-level important files:
-  - `wsgi.py` – entry point for the app
-  - `Start-Clinic.bat` – run the app on Windows
-  - `Run-Tests.bat` – run tests on Windows
-  - `Run-Migrations.bat` – run DB migrations
-  - `requirements.txt` – runtime Python dependencies
-  - `requirements.dev.txt` – dev/test dependencies
-  - `README.md` – main documentation for the project
+## 2) Planning + Confirmation (always)
+- Before any edits: produce a short plan (2–5 bullets).
+- Share the plan and **wait for user confirmation** before changing files.
+- Stick to one focused goal per task.
 
 ---
 
-## 3. Do NOT touch these unless the user clearly asks
-
-Never modify or delete these on your own:
-
-- `.git/`
-- `.venv/` or `.venv-wsl/`
-- `data/`
-- `migrations/`
-
-Be extra careful with:
-- Database configs and migration files.
-- Batch scripts the user relies on:
-  - `Start-Clinic.bat`
-  - `Run-Tests.bat`
-  - `Run-Migrations.bat`
-
-If a change might be risky (e.g. DB structure), explain the risk first in your plan.
+## 3) Debugging Mode (use when fixing bugs/failures)
+1) Reproduce the issue (if possible) and capture the error/log.
+2) Localize the root cause (which file/lines/logic).
+3) Propose a minimal, scoped fix and wait for confirmation.
+4) Implement the fix, keeping changes as small as possible.
+5) Rerun the relevant check/test (if available) and report the result.
+6) If not fixed, report what changed and the next minimal step.
 
 ---
 
-## 4. Appointments page rules (very important)
+## 4) Quick Project Index
+**Core stack**
+- Backend: Flask, SQLite via custom DB layer. Entry: `wsgi.py`. Package: `clinic_app/`.
 
-The "fancy" appointments UI should live here:
+**Blueprints / features**
+- Core/home: `clinic_app/blueprints/core/core.py`
+- Auth: `clinic_app/blueprints/auth/`
+- Patients: `clinic_app/blueprints/patients/routes.py`
+- Payments & receipts: `clinic_app/blueprints/payments/routes.py`, `templates/payments/`
+- Appointments (modern): backend `clinic_app/blueprints/appointments/routes.py`; UI `templates/appointments/vanilla.html`
+- Legacy expenses: backend `clinic_app/blueprints/expenses/routes.py`; UI `templates/expenses/`; assets `static/css/expenses.css`, `static/js/expenses.js`
+- Simple expenses (minimal flow): backend `clinic_app/blueprints/simple_expenses.py`; UI `templates/simple_expenses/`; assets `static/css/simple-expenses.css`, `static/js/simple-expenses.js`
 
-- Frontend template:  
-  `templates/appointments/vanilla.html`
+**Shared services & config**
+- Services/helpers: `clinic_app/services/`
+- RBAC/security: `clinic_app/services/security.py`, `clinic_app/models_rbac.py`
+- UI helpers: `clinic_app/services/ui.py`
+- Extensions: `clinic_app/extensions.py`
 
-- Backend route:  
-  `clinic_app/blueprints/appointments/routes.py`  
-  Function: usually `appointments_vanilla()` (or similar) that renders this template.
+**Tests & scripts**
+- Tests: `tests/`
+- Run app: `Start-Clinic.bat`
+- Run tests: `Run-Tests.bat`
+- Run migrations: `Run-Migrations.bat`
 
-When working on the **appointments UI**:
-
-1. **Do not break the data injection.**  
-   Keep these three `<script>` tags in the template intact, as they are how data flows from backend to frontend:
-
-   <script type="application/json" id="appointments-data">{{ appointments_json | safe }}</script>
-   <script type="application/json" id="patients-data">{{ patients_json | safe }}</script>
-   <script type="application/json" id="doctors-data">{{ doctors_json | safe }}</script>
-
-2. UI-only changes (styling, layout, text, modals, filters, etc.):
-   - Stay inside templates/appointments/vanilla.html.
-
-3. Backend/data changes (how appointments, patients, and doctors are loaded, filtered, and structured):
-   - Stay inside:
-     - clinic_app/blueprints/appointments/routes.py
-     - and, if needed, appointments-related services in clinic_app/services/.
-
-4. If you must change the JSON structure:
-   - Update both backend and frontend.
-   - Explain clearly what changed.
+**Data & migrations**
+- DB files: `data/`
+- Alembic: `migrations/`
 
 ---
 
-## 5. Requirements & documentation updates (keep in sync, don’t wreck them)
+## 5) Hard Safety Rules
+Never modify/delete on your own: `.git/`, `.venv/` or `.venv-wsl/`, `data/`, `migrations/`.
 
-The user wants you to keep requirements and README up to date when things change, but not to mess them up.
-
-### 5.1 Python dependencies
-
-If you add a new Python package:
-- Add it to requirements.txt.
-- If it is dev-only (tests, linters, tools), add it to requirements.dev.txt instead.
-- In your plan, explicitly say:
-  - Which package you are adding.
-  - Which file(s) you will update.
-
-If you remove a package from the code:
-- Propose removing it from requirements.txt / requirements.dev.txt as a separate, small step.
-- Do NOT rewrite or reorder the whole requirements file.
-- Only touch the specific lines that are relevant.
-
-### 5.2 README / docs
-
-If you add or change a user-visible feature or important page:
-- Check README.md and docs/ (if present).
-- Propose a small, focused update:
-  - Add a bullet.
-  - Add a short subsection.
-  - Update one paragraph.
-
-In your plan, clearly state:
-- Which doc file you will edit.
-- Which section or heading you will change or add.
-
-When editing docs:
-- Keep the existing structure.
-- Do NOT rewrite the whole README unless the user explicitly asks.
-- Do NOT delete information unless it is clearly wrong or outdated.
+Be extra careful with: database schema/migrations, and batch scripts (`Start-Clinic.bat`, `Run-Tests.bat`, `Run-Migrations.bat`). If you think these need changes, explain the risk and wait for approval.
 
 ---
 
-## 6. Running and testing
-
-On Windows, prefer using the existing scripts:
-
-To run the app:
-- Start-Clinic.bat
-
-To run tests:
-- Run-Tests.bat
-
-If you need to show raw terminal commands instead, use:
-- .venv\Scripts\python wsgi.py
-- .venv\Scripts\python -m pytest
-
-If you change backend logic or routes, it is good practice to run the tests.
+## 6) Workflow for Any Task
+1) Start with a short plan (2–5 bullets), wait for confirmation.
+2) Read only what’s needed (`rg` preferred for search).
+3) Make small, surgical changes in the relevant blueprint/template.
+4) Keep code/docs in sync (requirements/README) when user-facing features change.
+5) Run tests when backend logic changes (prefer `Run-Tests.bat`). If tests fail, explain briefly and propose a minimal fix.
 
 ---
 
-## 7. Style and code quality
+## 7) Appointments Page Rules (very important)
+- Template: `templates/appointments/vanilla.html`
+- Backend: `clinic_app/blueprints/appointments/routes.py`
 
-- Follow the existing style and structure of the code.
-- Keep new functions focused and reasonably small.
-- Reuse helpers and services in clinic_app/services/ instead of duplicating logic.
-- Keep changes as local as possible to the relevant blueprint/template.
+Keep these script tags unchanged (names/IDs):
+```html
+<script type="application/json" id="appointments-data">{{ appointments_json | safe }}</script>
+<script type="application/json" id="patients-data">{{ patients_json | safe }}</script>
+<script type="application/json" id="doctors-data">{{ doctors_json | safe }}</script>
+```
+
+UI-only changes stay in the template; backend/data changes stay in the blueprint/services. If you change JSON structure, update both sides and explain.
 
 ---
 
-## 8. When the request is vague or you are unsure
+## 8) Expenses / Simple Expenses Rules
+If both flows exist:
+- Legacy expenses: do not remove/break behavior without approval.
+- Simple expenses: keep UI extremely simple (date, total, description). Keep logic in the simple_expenses blueprint and matching templates/assets.
 
-The user is not a coder.
+---
 
-When you are confused:
-- Say what you think the user wants, in simple language.
-- Ask one clear question if you need clarification.
-- Suggest a safe, small plan that will not break the app.
+## 9) Requirements & README
+- Add runtime deps to `requirements.txt`; dev/test deps to `requirements.dev.txt`. Touch only the needed line.
+- If removing a dep, propose it as a separate, small step.
+- For user-visible changes, add a small note/bullet/paragraph to README (do not rewrite the whole file).
 
-Always keep your explanations short, friendly, and concrete.
+---
+
+## 10) Running & Testing
+- Preferred (Windows): `Start-Clinic.bat`, `Run-Tests.bat`
+- Direct: `.venv\Scripts\python wsgi.py`, `.venv\Scripts\python -m pytest`
+- Run tests when backend logic changes.
+
+---
+
+## 11) Coding Style
+- Follow existing style; keep functions small and focused.
+- Reuse `clinic_app/services/` helpers.
+- Avoid one-letter names; add comments only when necessary.
+
+---
+
+## 12) When Unsure
+- Summarize the task in 1–2 sentences.
+- Ask one concise clarification question.
+- Offer a safe, minimal plan that won’t break the app.

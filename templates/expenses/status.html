@@ -1,0 +1,298 @@
+{% extends 'expenses/base.html' %}
+
+{% block title %}Update Receipt Status - {{ receipt.serial_number }}{% endblock %}
+
+{% block expenses_content %}
+<div class="status-update-container">
+    <div class="page-header">
+        <h1>Update Receipt Status</h1>
+        <div class="receipt-info">
+            <strong>Receipt #{{ receipt.serial_number }}</strong> • {{ receipt.receipt_date }} • {{ receipt.total_amount_fmt }} EGP
+        </div>
+    </div>
+
+    <div class="status-card">
+        <div class="card-header">
+            <h3>Current Status</h3>
+            {% if receipt.receipt_status %}
+                <span class="status-chip {{ receipt.receipt_status }}">
+                    <i class="fa fa-{{ 'clock' if receipt.receipt_status == 'pending' else 'check' if receipt.receipt_status == 'approved' else 'times' }}"></i>
+                    {{ receipt.receipt_status.title() }}
+                </span>
+            {% else %}
+                <span class="status-chip pending">
+                    <i class="fa fa-clock"></i>
+                    Pending
+                </span>
+            {% endif %}
+        </div>
+
+        <div class="card-body">
+            <form method="POST" class="status-form">
+                {{ form.hidden_tag() }}
+                
+                {% if form.errors %}
+                <div class="form-error alert alert-danger">
+                    Please check the fields below and try again.
+                </div>
+                {% endif %}
+
+                <div class="form-group">
+                    {{ form.receipt_status.label(class="form-label") }}
+                    {{ form.receipt_status(class="form-control") }}
+                    {% for error in form.receipt_status.errors %}
+                        <div class="field-error">{{ error }}</div>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
+                    {{ form.approval_notes.label(class="form-label") }}
+                    {{ form.approval_notes(class="form-control", rows="4", placeholder="Add approval notes, rejection reasons, or other comments...") }}
+                    {% for error in form.approval_notes.errors %}
+                        <div class="field-error">{{ error }}</div>
+                    {% endfor %}
+                    <small class="help-text">Optional notes about the status change or approval process.</small>
+                </div>
+
+                <div class="form-actions">
+                    {{ form.submit(class="btn primary", value="Update Status") }}
+                    <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}" class="btn secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Previous Status History (if available) -->
+    {% if receipt.approval_date %}
+    <div class="status-history">
+        <h4>Status History</h4>
+        <div class="history-item">
+            <div class="history-header">
+                <span class="status-chip {{ receipt.receipt_status }}">
+                    {{ receipt.receipt_status.title() }}
+                </span>
+                <span class="history-date">{{ receipt.approval_date }}</span>
+            </div>
+            {% if receipt.approval_notes %}
+                <div class="history-notes">{{ receipt.approval_notes }}</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Receipt Summary -->
+    <div class="receipt-summary">
+        <h4>Receipt Details</h4>
+        <div class="summary-grid">
+            <div class="summary-item">
+                <label>Supplier:</label>
+                <span>{{ receipt.supplier_name }}</span>
+            </div>
+            <div class="summary-item">
+                <label>Date:</label>
+                <span>{{ receipt.receipt_date }}</span>
+            </div>
+            <div class="summary-item">
+                <label>Total Amount:</label>
+                <span>{{ receipt.total_amount_fmt }} EGP</span>
+            </div>
+            {% if receipt.category_name %}
+            <div class="summary-item">
+                <label>Category:</label>
+                <span class="category-badge" style="background-color: {{ receipt.category_color or '#3498db' }}; color: white;">
+                    {{ receipt.category_name }}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if receipt.notes %}
+        <div class="summary-notes">
+            <label>Notes:</label>
+            <p>{{ receipt.notes }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.status-update-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    margin-bottom: 30px;
+}
+
+.page-header h1 {
+    margin: 0 0 8px 0;
+    color: #1f2937;
+    font-size: 1.75rem;
+}
+
+.receipt-info {
+    color: #6b7280;
+    font-size: 1.1rem;
+}
+
+.status-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.card-header h3 {
+    margin: 0;
+    color: #374151;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.status-form {
+    max-width: 500px;
+}
+
+.status-history {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.status-history h4 {
+    margin: 0 0 16px 0;
+    color: #374151;
+    font-size: 1.125rem;
+}
+
+.history-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.history-date {
+    color: #6b7280;
+    font-size: 0.875rem;
+}
+
+.history-notes {
+    color: #374151;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.receipt-summary {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.receipt-summary h4 {
+    margin: 0 0 16px 0;
+    color: #374151;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.summary-item label {
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.category-badge {
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.summary-notes {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.summary-notes label {
+    display: block;
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 8px;
+}
+
+.summary-notes p {
+    margin: 0;
+    color: #374151;
+    line-height: 1.5;
+}
+
+.form-actions {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .status-update-container {
+        padding: 10px;
+    }
+    
+    .card-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+{% endblock %}

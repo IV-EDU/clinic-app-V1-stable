@@ -14,15 +14,15 @@ from wtforms.fields import FieldList, FormField
 class ExpenseItemForm(FlaskForm):
     """Form for individual expense receipt items."""
     material_name = StringField("Material Name", validators=[
-        DataRequired(), 
+        Optional(),
         Length(max=200)
     ])
     quantity = DecimalField("Quantity", validators=[
-        DataRequired(), 
+        Optional(),
         NumberRange(min=0.01)
     ], places=2)
     unit_price = DecimalField("Unit Price", validators=[
-        DataRequired(), 
+        Optional(),
         NumberRange(min=0.01)
     ], places=2)
     notes = TextAreaField("Notes", validators=[
@@ -32,9 +32,13 @@ class ExpenseItemForm(FlaskForm):
 
 class ExpenseReceiptForm(FlaskForm):
     """Main form for expense receipts."""
-    supplier_id = SelectField("Supplier", coerce=str, validators=[DataRequired()])
+    supplier_id = HiddenField("Supplier", validators=[Optional()])
     receipt_date = DateField("Receipt Date", validators=[DataRequired()])
-    notes = TextAreaField("Notes", validators=[
+    total_amount = DecimalField("Total Paid (EGP)", validators=[
+        DataRequired(),
+        NumberRange(min=0)
+    ], places=2)
+    notes = TextAreaField("What did you buy?", validators=[
         Length(max=1000)
     ])
     tax_rate = DecimalField("Tax Rate (%)", validators=[
@@ -42,9 +46,15 @@ class ExpenseReceiptForm(FlaskForm):
         NumberRange(min=0, max=100)
     ], places=2, default=14.0)
     receipt_image = FileField("Receipt Image")
+    category_id = SelectField("Category", coerce=str, validators=[Optional()])
+    receipt_status = SelectField("Status", choices=[
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected')
+    ], default='pending', validators=[DataRequired()])
     
     # Dynamic line items
-    items = FieldList(FormField(ExpenseItemForm), min_entries=1)
+    items = FieldList(FormField(ExpenseItemForm), min_entries=0)
     
     add_item = SubmitField("Add Another Item")
     submit = SubmitField("Create Receipt")
@@ -111,11 +121,55 @@ class MaterialForm(FlaskForm):
 class ExpenseSearchForm(FlaskForm):
     """Form for searching expense receipts."""
     supplier_id = SelectField("Supplier", coerce=str)
+    category_id = SelectField("Category", coerce=str)
+    receipt_status = SelectField("Status", choices=[
+        ('', 'All Statuses'),
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected')
+    ])
     start_date = DateField("Start Date")
     end_date = DateField("End Date")
+    min_amount = DecimalField("Min Amount", validators=[
+        Optional(),
+        NumberRange(min=0)
+    ], places=2)
+    max_amount = DecimalField("Max Amount", validators=[
+        Optional(),
+        NumberRange(min=0)
+    ], places=2)
     search_query = StringField("Search", validators=[
         Length(max=100)
     ])
     
     submit = SubmitField("Search")
     clear = SubmitField("Clear Filters")
+    export = SubmitField("Export Results")
+
+
+class ExpenseStatusForm(FlaskForm):
+    """Form for managing receipt status and approval."""
+    receipt_status = SelectField("Status", choices=[
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected')
+    ], validators=[DataRequired()])
+    approval_notes = TextAreaField("Approval Notes", validators=[
+        Length(max=500)
+    ])
+    submit = SubmitField("Update Status")
+
+
+class ExpenseCategoryForm(FlaskForm):
+    """Form for managing expense categories."""
+    name = StringField("Category Name", validators=[
+        DataRequired(),
+        Length(max=100)
+    ])
+    description = TextAreaField("Description", validators=[
+        Length(max=500)
+    ])
+    color = StringField("Color", validators=[
+        Length(max=7)
+    ], default="#3498db")
+    submit = SubmitField("Save Category")

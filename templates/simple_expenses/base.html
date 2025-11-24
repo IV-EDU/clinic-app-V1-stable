@@ -1,0 +1,38 @@
+{% extends '_base.html' %}
+
+{% block title %}Simple Expenses{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/simple-expenses.css') }}">
+{% endblock %}
+
+{% block content %}
+  <div class="container simple-expenses-container">
+    {% if show_back %}
+      <div class="mb-3">
+        <a href="{{ url_for('core.index') }}" class="btn btn-secondary">
+          <i class="fa fa-arrow-left"></i> Back to Dashboard
+        </a>
+      </div>
+    {% endif %}
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-messages">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'err' else 'success' if category == 'ok' else 'info' }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    
+    {% block simple_expenses_content %}{% endblock %}
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+  <script src="{{ url_for('static', filename='js/simple-expenses.js') }}"></script>
+{% endblock %}

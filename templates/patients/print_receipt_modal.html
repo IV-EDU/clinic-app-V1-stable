@@ -10,107 +10,49 @@
                 </button>
             </div>
             
-            <!-- Modal Body -->
-            <div class="modal-body">
-                <!-- Format Selection -->
-                <div class="form-group">
-                    <label class="form-label">{{ t('receipt_format') }}</label>
-                    <div class="format-options">
-                        <div class="radio-option">
-                            <input type="radio" id="format-full" name="format" value="full" checked>
-                            <label for="format-full">
-                                <span class="option-title">{{ t('format_full') }}</span>
-                                <span class="option-description">{{ t('format_full_desc') or 'Complete receipt with all details' }}</span>
-                            </label>
-                        </div>
-                        
-                        <div class="radio-option">
-                            <input type="radio" id="format-summary" name="format" value="summary">
-                            <label for="format-summary">
-                                <span class="option-title">{{ t('format_summary') }}</span>
-                                <span class="option-description">{{ t('format_summary_desc') or 'Brief summary of payment' }}</span>
-                            </label>
-                        </div>
-                        
-                        <div class="radio-option">
-                            <input type="radio" id="format-treatment" name="format" value="treatment">
-                            <label for="format-treatment">
-                                <span class="option-title">{{ t('format_treatment') }}</span>
-                                <span class="option-description">{{ t('format_treatment_desc') or 'Focus on treatment details' }}</span>
-                            </label>
-                        </div>
-                        
-                        <div class="radio-option">
-                            <input type="radio" id="format-payment" name="format" value="payment">
-                            <label for="format-payment">
-                                <span class="option-title">{{ t('format_payment') }}</span>
-                                <span class="option-description">{{ t('format_payment_desc') or 'Payment only, minimal details' }}</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+            <div class="modal-body simple-body">
+                <p class="hint">{{ t('preview_receipt') }} → PDF in a new tab (use browser print). {{ t('download_pdf') }} → save the file.</p>
                 
-                <!-- Language Selection -->
-                <div class="form-group">
+                <div class="option-block">
                     <label class="form-label">{{ t('language') }}</label>
-                    <div class="language-options">
-                        <div class="radio-option">
-                            <input type="radio" id="lang-current" name="language" value="current" checked>
-                            <label for="lang-current">
-                                <span class="option-title">{{ t('current_language') or 'Current Language' }}</span>
-                                <span class="option-description">{{ t('use_current_lang') or 'Use currently selected language' }}</span>
-                            </label>
-                        </div>
-                        
-                        <div class="radio-option">
-                            <input type="radio" id="lang-en" name="language" value="en">
-                            <label for="lang-en">
-                                <span class="option-title">{{ t('lang_en') or 'English' }}</span>
-                                <span class="option-description">{{ t('english_receipt') or 'Generate English receipt' }}</span>
-                            </label>
-                        </div>
-                        
-                        <div class="radio-option">
-                            <input type="radio" id="lang-ar" name="language" value="ar">
-                            <label for="lang-ar">
-                                <span class="option-title">{{ t('lang_ar') or 'العربية' }}</span>
-                                <span class="option-description">{{ t('arabic_receipt') or 'Generate Arabic receipt' }}</span>
-                            </label>
-                        </div>
+                    <div class="radio-row">
+                        <label class="radio-chip">
+                            <input type="radio" name="receipt-lang" value="current" checked>
+                            <span>{{ t('current_language') or 'Current' }}</span>
+                        </label>
+                        <label class="radio-chip">
+                            <input type="radio" name="receipt-lang" value="en">
+                            <span>{{ t('lang_en') or 'English' }}</span>
+                        </label>
+                        <label class="radio-chip">
+                            <input type="radio" name="receipt-lang" value="ar">
+                            <span>{{ t('lang_ar') or 'العربية' }}</span>
+                        </label>
                     </div>
                 </div>
-                
-                <!-- Print Options -->
-                <div class="form-group">
-                    <label class="form-label">{{ t('print_options') }}</label>
-                    <div class="checkbox-group">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="include-qr" name="include_qr" checked>
-                            <span class="checkmark"></span>
-                            {{ t('include_qr') }}
-                        </label>
-                        
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="include-notes" name="include_notes" checked>
-                            <span class="checkmark"></span>
-                            {{ t('include_notes') }}
-                        </label>
 
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="include-treatment" name="include_treatment" checked>
-                            <span class="checkmark"></span>
-                            {{ t('include_treatment') if t('include_treatment') != 'include_treatment' else 'Include treatment details' }}
+                <div class="option-block">
+                    <label class="form-label">{{ t('print_options') }}</label>
+                    <div class="checkbox-row">
+                        <label class="checkbox-chip">
+                            <input type="checkbox" id="include-treatment" checked>
+                            <span>{{ t('include_treatment') if t('include_treatment') != 'include_treatment' else 'Include treatment' }}</span>
                         </label>
-                        
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="watermark" name="watermark">
-                            <span class="checkmark"></span>
-                            {{ t('add_watermark') }}
+                        <label class="checkbox-chip">
+                            <input type="checkbox" id="include-notes" checked>
+                            <span>{{ t('include_notes') }}</span>
+                        </label>
+                        <label class="checkbox-chip">
+                            <input type="checkbox" id="include-qr" checked>
+                            <span>{{ t('include_qr') }}</span>
+                        </label>
+                        <label class="checkbox-chip">
+                            <input type="checkbox" id="watermark">
+                            <span>{{ t('add_watermark') }}</span>
                         </label>
                     </div>
                 </div>
-                
-                <!-- Print Actions -->
+
                 <div class="print-actions">
                     <button type="button" class="btn btn-outline-secondary" id="previewReceiptBtn">
                         <i class="fa fa-eye"></i>
@@ -124,13 +66,8 @@
                 </div>
             </div>
             
-            <!-- Modal Footer -->
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">{{ t('cancel') }}</button>
-                <button type="button" class="btn btn-primary" id="printReceiptBtn">
-                    <i class="fa fa-print"></i>
-                    {{ t('print_receipt') }}
-                </button>
             </div>
         </div>
     </div>
@@ -234,6 +171,47 @@
     padding: 24px;
 }
 
+.simple-body .hint {
+    margin: 0 0 16px 0;
+    color: #6c757d;
+}
+
+.option-block {
+    margin-bottom: 12px;
+}
+
+.radio-row,
+.checkbox-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.radio-chip,
+.checkbox-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    cursor: pointer;
+    user-select: none;
+    color: #111827;
+}
+
+.radio-chip input,
+.checkbox-chip input {
+    margin: 0;
+}
+
+.radio-chip span,
+.checkbox-chip span {
+    color: #111827;
+    font-weight: 600;
+}
+
 .form-group {
     margin-bottom: 24px;
 }
@@ -243,113 +221,6 @@
     margin-bottom: 8px;
     font-weight: 600;
     color: #495057;
-}
-
-/* Format Options */
-.format-options, .language-options {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.radio-option {
-    position: relative;
-}
-
-.radio-option input[type="radio"] {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.radio-option label {
-    display: flex;
-    flex-direction: column;
-    padding: 16px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: white;
-}
-
-.radio-option label:hover {
-    border-color: #007bff;
-    background-color: #f8f9fa;
-}
-
-.radio-option input[type="radio"]:checked + label {
-    border-color: #007bff;
-    background-color: #e7f1ff;
-}
-
-.radio-option input[type="radio"]:checked + label::before {
-    content: '✓';
-    position: absolute;
-    top: 8px;
-    right: 12px;
-    color: #007bff;
-    font-weight: bold;
-    font-size: 14px;
-}
-
-.option-title {
-    font-weight: 600;
-    color: #495057;
-    margin-bottom: 4px;
-}
-
-.option-description {
-    font-size: 14px;
-    color: #6c757d;
-}
-
-/* Checkbox Group */
-.checkbox-group {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding: 8px 0;
-}
-
-.checkbox-label input[type="checkbox"] {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.checkmark {
-    width: 20px;
-    height: 20px;
-    border: 2px solid #dee2e6;
-    border-radius: 4px;
-    margin-right: 12px;
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkmark {
-    background-color: #007bff;
-    border-color: #007bff;
-}
-
-.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-size: 12px;
-    font-weight: bold;
 }
 
 /* Print Actions */

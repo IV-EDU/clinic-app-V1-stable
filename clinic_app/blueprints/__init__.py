@@ -51,17 +51,29 @@ def register_blueprints(app) -> None:
     try:
         module = import_module("clinic_app.blueprints.expenses")
         expenses_bp = getattr(module, "bp", None)
-        if expenses_bp is not None:
-            bp_name = getattr(expenses_bp, "name", None) or "expenses"
-            if bp_name not in app.blueprints:
-                app.register_blueprint(expenses_bp, url_prefix="/expenses")
-                print(f"Successfully registered expenses blueprint: {bp_name}")
-        else:
-            print("Warning: expenses blueprint found but bp is None")
-    except ImportError as e:
-        print(f"Warning: Could not import expenses blueprint: {e}")
+        if expenses_bp is None:
+            raise RuntimeError("expenses blueprint found but bp is None")
+        bp_name = getattr(expenses_bp, "name", None) or "expenses"
+        if bp_name not in app.blueprints:
+            app.register_blueprint(expenses_bp, url_prefix="/expenses")
+            print(f"Successfully registered expenses blueprint: {bp_name}")
     except Exception as e:
-        print(f"Warning: Error registering expenses blueprint: {e}")
+        # Fail loudly so we notice routing issues instead of silent 404s
+        raise RuntimeError(f"Failed to register expenses blueprint: {e}") from e
+
+    # Register simple expenses blueprint
+    try:
+        module = import_module("clinic_app.blueprints.simple_expenses")
+        simple_expenses_bp = getattr(module, "bp", None)
+        if simple_expenses_bp is None:
+            raise RuntimeError("simple_expenses blueprint found but bp is None")
+        bp_name = getattr(simple_expenses_bp, "name", None) or "simple_expenses"
+        if bp_name not in app.blueprints:
+            app.register_blueprint(simple_expenses_bp, url_prefix="/simple-expenses")
+            print(f"Successfully registered simple expenses blueprint: {bp_name}")
+    except Exception as e:
+        # Fail loudly so we notice routing issues instead of silent 404s
+        raise RuntimeError(f"Failed to register simple expenses blueprint: {e}") from e
 
     if "core.index" in app.view_functions and "index" not in app.view_functions:
         app.add_url_rule("/", endpoint="index", view_func=app.view_functions["core.index"])

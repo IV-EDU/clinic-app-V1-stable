@@ -1,0 +1,152 @@
+{% extends 'simple_expenses/base.html' %}
+
+{% block title %}Expenses{% endblock %}
+
+{% block simple_expenses_content %}
+  <div class="expense-page">
+    <div class="page-header">
+      <div>
+        <p class="eyebrow">Clinic spending</p>
+        <h1>Expenses</h1>
+        <p class="subtext">Log what you bought and how much. We keep a clean total for the month.</p>
+      </div>
+      <form method="get" class="month-switcher">
+        <label for="month">
+          <i class="fa fa-calendar"></i>
+          <span>{{ month_label }}</span>
+        </label>
+        <input type="month" id="month" name="month" value="{{ selected_month }}">
+      </form>
+    </div>
+
+    <div class="main-grid">
+      <section class="panel hero">
+        <div class="hero-top">
+          <div>
+            <p class="eyebrow">Total this month</p>
+            <div class="hero-amount">{{ monthly_total_fmt }} EGP</div>
+          </div>
+          <div class="pill">Running total</div>
+        </div>
+        <p class="muted">Keep every receipt in one place. Description + price is all you need.</p>
+      </section>
+
+      <section class="panel form-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Add expense</p>
+            <h2>Materials / receipts</h2>
+          </div>
+          <i class="fa fa-plus-circle"></i>
+        </div>
+        <form method="POST" action="{{ url_for('simple_expenses.new_expense') }}" class="expense-form">
+          {{ form.hidden_tag() }}
+          <input type="hidden" name="selected_month" value="{{ selected_month }}">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="{{ form.receipt_date.id }}">Date</label>
+              {{ form.receipt_date(class="form-control") }}
+              {% for error in form.receipt_date.errors %}
+                <div class="field-error">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="form-group">
+              <label for="{{ form.amount.id }}">Amount (EGP)</label>
+              {{ form.amount(class="form-control amount-input", placeholder="0.00", inputmode="decimal") }}
+              {% for error in form.amount.errors %}
+                <div class="field-error">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="{{ form.description.id }}">What did you buy?</label>
+            {{ form.description(class="form-control", rows="2", placeholder="e.g., gloves, disinfectant, courier fees...") }}
+            {% for error in form.description.errors %}
+              <div class="field-error">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn primary">
+              <i class="fa fa-save"></i>
+              Save expense
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel list-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">This month</p>
+            <h2>{{ recent_expenses|length }} expense{{ recent_expenses|length != 1 and 's' or '' }}</h2>
+          </div>
+        </div>
+
+        {% if recent_expenses %}
+          <div class="expense-list">
+            {% for expense in recent_expenses %}
+              {% set lines = expense.description.splitlines() %}
+              <div class="expense-row">
+                <div class="expense-info">
+                  <div class="row-top">
+                    <div class="date-chip"><i class="fa fa-calendar-o"></i> {{ expense.receipt_date }}</div>
+                    <span class="amount">{{ expense.amount_fmt }} EGP</span>
+                  </div>
+                  <div class="row-actions">
+                    <button type="button"
+                            class="ghost-btn view-btn"
+                            data-date="{{ expense.receipt_date }}"
+                            data-amount="{{ expense.amount_fmt }} EGP"
+                            data-desc="{{ '\n'.join(lines)|e }}">
+                      <i class="fa fa-eye"></i> View details
+                    </button>
+                    <form method="POST" action="{{ url_for('simple_expenses.delete_expense', expense_id=expense.id, month=selected_month) }}" onsubmit="return confirm('Delete this expense?');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="icon-btn danger" title="Delete">
+                        🗑️
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state">
+            <i class="fa fa-receipt-o"></i>
+            <p>No expenses for {{ month_label }} yet.</p>
+            <p class="muted">Add the first one to start the monthly total.</p>
+          </div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+
+  <!-- Details Modal -->
+  <div class="modal" id="expenseModal" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Expense details</p>
+            <h3 id="modalAmount"></h3>
+          </div>
+          <button type="button" class="icon-btn close-btn" id="closeModal" title="Close">
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="date-chip" id="modalDate"></div>
+          <ul class="desc-list" id="modalDesc"></ul>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn primary" id="closeModalBottom">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

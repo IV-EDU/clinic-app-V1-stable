@@ -1,0 +1,222 @@
+{% extends "_base.html" %}
+
+{% block content %}
+<div class="receipt-page" dir="{{ dir }}">
+  <div class="action-bar">
+    <a class="btn secondary" href="{{ back_url(p) }}">{{ t('back') }}</a>
+    <div class="action-buttons">
+      <a class="btn secondary" href="{{ url_for('payments.print_payment_receipt', pid=patient.id, pay_id=payment_id) }}">
+        {{ t('download_pdf') }}
+      </a>
+      <button class="btn primary" type="button" onclick="window.print()">
+        {{ t('print_receipt') }}
+      </button>
+    </div>
+  </div>
+
+  <div class="receipt-card">
+    <header class="receipt-header">
+      <div class="clinic-block">
+        <div class="clinic-name">{{ clinic.name }}</div>
+        {% if clinic.address %}
+          <div class="clinic-meta">{{ clinic.address }}</div>
+        {% endif %}
+        {% if clinic.phone %}
+          <div class="clinic-meta">{{ clinic.phone }}</div>
+        {% endif %}
+      </div>
+      <div class="receipt-meta">
+        <div class="meta-line"><span>{{ t('receipt_number_label') }}</span><strong>{{ receipt.number }}</strong></div>
+        <div class="meta-line"><span>{{ t('receipt_date_label') }}</span><strong>{{ receipt.date }}</strong></div>
+        <div class="meta-line"><span>{{ t('payment_method') }}</span><strong>{{ receipt.method or t('method_cash') }}</strong></div>
+      </div>
+    </header>
+
+    <section class="info-grid">
+      <div class="info-block">
+        <div class="block-title">{{ t('receipt_patient_label') }}</div>
+        <div class="kv-line"><span>{{ t('name') }}</span><strong>{{ patient.name }}</strong></div>
+        <div class="kv-line"><span>{{ t('file_no') }}</span><strong>{{ patient.file_no }}</strong></div>
+        <div class="kv-line"><span>{{ t('phone') }}</span><strong>{{ patient.phone or '—' }}</strong></div>
+      </div>
+      <div class="info-block">
+        <div class="block-title">{{ t('payments') }}</div>
+        <div class="kv-line"><span>{{ t('summary_total') }}</span><strong>{{ receipt.total }}</strong></div>
+        <div class="kv-line"><span>{{ t('summary_discount') }}</span><strong>{{ receipt.discount }}</strong></div>
+        <div class="kv-line"><span>{{ t('summary_paid') }}</span><strong>{{ receipt.paid }}</strong></div>
+        <div class="kv-line"><span>{{ t('summary_remaining') }}</span><strong>{{ receipt.remaining }}</strong></div>
+      </div>
+    </section>
+
+    {% if receipt.treatment %}
+      <section class="note-block">
+        <div class="block-title">{{ t('treatment') }}</div>
+        <p class="note-text">{{ receipt.treatment }}</p>
+      </section>
+    {% endif %}
+
+    {% if receipt.notes %}
+      <section class="note-block">
+        <div class="block-title">{{ t('sheet_notes') }}</div>
+        <p class="note-text">{{ receipt.notes }}</p>
+      </section>
+    {% endif %}
+
+    <footer class="receipt-footer">
+      <div class="thanks">{{ t('thank_you_message') }}</div>
+    </footer>
+  </div>
+</div>
+
+<style>
+.receipt-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+.action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.receipt-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+}
+
+.receipt-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+
+.clinic-block {
+  flex: 2;
+}
+
+.clinic-name {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.clinic-meta {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.receipt-meta {
+  flex: 1;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.meta-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e5e7eb;
+}
+
+.meta-line:last-child {
+  border-bottom: none;
+}
+
+.meta-line span {
+  color: #6b7280;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.info-block {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f9fafb;
+}
+
+.block-title {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.kv-line {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px dashed #e5e7eb;
+  font-size: 14px;
+}
+
+.kv-line:last-child {
+  border-bottom: none;
+}
+
+.kv-line span {
+  color: #6b7280;
+}
+
+.note-block {
+  margin-bottom: 12px;
+}
+
+.note-text {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.receipt-footer {
+  text-align: center;
+  margin-top: 12px;
+  color: #4b5563;
+}
+
+.thanks {
+  font-weight: 600;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  .header,
+  .action-bar,
+  .print-message,
+  .print-loading {
+    display: none !important;
+  }
+  .receipt-card {
+    box-shadow: none;
+    border: none;
+    padding: 0;
+  }
+}
+</style>
+{% endblock %}

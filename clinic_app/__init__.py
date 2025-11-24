@@ -117,6 +117,11 @@ def create_app() -> Flask:
     init_security(app)
     register_cli(app)
 
+    # Disable template caching so changes show immediately even when debug is False
+    app.config.setdefault("TEMPLATES_AUTO_RELOAD", True)
+    app.jinja_env.auto_reload = True
+    app.jinja_env.cache.clear()
+
     # Add CSRF error handling to catch CSRF validation failures
     @app.errorhandler(CSRFError)
     def handle_csrf_error(e):

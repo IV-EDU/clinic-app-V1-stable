@@ -31,13 +31,10 @@
       {% if current_user and user_has_permission(current_user, 'appointments:view') %}
         <a class="btn secondary" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
       {% endif %}
-      {% if current_user and user_has_permission(current_user, 'receipts:view') %}
-        <a class="btn secondary" href="{{ url_for('receipts.index') }}">{{ t('receipts') }}</a>
-      {% endif %}
       {% if current_user and user_has_permission(current_user, 'expenses:view') %}
-        <a class="btn secondary" href="{{ url_for('expenses.index') }}">
+        <a class="btn secondary" href="/simple-expenses/">
           <i class="fa fa-receipt"></i>
-          <span>Expense Receipts</span>
+          <span>Expenses</span>
         </a>
       {% endif %}
     </div>

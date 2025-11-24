@@ -40,6 +40,75 @@ def get_payment_and_patient(pay_id: str):
     return conn, cur, p, pay
 
 
+def _receipt_context(pid: str, pay_id: str):
+    """Load payment + patient data and shape values for receipt views."""
+    conn, cur, p, pay = get_payment_and_patient(pay_id)
+    if not pay or not p or p["id"] != pid:
+        conn.close()
+        return None
+
+    payment = dict(pay)
+    patient = dict(p)
+
+    total_cents = payment.get("total_amount_cents") or 0
+    discount_cents = payment.get("discount_cents") or 0
+    paid_cents = payment.get("amount_cents") or 0
+    remaining_cents = max(total_cents - discount_cents - paid_cents, 0)
+    currency = current_app.config.get("CURRENCY_LABEL", "EGP")
+
+    def fmt(cents: int) -> str:
+        base = money(cents)
+        return f"{base} {currency}" if currency else base
+
+    clinic = {
+        "name": current_app.config.get("CLINIC_NAME", T("app_title")),
+        "address": current_app.config.get("CLINIC_ADDRESS", ""),
+        "phone": current_app.config.get("CLINIC_PHONE", ""),
+    }
+
+    receipt = {
+        "number": (pay_id or "")[-8:].upper(),
+        "date": payment.get("paid_at") or date.today().isoformat(),
+        "method": payment.get("method") or "",
+        "treatment": payment.get("treatment") or "",
+        "notes": payment.get("note") or "",
+        "total": fmt(total_cents),
+        "discount": fmt(discount_cents),
+        "paid": fmt(paid_cents),
+        "remaining": fmt(remaining_cents),
+    }
+
+    conn.close()
+    return {
+        "patient": {
+            "id": pid,
+            "name": patient.get("full_name") or "",
+            "file_no": patient.get("short_id") or "",
+            "phone": patient.get("phone") or "",
+        },
+        "clinic": clinic,
+        "receipt": receipt,
+        "payment_id": pay_id,
+        "raw_payment": payment,
+        "raw_patient": patient,
+        "lang": get_lang(),
+    }
+
+
+def _bool_param(name: str, default: bool) -> bool:
+    raw = request.args.get(name)
+    if raw is None:
+        return default
+    return str(raw).lower() == "true"
+
+
+def _lang_param(fallback: str) -> str:
+    raw = (request.args.get("lang") or "").lower()
+    if raw in ("en", "ar"):
+        return raw
+    return fallback
+
+
 @bp.route("/patients/<pid>/payments/<pay_id>/edit", methods=["GET"])
 @require_permission("payments:edit")
 def edit_payment_get(pid, pay_id):
@@ -208,70 +277,77 @@ def delete_payment(pid, pay_id):
     return redirect(url_for("patients.patient_detail", pid=pid))
 
 
+@bp.route("/patients/<pid>/payments/<pay_id>/receipt/view", methods=["GET"])
+@require_permission("payments:view")
+def view_payment_receipt(pid, pay_id):
+    """Render a clean HTML view of the payment receipt (bilingual + RTL)."""
+    ctx = _receipt_context(pid, pay_id)
+    if ctx is None:
+        flash(T("receipt_not_found"), "err")
+        return redirect(url_for("patients.patient_detail", pid=pid))
+
+    return render_page(
+        "payments/receipt.html",
+        receipt=ctx["receipt"],
+        patient=ctx["patient"],
+        clinic=ctx["clinic"],
+        p=ctx["patient"],
+        payment_id=ctx["payment_id"],
+        show_back=True,
+    )
+
+
 @bp.route("/patients/<pid>/payments/<pay_id>/print", methods=["GET"])
 @bp.route("/patients/<pid>/payments/<pay_id>/print/<format_type>", methods=["GET"])
 @require_permission("payments:view")
 def print_payment_receipt(pid, pay_id, format_type="full"):
     """Generate and serve payment receipt PDF with print options support"""
     try:
-        # Validate format type
-        valid_formats = ["full", "summary", "treatment", "payment"]
-        if format_type not in valid_formats:
-            flash(f"Invalid format '{format_type}'. Valid formats: {', '.join(valid_formats)}", "err")
+        ctx = _receipt_context(pid, pay_id)
+        if ctx is None:
+            flash(T("receipt_not_found"), "err")
             return redirect(url_for("patients.patient_detail", pid=pid))
 
-        conn, cur, p, pay = get_payment_and_patient(pay_id)
-        if not pay or not p or p["id"] != pid:
-            conn.close()
-            flash("Payment not found", "err")
+        # Validate format type (keep only the reliable ones)
+        valid_formats = ["full"]
+        if format_type not in valid_formats:
+            flash(T("receipt_format"), "err")
             return redirect(url_for("patients.patient_detail", pid=pid))
 
         # Validate required data
-        pay_dict = dict(pay)
+        pay_dict = dict(ctx["raw_payment"])
+        patient_dict = dict(ctx["raw_patient"])
         if not pay_dict.get("amount_cents") or pay_dict["amount_cents"] <= 0:
-            conn.close()
-            flash("Payment has no valid amount data", "err")
+            flash(T("amount_required"), "err")
+            return redirect(url_for("patients.patient_detail", pid=pid))
+        if not patient_dict.get("full_name"):
+            flash(T("patient_not_found"), "err")
             return redirect(url_for("patients.patient_detail", pid=pid))
 
-        p_dict = dict(p)
-        if not p_dict.get("full_name"):
-            conn.close()
-            flash("Patient has no name data", "err")
-            return redirect(url_for("patients.patient_detail", pid=pid))
+        current_lang = _lang_param(ctx["lang"])
 
-        # Get current language
-        current_lang = get_lang()
-
-        # Extract print options from request parameters
-        include_qr = request.args.get("include_qr", "true").lower() == "true"
-        include_notes = request.args.get("include_notes", "true").lower() == "true"
-        include_treatment = request.args.get("include_treatment", "true").lower() == "true"
-        add_watermark = request.args.get("watermark", "false").lower() == "true"
-        
-        # Prepare print options dict
+        # Minimal print options (user-controlled via modal)
         print_options = {
-            "include_qr": include_qr,
-            "include_notes": include_notes,
-            "include_treatment": include_treatment,
-            "watermark": add_watermark,
+            "include_qr": _bool_param("include_qr", True),
+            "include_notes": _bool_param("include_notes", True),
+            "include_treatment": _bool_param("include_treatment", True),
+            "watermark": _bool_param("watermark", False),
         }
 
-        # Prepare payment data for PDF generation
-        payment_data = dict(pay)
+        payment_data = dict(pay_dict)
         payment_data["id"] = pay_id
 
-        # Prepare patient data
-        patient_data = dict(p)
-        patient_data["full_name"] = p["full_name"]
-        patient_data["short_id"] = p["short_id"]
-        patient_data["phone"] = p["phone"]
-        patient_data["address"] = getattr(p, "address", "")
+        patient_data = {
+            "full_name": patient_dict.get("full_name"),
+            "short_id": patient_dict.get("short_id"),
+            "phone": patient_dict.get("phone"),
+            "address": patient_dict.get("address", ""),
+        }
 
-        # Prepare treatment details (clinic info)
         treatment_details = {
-            "clinic_name": current_app.config.get("CLINIC_NAME", "Dental Clinic"),
-            "clinic_address": current_app.config.get("CLINIC_ADDRESS", ""),
-            "clinic_phone": current_app.config.get("CLINIC_PHONE", ""),
+            "clinic_name": ctx["clinic"].get("name", "Dental Clinic"),
+            "clinic_address": ctx["clinic"].get("address", ""),
+            "clinic_phone": ctx["clinic"].get("phone", ""),
             "language": current_lang,
         }
 
@@ -286,11 +362,10 @@ def print_payment_receipt(pid, pay_id, format_type="full"):
         )
 
         # Create filename with safe characters
-        safe_name = "".join(c for c in p['short_id'] if c.isalnum() or c in ('-', '_')).rstrip()
+        safe_name = "".join(c for c in patient_data.get("short_id", "") if c.isalnum() or c in ('-', '_')).rstrip()
         filename = f"receipt_{safe_name}_{format_type}.pdf"
 
         # Send PDF to client
-        conn.close()
         return send_file(
             io.BytesIO(pdf_data),
             mimetype='application/pdf',
@@ -299,19 +374,13 @@ def print_payment_receipt(pid, pay_id, format_type="full"):
         )
 
     except ValueError as ve:
-        if 'conn' in locals():
-            conn.close()
         flash(f"Invalid data format: {str(ve)}", "err")
         return redirect(url_for("patients.patient_detail", pid=pid))
     except IOError as ioe:
-        if 'conn' in locals():
-            conn.close()
         record_exception("payments.print_receipt", ioe)
         flash("File operation error while generating receipt", "err")
         return redirect(url_for("patients.patient_detail", pid=pid))
     except Exception as exc:
-        if 'conn' in locals():
-            conn.close()
         record_exception("payments.print_receipt", exc)
         flash(f"Error generating receipt: {str(exc)}", "err")
         return redirect(url_for("patients.patient_detail", pid=pid))
@@ -323,45 +392,40 @@ def print_payment_receipt(pid, pay_id, format_type="full"):
 def preview_payment_receipt(pid, pay_id, format_type="full"):
     """Preview payment receipt PDF in browser"""
     try:
-        conn, cur, p, pay = get_payment_and_patient(pay_id)
-        if not pay or not p or p["id"] != pid:
-            conn.close()
+        ctx = _receipt_context(pid, pay_id)
+        if ctx is None:
             return "Payment not found", 404
-        
-        # Get current language
-        current_lang = get_lang()
-        
-        # Prepare data for PDF generation
-        payment_data = dict(pay)
+
+        valid_formats = ["full"]
+        if format_type not in valid_formats:
+            return "Invalid format", 400
+
+        current_lang = _lang_param(ctx["lang"])
+
+        payment_data = dict(ctx["raw_payment"])
         payment_data["id"] = pay_id
-        
-        patient_data = dict(p)
-        patient_data["full_name"] = p["full_name"]
-        patient_data["short_id"] = p["short_id"]
-        patient_data["phone"] = p["phone"]
-        patient_data["address"] = getattr(p, "address", "")
-        
+
+        patient_data = {
+            "full_name": ctx["raw_patient"].get("full_name"),
+            "short_id": ctx["raw_patient"].get("short_id"),
+            "phone": ctx["raw_patient"].get("phone"),
+            "address": ctx["raw_patient"].get("address", ""),
+        }
+
         treatment_details = {
-            "clinic_name": current_app.config.get("CLINIC_NAME", "Dental Clinic"),
-            "clinic_address": current_app.config.get("CLINIC_ADDRESS", ""),
-            "clinic_phone": current_app.config.get("CLINIC_PHONE", ""),
+            "clinic_name": ctx["clinic"].get("name", "Dental Clinic"),
+            "clinic_address": ctx["clinic"].get("address", ""),
+            "clinic_phone": ctx["clinic"].get("phone", ""),
             "language": current_lang,
         }
-        
-        # Extract print options from request parameters for preview
-        include_qr = request.args.get("include_qr", "true").lower() == "true"
-        include_notes = request.args.get("include_notes", "true").lower() == "true"
-        include_treatment = request.args.get("include_treatment", "true").lower() == "true"
-        add_watermark = request.args.get("watermark", "false").lower() == "true"
 
         print_options = {
-            "include_qr": include_qr,
-            "include_notes": include_notes,
-            "include_treatment": include_treatment,
-            "watermark": add_watermark,
+            "include_qr": _bool_param("include_qr", True),
+            "include_notes": _bool_param("include_notes", True),
+            "include_treatment": _bool_param("include_treatment", True),
+            "watermark": _bool_param("watermark", False),
         }
 
-        # Generate PDF using current language and selected options
         pdf_data = generate_payment_receipt_pdf(
             payment_data,
             patient_data,
@@ -372,7 +436,6 @@ def preview_payment_receipt(pid, pay_id, format_type="full"):
         )
         
         # Send PDF to browser for preview (no download)
-        conn.close()
         return send_file(
             io.BytesIO(pdf_data),
             mimetype='application/pdf',

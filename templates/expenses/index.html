@@ -3,6 +3,18 @@
 {% block title %}Expense Receipts{% endblock %}
 
 {% block expenses_content %}
+<div class="summary-card">
+  <div class="summary-content">
+    <div>
+      <p class="eyebrow">This month</p>
+      <h3>Materials spending</h3>
+    </div>
+    <div class="summary-amount">
+      {{ month_total }} EGP
+    </div>
+  </div>
+</div>
+
 <!-- Search and Filter Form -->
 <div class="card">
   <div class="card-header">
@@ -12,17 +24,6 @@
     <form method="GET" class="expense-search-form">
       <div class="form-row">
         <div class="form-group">
-          <label for="supplier_id">Supplier:</label>
-          <select name="supplier_id" id="supplier_id" class="form-control">
-            <option value="">All Suppliers</option>
-            {% for supplier in suppliers %}
-            <option value="{{ supplier.id }}" {% if current_filters.supplier_id == supplier.id %}selected{% endif %}>
-              {{ supplier.name }}
-            </option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group">
           <label for="start_date">Start Date:</label>
           <input type="date" name="start_date" id="start_date" class="form-control" 
                  value="{{ current_filters.start_date or '' }}">
@@ -30,17 +31,55 @@
         <div class="form-group">
           <label for="end_date">End Date:</label>
           <input type="date" name="end_date" id="end_date" class="form-control"
-                 value="{{ current_filters.end_date or '' }}">
+                value="{{ current_filters.end_date or '' }}">
         </div>
         <div class="form-group">
           <label for="search_query">Search:</label>
-          <input type="text" name="search_query" id="search_query" class="form-control" 
-                 placeholder="Search receipts..." value="{{ current_filters.search_query or '' }}">
+          <input type="text" name="search_query" id="search_query" class="form-control"
+                 placeholder="Search description..." value="{{ current_filters.search_query or '' }}">
+        </div>
+        <div class="form-group">
+          <label for="category_id">Category:</label>
+          <select name="category_id" id="category_id" class="form-control">
+            {% for option in search_form.category_id.choices %}
+              <option value="{{ option[0] }}" {% if search_form.category_id.data == option[0] %}selected{% endif %}>{{ option[1] }}</option>
+            {% endfor %}
+          </select>
         </div>
       </div>
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label for="receipt_status">Status:</label>
+          <select name="receipt_status" id="receipt_status" class="form-control">
+            {% for option in search_form.receipt_status.choices %}
+              <option value="{{ option[0] }}" {% if search_form.receipt_status.data == option[0] %}selected{% endif %}>{{ option[1] }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="min_amount">Min Amount (EGP):</label>
+          {{ search_form.min_amount(class="form-control", placeholder="0.00") }}
+        </div>
+        <div class="form-group">
+          <label for="max_amount">Max Amount (EGP):</label>
+          {{ search_form.max_amount(class="form-control", placeholder="1000.00") }}
+        </div>
+      </div>
+      
       <div class="form-actions">
         <button type="submit" class="btn primary">Search</button>
         <a href="{{ url_for('expenses.index') }}" class="btn secondary">Clear Filters</a>
+        
+        <!-- Export buttons -->
+        <div class="export-actions">
+          <a href="{{ url_for('expenses.export_csv', **request.args) }}" class="btn secondary" title="Export as CSV">
+            <i class="fa fa-download"></i> Export CSV
+          </a>
+          <a href="{{ url_for('expenses.export_pdf', **request.args) }}" class="btn secondary" title="Export as PDF">
+            <i class="fa fa-file-pdf"></i> Export PDF
+          </a>
+        </div>
       </div>
     </form>
   </div>
@@ -50,6 +89,11 @@
 <div class="card">
   <div class="card-header">
     <h3>Expense Receipts</h3>
+    {% if current_user.has_permission('expenses:edit') %}
+      <a href="{{ url_for('expenses.new_receipt') }}" class="btn primary">
+        <i class="fa fa-plus"></i> New Receipt
+      </a>
+    {% endif %}
   </div>
   <div class="card-body">
     {% if receipts %}
@@ -57,47 +101,84 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Receipt Number</th>
-              <th>Supplier</th>
               <th>Date</th>
-              <th>Items</th>
-              <th>Total Amount</th>
+              <th>Description</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Total</th>
+              <th>Files</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for receipt in receipts %}
             <tr>
-              <td>
-                <strong>{{ receipt.serial_number }}</strong>
-              </td>
-              <td>{{ receipt.supplier_name }}</td>
               <td>{{ receipt.receipt_date }}</td>
+              <td class="description-cell">
+                <div class="desc-title">{{ receipt.notes or 'Materials purchase' }}</div>
+                <div class="desc-sub">#{{ receipt.serial_number }}</div>
+                {% if receipt.supplier_name %}
+                  <div class="desc-sup">{{ receipt.supplier_name }}</div>
+                {% endif %}
+              </td>
               <td>
-                <span class="badge">{{ receipt.item_count }} items</span>
+                {% if receipt.category_name %}
+                  <span class="category-chip" style="background-color: {{ receipt.category_color }};">
+                    {{ receipt.category_name }}
+                  </span>
+                {% else %}
+                  <span class="category-chip uncategorized">Uncategorized</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if receipt.receipt_status %}
+                  <span class="status-chip {{ receipt.receipt_status }}">
+                    <i class="fa fa-{{ 'clock' if receipt.receipt_status == 'pending' else 'check' if receipt.receipt_status == 'approved' else 'times' }}"></i>
+                    {{ receipt.receipt_status.title() }}
+                  </span>
+                {% else %}
+                  <span class="status-chip pending">
+                    <i class="fa fa-clock"></i> Pending
+                  </span>
+                {% endif %}
               </td>
               <td class="amount-cell">
                 <span class="amount">{{ receipt.total_amount_fmt }}</span>
                 <span class="currency">EGP</span>
               </td>
+              <td>
+                {% if receipt.files_count and receipt.files_count > 0 %}
+                  <span class="files-badge">
+                    <i class="fa fa-paperclip"></i> {{ receipt.files_count }}
+                  </span>
+                {% else %}
+                  <span class="files-badge none">
+                    <i class="fa fa-paperclip"></i> 0
+                  </span>
+                {% endif %}
+              </td>
               <td class="actions-cell">
                 <div class="action-buttons">
-                  <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}" 
+                  <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}"
                      class="btn btn-sm secondary" title="View Details">
                     <i class="fa fa-eye"></i>
                   </a>
-                  <a href="{{ url_for('expenses.print_receipt', expense_id=receipt.id) }}" 
-                     class="btn btn-sm secondary" title="Print Receipt">
-                    <i class="fa fa-print"></i>
-                  </a>
-                  <a href="{{ url_for('expenses.edit_receipt', expense_id=receipt.id) }}" 
-                     class="btn btn-sm secondary" title="Edit">
-                    <i class="fa fa-edit"></i>
-                  </a>
-                  <a href="{{ url_for('expenses.delete_receipt_confirm', expense_id=receipt.id) }}" 
-                     class="btn btn-sm danger" title="Delete">
-                    <i class="fa fa-trash"></i>
-                  </a>
+                  {% if current_user.has_permission('expenses:edit') %}
+                    <a href="{{ url_for('expenses.edit_receipt', expense_id=receipt.id) }}"
+                       class="btn btn-sm secondary" title="Edit">
+                      <i class="fa fa-edit"></i>
+                    </a>
+                    {% if current_user.has_permission('expenses:edit') %}
+                      <a href="{{ url_for('expenses.update_receipt_status_route', expense_id=receipt.id) }}"
+                         class="btn btn-sm secondary" title="Update Status">
+                        <i class="fa fa-check"></i>
+                      </a>
+                    {% endif %}
+                    <a href="{{ url_for('expenses.delete_receipt_confirm', expense_id=receipt.id) }}"
+                       class="btn btn-sm danger" title="Delete">
+                      <i class="fa fa-trash"></i>
+                    </a>
+                  {% endif %}
                 </div>
               </td>
             </tr>
@@ -110,11 +191,190 @@
         <i class="fa fa-receipt empty-icon"></i>
         <h3>No Expense Receipts Found</h3>
         <p>Create your first expense receipt to get started.</p>
-        <a href="{{ url_for('expenses.new_receipt') }}" class="btn primary">
-          <i class="fa fa-plus"></i> Create First Receipt
-        </a>
+        {% if current_user.has_permission('expenses:edit') %}
+          <a href="{{ url_for('expenses.new_receipt') }}" class="btn primary">
+            <i class="fa fa-plus"></i> Create First Receipt
+          </a>
+        {% endif %}
       </div>
     {% endif %}
   </div>
 </div>
+
+<!-- Additional styling for enhanced features -->
+<style>
+.category-chip {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  min-width: 80px;
+}
+
+.category-chip.uncategorized {
+  background-color: #95a5a6;
+  color: white;
+}
+
+.files-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: #e3f2fd;
+  color: #1976d2;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.files-badge.none {
+  background: #f5f5f5;
+  color: #9e9e9e;
+}
+
+.desc-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table th {
+  white-space: nowrap;
+}
+
+.description-cell {
+  min-width: 200px;
+}
+.category-chip {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  min-width: 80px;
+}
+
+.category-chip.uncategorized {
+  background-color: #95a5a6;
+  color: white;
+}
+
+.files-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: #e3f2fd;
+  color: #1976d2;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.files-badge.none {
+  background: #f5f5f5;
+  color: #9e9e9e;
+}
+
+.desc-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table th {
+  white-space: nowrap;
+}
+
+.description-cell {
+  min-width: 200px;
+}
+
+.export-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.export-actions .btn {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.status-chip.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-chip.approved {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-chip.rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .export-actions {
+    margin-left: 0;
+    margin-top: 10px;
+    justify-content: center;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
 {% endblock %}

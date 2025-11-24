@@ -46,24 +46,6 @@
                     aria-label="{{ t('print_receipt') }}">
               <i class="fa fa-print"></i> {{ t('print_receipt') }}
             </button>
-            
-            <!-- Format-specific quick buttons -->
-            <div class="format-buttons" style="display: none;">
-              <button class="btn btn-outline-secondary format-btn"
-                      data-payment-id="{{ pay['id'] }}"
-                      data-patient-id="{{ p['id'] }}"
-                      data-format="summary"
-                      title="{{ t('format_summary') }}">
-                {{ t('format_summary') }}
-              </button>
-              <button class="btn btn-outline-secondary format-btn"
-                      data-payment-id="{{ pay['id'] }}"
-                      data-patient-id="{{ p['id'] }}"
-                      data-format="treatment"
-                      title="{{ t('format_treatment') }}">
-                {{ t('format_treatment') }}
-              </button>
-            </div>
           </div>
         </div>
         <div class="payment-details" id="details-{{ pay['id'] }}" style="display:none">

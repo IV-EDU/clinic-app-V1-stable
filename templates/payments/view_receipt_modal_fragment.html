@@ -1,0 +1,72 @@
+<div class="receipt-view-card">
+  <div class="receipt-view-summary-row">
+    <div class="receipt-view-stat">
+      <div class="stat-label">{{ t('down_payment') }}</div>
+      <div class="stat-value">{{ receipt['paid'] }}</div>
+    </div>
+    <div class="receipt-view-stat">
+      <div class="stat-label">{{ t('date') }}</div>
+      <div class="stat-value">{{ receipt['date'] }}</div>
+    </div>
+    <div class="receipt-view-stat">
+      <div class="stat-label">{{ t('payment_method') }}</div>
+      <div class="stat-value">{{ receipt['method'] or '—' }}</div>
+    </div>
+    {% if raw_payment.get('doctor_label') %}
+    <div class="receipt-view-stat">
+      <div class="stat-label">{{ t('doctor') }}</div>
+      <div class="stat-value">{{ raw_payment.get('doctor_label') }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="receipt-view-section">
+    <div class="receipt-view-section-title">{{ t('receipt_patient_label') }}</div>
+    <div class="receipt-view-row">
+      <span class="receipt-view-label">{{ t('name') }}</span>
+      <span class="receipt-view-value">{{ patient['name'] or '—' }}</span>
+    </div>
+    <div class="receipt-view-row">
+      <span class="receipt-view-label">{{ t('file_no') }}</span>
+      <span class="receipt-view-value">{{ patient['file_no'] or '—' }}</span>
+    </div>
+    <div class="receipt-view-row">
+      <span class="receipt-view-label">{{ t('phone') }}</span>
+      <span class="receipt-view-value">{{ patient['phone'] or '—' }}</span>
+    </div>
+  </div>
+
+  <div class="receipt-view-section">
+    <div class="receipt-view-section-title">{{ t('payments') }}</div>
+    <div class="receipt-view-row">
+      <span class="receipt-view-label">{{ t('summary_total') }}</span>
+      <span class="receipt-view-value">{{ receipt['total'] }}</span>
+    </div>
+    <div class="receipt-view-row">
+      <span class="receipt-view-label">{{ t('summary_discount') }}</span>
+      <span class="receipt-view-value">{{ receipt['discount'] }}</span>
+    </div>
+    <div class="receipt-view-row">
+      <span class="receipt-view-label">{{ t('summary_paid') }}</span>
+      <span class="receipt-view-value">{{ receipt['paid'] }}</span>
+    </div>
+    <div class="receipt-view-row">
+      <span class="receipt-view-label">{{ t('summary_remaining') }}</span>
+      <span class="receipt-view-value">{{ receipt['remaining'] }}</span>
+    </div>
+  </div>
+
+  {% if receipt['treatment'] %}
+  <div class="receipt-view-note-block">
+    <div class="receipt-view-section-title">{{ t('treatment') }}</div>
+    <p class="note-text">{{ receipt['treatment'] }}</p>
+  </div>
+  {% endif %}
+
+  {% if receipt['notes'] %}
+  <div class="receipt-view-note-block">
+    <div class="receipt-view-section-title">{{ t('sheet_notes') }}</div>
+    <p class="note-text">{{ receipt['notes'] }}</p>
+  </div>
+  {% endif %}
+</div>

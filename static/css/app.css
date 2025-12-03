@@ -53,7 +53,7 @@ body.rtl .start,body.rtl .end{flex-direction:row-reverse}
 body.rtl .kebab .kebab-menu{right:0;left:auto}
 html[dir="rtl"] .kebab .kebab-menu{right:0;left:auto}
 .wrap{max-width:1100px;margin:20px auto;padding:0 12px;overflow-x:hidden}
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,.04);margin-bottom:14px;overflow:hidden}
+.card{background:var(--bg-surface,var(--card,#fff));border:1px solid var(--border-strong,var(--border,#e5e7eb));border-radius:var(--card-radius,16px);padding:var(--card-padding,20px);box-shadow:var(--card-shadow,0 12px 30px rgba(15,23,42,.08));margin-bottom:14px;overflow:hidden}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row>*{flex:1}
 input,select,textarea{padding:10px;border:1px solid var(--border);border-radius:10px;background:#fff;max-width:100%}
@@ -65,22 +65,146 @@ input[type="text"], input[type="search"], textarea {
     text-align: right;
 }
 textarea{resize:none}
-button,.btn{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;text-align:center;line-height:1.2;background:#bfdbfe;color:#1e40af;border:1px solid #60a5fa;padding:8px 12px;border-radius:10px;text-decoration:none;cursor:pointer;max-width:100%;flex-shrink:0}
-.btn.secondary{background:#fff;color:#111827}
-.btn.danger{background:#ef4444;border-color:#dc2626;color:#000;font-weight:700}
+.btn,button{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;text-align:center;line-height:1.2;font-weight:600;background:var(--primary-color,#2563eb);color:#fff;border:1px solid var(--primary-color,#2563eb);padding:10px 14px;border-radius:var(--radius-md,10px);text-decoration:none;cursor:pointer;max-width:100%;flex-shrink:0;transition:background-color .2s ease,border-color .2s ease,color .2s ease,box-shadow .2s ease,transform .1s ease;box-shadow:0 10px 20px rgba(37,99,235,.15)}
+.btn.primary,button.primary{background:linear-gradient(135deg,var(--primary-color,#2563eb),var(--accent-color,#0ea5e9));border-color:var(--primary-color,#2563eb);color:#fff}
+.btn.secondary,button.secondary{background:var(--bg-surface,var(--card,#fff));color:var(--text-primary,var(--ink,#111827));border-color:var(--border-strong,var(--border,#d1d5db));box-shadow:none}
+.btn.success,button.success{background:var(--success-color,var(--green,#16a34a));border-color:var(--success-color,var(--green,#16a34a));color:#fff}
+.btn.danger,button.danger{background:var(--danger-color,var(--red,#b91c1c));border-color:var(--danger-color,var(--red,#b91c1c));color:#fff}
+.btn:disabled,button:disabled{opacity:.6;cursor:not-allowed;box-shadow:none}
+.btn:not(:disabled):hover,button:not(:disabled):hover{transform:translateY(-1px);filter:brightness(.98)}
+.btn.secondary:not(:disabled):hover,button.secondary:not(:disabled):hover{background:var(--bg,#f7f7f8)}
+.btn:active,button:active{transform:translateY(0)}
+.btn.full-width,button.full-width{width:100%}
+.btn:focus-visible{
+  outline:2px solid var(--primary-color,#2563eb);
+  outline-offset:2px;
+}
+.link, a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible{
+  outline:2px solid var(--primary-color,#2563eb);
+  outline-offset:2px;
+}
+.alert{padding:12px 14px;border:1px solid var(--border-strong,var(--border,#e5e7eb));border-radius:var(--radius-md,12px);background:var(--bg,#f7f7f8);color:var(--text-primary,var(--ink,#111827));line-height:1.5;text-align:start}
+.alert-success{background:var(--success-bg,#dcfce7);border-color:var(--success-color,#16a34a);color:var(--success-color,#16a34a)}
+.alert-warning{background:var(--warning-bg,#fef3c7);border-color:var(--warning-color,#b45309);color:var(--warning-color,#b45309)}
+.alert-danger{background:var(--danger-bg,#fee2e2);border-color:var(--danger-color,#b91c1c);color:var(--danger-color,#b91c1c)}
+.alert-info{background:var(--info-bg,#e0f2fe);border-color:var(--info-color,#0ea5e9);color:var(--info-color,#0ea5e9)}
+.auth-shell{display:flex;justify-content:center;align-items:center;padding:48px 0;min-height:70vh}
+.login-card{width:min(520px,100%);margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.login-title{margin:0;font-size:26px;font-weight:700;color:var(--text-primary,var(--ink,#111827))}
+.login-form{display:flex;flex-direction:column;gap:14px}
+.login-form .field{display:flex;flex-direction:column;gap:6px}
+.login-form .input,.login-form input[type="text"],.login-form input[type="password"]{width:100%}
+.login-actions{display:flex;justify-content:flex-end;margin-top:4px}
+.login-actions .btn{width:100%}
+.login-alert{margin:0}
+@media (max-width:700px){
+  .auth-shell{align-items:flex-start;padding:32px 0}
+}
+.payment-actions .btn:focus-visible,
+.payment-actions select:focus-visible,
+.view-toggle-btn:focus-visible,
+.print-receipt-btn:focus-visible{
+  outline:2px solid var(--primary-color,#2563eb);
+  outline-offset:2px;
+}
 .grid{display:grid;gap:8px}
 .back-left{margin-right:auto}
 .back-link{border:1px solid #374151;background:transparent;color:#fff;border-radius:999px;padding:6px 12px;white-space:nowrap}
 .grid.sheet{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:minmax(42px,auto);align-items:stretch}
 .grid .h{background:#f3f4f6;padding:8px;border-radius:8px;font-weight:600;text-align:center}
 .grid .c{background:#fff;padding:8px;border-radius:8px;border:1px solid var(--border);overflow-wrap:anywhere;word-break:break-word;text-align:center}
-.grid.excel{width:100%;max-width:100%;grid-template-columns:repeat(9,minmax(0,1fr));grid-auto-rows:minmax(52px,auto);align-items:start}
-.grid.excel .h{text-align:center}
-.grid.excel .c{padding:0;border-radius:8px;display:flex;flex-direction:column;align-items:stretch;border:1px solid var(--border);background:#fff;min-width:0;text-align:center}
-.grid.excel .c>input,.grid.excel .c>select,.grid.excel .c>textarea{flex:0 0 auto;width:100%;min-width:0;max-width:100%;border:0;background:transparent;padding:10px;border-radius:8px;display:block;overflow-wrap:anywhere;word-break:break-word;font-size:14px;line-height:1.25;text-align:center}
+.grid.excel{width:100%;max-width:100%;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));grid-auto-rows:minmax(52px,auto);align-items:start}
+.grid.excel .h{text-align:start;font-weight:600;color:var(--muted,#6b7280)}
+.grid.excel .c{padding:0;border-radius:8px;display:flex;flex-direction:column;align-items:stretch;border:1px solid var(--border);background:#fff;min-width:0;text-align:start}
+.grid.excel .c>input,.grid.excel .c>select,.grid.excel .c>textarea{flex:0 0 auto;width:100%;min-width:0;max-width:100%;border:0;background:transparent;padding:10px;border-radius:8px;display:block;overflow-wrap:anywhere;word-break:break-word;font-size:14px;line-height:1.25;text-align:start}
 .grid.excel .c>input[readonly]{background:#fff}
 .grid.excel .c>textarea{min-height:42px;overflow:hidden}
 .grid.excel .c>select{font-size:13px}
+.field-error{margin-top:6px;font-size:13px;color:var(--danger-color,var(--red,#b91c1c))}
+.patient-header-card{display:flex;flex-direction:column;gap:16px}
+.patient-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.summary-item{padding:12px;border:1px solid var(--border);border-radius:12px;background:#f9fafb}
+.summary-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.summary-value{font-weight:600;color:var(--ink);word-wrap:break-word;word-break:break-word;text-align:start;display:flex;align-items:center;gap:8px}
+.patient-notes{border:1px dashed var(--border);border-radius:12px;padding:12px;background:#fff;display:flex;flex-direction:column;gap:6px}
+.patient-actions{display:flex;justify-content:flex-end;margin-top:4px}
+.actions-group{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;width:100%}
+.actions-group .btn{min-width:130px}
+[dir="rtl"] .patient-actions,[dir="rtl"] .actions-group{justify-content:flex-start}
+.payment-summary-card .payment-patient-grid{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:stretch}
+.payment-summary-card .payment-patient-grid .h{background:var(--bg,#f7f7f8);color:var(--muted,#6b7280);text-align:start}
+.payment-summary-card .payment-patient-grid .c{background:#fff;color:var(--ink,#111827);text-align:start;border:1px solid var(--border);border-radius:10px;padding:10px}
+.dashboard-search-card .search-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.dashboard-search-card .search-input{flex:1 1 260px}
+.dashboard-search-card .search-input input{width:100%}
+.dashboard-search-card .search-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dashboard-topline{display:flex;gap:12px;align-items:stretch;justify-content:space-between;flex-wrap:wrap}
+.topline-left{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.stat-pill{border:1px solid var(--border);border-radius:12px;padding:10px 14px;background:#f9fafb;min-width:150px;display:flex;flex-direction:column;gap:4px}
+.pill-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.pill-value{font-weight:700;font-size:20px;color:var(--ink);line-height:1.2}
+.stat-pill.align-end{align-items:flex-end;text-align:end}
+.appointments-card .card-header-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.section-title{margin:0}
+.appointments-stats{display:flex;gap:16px;flex-wrap:wrap;align-items:stretch}
+.dash-stat{border:1px solid var(--border);border-radius:12px;background:#f8fafc;padding:12px;flex:1 1 160px;display:flex;flex-direction:column;gap:4px}
+.dash-stat.large{flex:1 1 200px}
+.dash-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;flex:1 1 240px}
+.dash-stat .stat-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.dash-stat .stat-value{font-weight:700;font-size:28px;color:var(--ink);line-height:1.1}
+.dash-stat .stat-value.small{font-size:22px}
+.patient-list-card .overflow-x-auto{width:100%}
+.patient-table{width:100%;border-collapse:separate;border-spacing:0 8px;text-align:start}
+.patient-table th{background:#f8fafc;font-weight:700;color:var(--ink);padding:10px;text-align:start}
+.patient-table td{background:#fff;border:1px solid var(--border);padding:10px;text-align:start;vertical-align:middle;color:var(--ink,#111827)}
+.patient-table td:first-child{border-radius:10px 0 0 10px}
+.patient-table td:last-child{border-radius:0 10px 10px 0}
+.patient-table th.balance-col,.patient-table td.balance-col{text-align:end}
+.patient-table td.actions{white-space:nowrap;text-align:center}
+.patient-table .actions-col{width:120px}
+.wrap-text{word-break:break-word;overflow-wrap:anywhere}
+.payment-card{display:flex;flex-direction:column;gap:12px;margin-bottom:12px}
+.payment-card.ok{border-color:var(--success-color,#16a34a)}
+.payment-card.due{border-color:var(--danger-color,#b91c1c)}
+.payment-card-header{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}
+.payment-amount{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:end}
+.payment-amount-value{font-size:24px;font-weight:700;color:var(--ink,#111827)}
+.payment-amount-label{font-size:13px;color:var(--muted,#6b7280)}
+.payment-card-meta{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted,#6b7280);align-items:flex-start}
+.payment-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.payment-field{padding:10px;border:1px solid var(--border,#e5e7eb);border-radius:12px;background:var(--bg,#f7f7f8);display:flex;flex-direction:column;gap:6px}
+.payment-label{font-size:12px;color:var(--muted,#6b7280);text-transform:uppercase;letter-spacing:.05em}
+.payment-value{font-weight:600;color:var(--ink,#111827);word-break:break-word;display:flex;align-items:center;gap:8px}
+.payment-note{border:1px dashed var(--border,#e5e7eb);border-radius:12px;padding:10px;background:var(--bg,#f7f7f8);display:flex;flex-direction:column;gap:6px}
+.payment-card-body{display:flex;flex-direction:column;gap:12px}
+.payment-card-footer{display:flex;justify-content:flex-end}
+.payment-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;width:100%}
+.payment-doctor-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--chip-color,var(--accent-color,#0ea5e9));color:#fff;background:var(--chip-color,var(--accent-color,#0ea5e9));font-weight:600}
+.payment-form-card .grid.excel{border:1px solid var(--border,#e5e7eb);border-radius:14px;padding:12px;background:#fff}
+.payment-form-card .grid.excel .h{background:var(--bg,#f7f7f8);color:var(--muted,#6b7280);text-align:start;font-weight:700;border-radius:10px}
+.payment-form-card .grid.excel .c{background:#fff;text-align:start}
+.payment-form-card .grid.excel .c>input,.payment-form-card .grid.excel .c>select,.payment-form-card .grid.excel .c>textarea{border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:10px;text-align:start}
+.payment-form-card .grid.excel .c>textarea{min-height:48px}
+.payment-form-card .payment-form-grid{border:1px solid var(--border,#e5e7eb);border-radius:14px;padding:12px;background:#fff;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.payment-field-group{display:flex;flex-direction:column;gap:8px;border:1px solid var(--border,#e5e7eb);border-radius:12px;background:var(--bg,#f7f7f8);padding:12px;min-width:0;height:100%}
+.payment-field-label{font-size:12px;font-weight:600;color:var(--muted,#6b7280);text-transform:uppercase;letter-spacing:.05em;line-height:1.2}
+.payment-field-control{display:flex;flex-direction:column;gap:6px}
+.payment-field-control>input,.payment-field-control>select,.payment-field-control>textarea{border:1px solid var(--border,#d1d5db);border-radius:10px;padding:10px;background:#fff;color:var(--ink,#111827);line-height:1.3;font-size:14px;min-width:0}
+.payment-field-control>textarea{min-height:48px;resize:vertical}
+.payment-field-control .bonus-inline{margin-top:2px}
+.payment-field-control .doctor-error{margin-top:6px}
+.payment-form-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:14px}
+.payment-form-actions .btn{min-width:140px}
+[dir="rtl"] .payment-form-actions{justify-content:flex-start}
+[dir="rtl"] .payment-actions,[dir="rtl"] .payment-card-footer{justify-content:flex-start}
+[dir="rtl"] .payment-amount{align-items:flex-start;text-align:start}
+[dir="rtl"] .payment-card-meta{align-items:flex-end;text-align:end}
+.appointment-card{border:1px solid var(--border);border-radius:16px;padding:16px;background:var(--card);box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.appointment-card .card-header-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.appointment-card .card-header-row h3{margin:0}
 .bonus-inline{font-size:12px;color:#374151;margin-top:4px}
 .bal-box{font-variant-numeric:tabular-nums;text-align:center;border-radius:8px;padding:8px 10px;border:1px solid var(--border)}
 .bal-0{background:var(--green-bg);color:#16a34a;border-color:#bbf7d0}
@@ -90,17 +214,40 @@ button,.btn{display:inline-flex;align-items:center;justify-content:center;white-
 .payment-item.ok::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;background:#16a34a}
 .payment-item.due{border-color:#fecaca;background:#fff7f7}
 .payment-item.due::before{content:'';position:absolute;left:0;top:0;bottom:0;width:6px;background:#b91c1c}
-.payment-summary{display:flex;gap:12px;align-items:center;padding:12px 12px 12px 18px;flex-wrap:wrap}
+.payments-card{padding:16px}
+.payments-header{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
+.payments-title{margin:0;font-weight:700;color:var(--ink)}
+.payment-head{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;padding:12px 12px 0}
+.payment-head-left{display:flex;gap:12px;flex-wrap:wrap;align-items:stretch;flex:1 1 320px}
+.meta-block{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#f9fafb;min-width:160px;flex:1 1 160px}
+.meta-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.meta-value{font-weight:700;color:var(--ink);word-break:break-word;display:flex;align-items:center;gap:6px}
+.payment-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto}
+.payment-head-actions select{min-width:140px}
+.payment-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;padding:12px}
+.summary-box{border:1px solid var(--border);border-radius:12px;background:#f8fafc;padding:10px}
+.box-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.box-value{margin-top:6px;font-weight:700;color:var(--ink);display:flex;justify-content:center;align-items:center;word-break:break-word;text-align:center}
+.summary-box .bal-box{width:100%}
+.view-toggle-btn.active{background:#e0e7ff;border-color:#cbd5f5;color:#1d4ed8}
 .badge{padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:#fff}
-.mini-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-items:center}
-.mini-grid .th{font-size:.75rem;color:#6b7280;text-transform:uppercase;text-align:center}
-.mini-grid .tv{font-variant-numeric:tabular-nums;background:#f3f4f6;border:1px solid var(--border);border-radius:8px;padding:6px 10px;text-align:center}
+.box-label{color:var(--muted,#6b7280)}
 .payment-details{display:none;border-top:1px solid var(--border);padding:12px}
-.payment-details .detail-line{margin:6px 0;text-align:center}
-.payment-details .val{display:block;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;text-align:center}
+.payment-details .detail-line{margin:6px 0;text-align:start;line-height:1.4;display:flex;gap:8px;flex-wrap:wrap}
+.payment-details .val{display:inline;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;text-align:start}
+.no-payments,.no-patients{color:var(--muted);text-align:center;padding:12px}
+@media (max-width:900px){
+  .patient-summary-grid{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+}
 @media (max-width:1100px){
   .grid.sheet{grid-template-columns:repeat(2,minmax(0,1fr))}
   .grid.excel{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:720px){
+  .payment-head{padding:12px}
+  .payment-head-actions{justify-content:flex-start;width:100%}
+  .payment-head-left{width:100%}
+  .payment-grid{padding:12px}
 }
 html[dir="rtl"] .header .kebab .kebab-menu{right:0 !important;left:auto !important}
 html[dir="rtl"] .back-btn{justify-content:center}
@@ -130,6 +277,9 @@ html[dir="rtl"] .kebab .kebab-menu{left:auto;right:0}
 html[dir="rtl"] .header .end{order:0 !important;justify-content:flex-start !important}
 .flash-message{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;padding:10px;border-radius:10px;margin-bottom:10px;text-align:center}
 .flash-message[data-category="err"]{background:#fee2e2;color:#b91c1c;border-color:#fecaca}
+.flash-message[data-category="warn"]{background:#fef3c7;color:#b45309;border-color:#fcd34d}
+.flash-message[data-category="info"]{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
+.flash-message:focus-visible{outline:2px solid var(--primary-color,#2563eb);outline-offset:2px}
 .appointment-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;background:linear-gradient(135deg,#dbeafe,#ede9fe);border:0;box-shadow:none}
 .appointment-hero .eyebrow{text-transform:uppercase;color:#1d4ed8;font-size:12px;letter-spacing:1px;margin-bottom:4px}
 .appointment-hero h1{margin:0;font-size:28px}
@@ -166,10 +316,31 @@ html[dir="rtl"] .header .end{order:0 !important;justify-content:flex-start !impo
 .appointment-form input,.appointment-form select,.receipt-form input,.receipt-form select{width:100%}
 .receipt-hero{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .receipt-hero .eyebrow{color:#475569;text-transform:uppercase;font-size:12px;letter-spacing:.08em}
+.receipt-eyebrow{color:var(--accent-color,#0ea5e9)}
 .receipt-table table{width:100%;border-collapse:collapse}
 .receipt-table th,.receipt-table td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:center}
-.receipt-table td.actions{display:flex;gap:8px;justify-content:center;align-items:center}
+.receipt-table td.actions{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap}
 .receipt-table form{margin:0}
+.receipt-form .section-title{margin-bottom:12px}
+[dir="rtl"] .receipt-hero{flex-direction:row-reverse;text-align:center}
+[dir="rtl"] .receipt-table th,[dir="rtl"] .receipt-table td{text-align:start}
+[dir="rtl"] .receipt-table td.actions{justify-content:flex-start}
+[dir="rtl"] .receipt-form .form-actions{flex-direction:row-reverse}
+[dir="rtl"] .patient-table th,[dir="rtl"] .patient-table td{text-align:start}
+.receipt-action-btn{border-color:var(--accent-color,#0ea5e9);color:var(--accent-color,#0ea5e9);background:#fff}
+.receipt-action-btn:hover{background:rgba(14,165,233,0.08);color:var(--ink,#111827)}
+[dir="rtl"] .receipt-hero{flex-direction:row-reverse;text-align:center}
+[dir="rtl"] .receipt-table th,[dir="rtl"] .receipt-table td{text-align:start}
+[dir="rtl"] .receipt-table td.actions{justify-content:flex-start}
+[dir="rtl"] .receipt-form .form-actions{flex-direction:row-reverse}
+[dir="rtl"] .receipt-hero{flex-direction:row-reverse;text-align:center}
+[dir="rtl"] .receipt-table th,[dir="rtl"] .receipt-table td{text-align:start}
+[dir="rtl"] .receipt-table td.actions{justify-content:flex-start}
+[dir="rtl"] .receipt-form .form-actions{flex-direction:row-reverse}
+[dir="rtl"] .receipt-hero{flex-direction:row-reverse;text-align:center}
+[dir="rtl"] .receipt-table th,[dir="rtl"] .receipt-table td{text-align:start}
+[dir="rtl"] .receipt-table td.actions{justify-content:flex-start}
+[dir="rtl"] .receipt-form .form-actions{flex-direction:row-reverse}
 .appt-snippet{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}
 
 /* Table Styling for Admin Users and other admin tables */
@@ -179,6 +350,7 @@ table th{background:#f8fafc;font-weight:600;color:#374151;text-transform:upperca
 table tbody tr:hover{background:#f9fafb}
 table tbody tr:nth-child(even){background:#fafafa}
 table tbody tr:nth-child(even):hover{background:#f3f4f6}
+table th:focus-visible, table td:focus-visible{outline:2px solid var(--primary-color,#2563eb);outline-offset:2px}
 
 /* Responsive table handling */
 .overflow-x-auto{overflow-x:auto;width:100%}
@@ -259,17 +431,12 @@ table td.actions .btn{margin-left:4px}
     flex-direction: row-reverse;
 }
 
-[dir="rtl"] .mini-grid {
-    direction: ltr;
-}
-
 [dir="rtl"] input, [dir="rtl"] select, [dir="rtl"] textarea {
     text-align: right;
 }
 
 /* Fix for number alignment in RTL */
-[dir="rtl"] .bal-box,
-[dir="rtl"] .mini-grid .tv {
+[dir="rtl"] .bal-box {
     direction: ltr;
     text-align: center;
 }
@@ -283,45 +450,21 @@ table td.actions .btn{margin-left:4px}
 }
 
 /* Additional RTL Improvements */
-
-/* Payment summary layout for RTL */
-[dir="rtl"] .payment-summary {
+[dir="rtl"] .payment-head {
     flex-direction: row-reverse;
 }
-
-[dir="rtl"] .payment-summary-left {
-    flex-direction: row-reverse;
+[dir="rtl"] .payment-head-left {
+    justify-content: flex-end;
 }
-
-[dir="rtl"] .financial-data {
-    margin-left: 0;
-    margin-right: auto;
+[dir="rtl"] .payment-head-actions {
+    justify-content: flex-start;
 }
-
-/* Mini-grid RTL adjustments */
-[dir="rtl"] .mini-grid {
-    direction: ltr;
-}
-
-[dir="rtl"] .mini-grid .tv,
-[dir="rtl"] .mini-grid .th {
-    text-align: center;
-}
-
-/* Payment actions layout */
-[dir="rtl"] .payment-actions {
-    flex-direction: row-reverse;
-}
-
-/* Navigation RTL fixes */
 [dir="rtl"] .payments-header {
     flex-direction: row-reverse;
 }
-
 [dir="rtl"] .payments-title {
     text-align: center;
 }
-
 [dir="rtl"] .new-payment-btn {
     margin-left: 0;
     margin-right: auto;
@@ -374,3 +517,18 @@ table td.actions .btn{margin-left:4px}
 .info-chip.info-chip--tiny{font-size:.72rem;padding:4px 10px}
 .btn-link{color:#2563eb;text-decoration:none;font-weight:500}
 .btn-link:hover{text-decoration:underline}
+.btn:focus-visible,.receipt-table button:focus-visible,.receipt-table a:focus-visible{
+    outline:2px solid var(--primary-color,#2563eb);
+    outline-offset:2px;
+}
+.patient-actions .btn:focus-visible,
+.payment-actions .btn:focus-visible,
+.view-toggle-btn:focus-visible,
+.payment-actions select:focus-visible{
+    outline:2px solid var(--primary-color,#2563eb);
+    outline-offset:2px;
+}
+.u-text-secondary,.receipt-table th{
+    color:var(--muted,#475569);
+}
+.receipt-table td{color:var(--ink,#111827)}

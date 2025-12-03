@@ -1,48 +1,57 @@
-:root{ --bg:#f8fafc; --card:#fff; --ink:#111827; --muted:#6b7280; --border:#e5e7eb; --mid:#0ea5e9; }
+:root{ --bg:var(--bg-primary,#f8fafc); --card:var(--bg-surface,#fff); --ink:var(--text-primary,#111827); --muted:var(--text-muted,#6b7280); --border:var(--border-strong,#e2e8f0); --mid:var(--primary-color,#0ea5e9); --accent:var(--accent-color,var(--mid)); --danger:#ef4444; --font-ar:var(--font-arabic,'Tajawal','Noto Sans Arabic','Segoe UI',Arial,sans-serif); --font-lat:var(--font-latin,'Segoe UI',Arial,sans-serif); }
 *{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+body{margin:0;font-family:var(--font-lat);background:var(--bg);color:var(--ink)}
+html[lang="ar"] body{font-family:var(--font-ar)}
 .wrap{max-width:1100px;margin:16px auto;padding:0 12px}
 .head{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
 .hgroup{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,.04);margin-bottom:14px}
-.btn{display:inline-block;background:#bfdbfe;color:#1e40af;border:1px solid #60a5fa;padding:8px 12px;border-radius:10px;text-decoration:none;cursor:pointer;white-space:nowrap}
-.btn.secondary{background:#fff;color:#1e40af;border-color:#60a5fa}
-.btn.danger{background:#ef4444;border-color:#dc2626;color:#000;font-weight:700}
+.card{background:linear-gradient(180deg,#ffffff, #f8fafc);border:1px solid #cbd5e1;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:14px;cursor:default}
+.card[data-name]{cursor:pointer}
+.btn{display:inline-block;background:var(--primary-color,var(--mid));color:#fff;border:1px solid var(--primary-color,var(--mid));padding:8px 12px;border-radius:10px;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background-color .2s ease,border-color .2s ease,color .2s ease;font-family:inherit}
+.btn.secondary{background:#fff;color:var(--ink,#111827);border-color:var(--border,#d1d5db)}
+.btn.danger{background:var(--danger);border-color:#dc2626;color:#000;font-weight:700}
+.btn:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{
+  outline:2px solid var(--primary-color,#2563eb);
+  outline-offset:2px;
+}
+.btn:hover{filter:brightness(0.95)}
+.btn.secondary:hover{background:#f8fafc}
 
 .legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 .legend-keys{display:flex;gap:8px;flex-wrap:wrap}
-.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:#fff}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,0.05)}
 .tag .swatch{width:14px;height:14px;border-radius:4px;border:1px solid #0001}
 .small{font-size:13px;color:#6b7280}
 
 .quick{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.qbtn{padding:6px 10px;border:1px solid var(--border);background:#fff;border-radius:8px;cursor:pointer}
-.qbtn.on{outline:2px solid var(--ink)}
+.qbtn{padding:12px 16px;border:2px solid #94a3b8;background:#f6f9ff;border-radius:12px;cursor:pointer;transition:box-shadow .15s ease, outline-color .15s ease, transform .1s ease;font-weight:700;font-size:14px;box-shadow:0 2px 4px rgba(0,0,0,0.1)}
+.qbtn.on{outline:3px solid var(--primary-color,var(--accent));box-shadow:0 0 0 3px rgba(59,130,246,0.14);transform:translateY(-1px); border-color: var(--primary-color,var(--accent))}
 .qbtn[data-status]:not([data-status=""]){ background: var(--c); color:#fff; border-color: transparent }
 
-.arch{display:grid;gap:8px;justify-content:center}
-.arch.adult{grid-template-columns:repeat(8, 46px) 1px repeat(8, 46px)}
-.arch.child{grid-template-columns:repeat(5, 46px) 1px repeat(5, 46px)}
-.midline{width:1px;height:52px;background:#9ca3af}
-.splitline{height:1px;background:#9ca3af;margin:12px 0}
+.arch{display:grid;gap:12px;justify-content:center}
+.arch.adult{grid-template-columns:repeat(8, 46px) 12px repeat(8, 46px)}
+.arch.child{grid-template-columns:repeat(5, 46px) 12px repeat(5, 46px)}
+.midline{width:2px;height:64px;background:#94a3b8;border-radius:2px;margin:0 auto; margin-bottom:2px}
+.splitline{height:2px;background:#94a3b8;margin:6px 0 14px 0}
 
 .quadbar{display:grid;grid-template-columns:1fr 1fr;max-width: calc(16*46px + 120px);margin:0 auto 6px auto;color:#6b7280}
 .quadbar > div:nth-child(1){text-align:left;padding-left:6px}
 .quadbar > div:nth-child(2){text-align:right;padding-right:6px}
 
-.tooth{width:46px;height:52px;border:1px solid var(--border);border-radius:10px;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.tooth{width:46px;height:52px;border:2.25px solid #94a3b8;border-radius:10px;background:#ffffff;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12)}
+.tooth:hover{border-color:var(--primary-color,var(--mid));box-shadow:0 0 0 3px color-mix(in srgb, var(--primary-color,var(--mid)) 70%, transparent)}
 .tooth .label{font-size:12px;font-weight:600}
 .tooth .badge{position:absolute;bottom:2px;right:2px;font-size:10px;color:#fff;background:#0008;border-radius:4px;padding:1px 4px;display:none}
 .tooth[data-status]:not([data-status=""]) .badge{display:inline-block}
 
-.tooth[data-status="Healthy"]{background:#10b981;color:#fff}
-.tooth[data-status="Caries"]{background:#ef4444;color:#fff}
-.tooth[data-status="Filled"]{background:#3b82f6;color:#fff}
-.tooth[data-status="Missing"]{background:#9ca3af;color:#fff}
-.tooth[data-status="RCT"]{background:#a855f7;color:#fff}
-.tooth[data-status="Crown"]{background:#f59e0b;color:#fff}
-.tooth[data-status="Implant"]{background:#0ea5e9;color:#fff}
-.tooth[data-status="Note"]{background:#06b6d4;color:#111}
+.tooth[data-status="Healthy"]{background:#10b981;color:#fff;border-color:#0f7658}
+.tooth[data-status="Caries"]{background:#ef4444;color:#fff;border-color:#b91c1c}
+.tooth[data-status="Filled"]{background:#3b82f6;color:#fff;border-color:#1d4ed8}
+.tooth[data-status="Missing"]{background:#9ca3af;color:#fff;border-color:#4b5563}
+.tooth[data-status="RCT"]{background:#a855f7;color:#fff;border-color:#7c3aed}
+.tooth[data-status="Crown"]{background:#f59e0b;color:#fff;border-color:#b45309}
+.tooth[data-status="Implant"]{background:#0ea5e9;color:#fff;border-color:#0369a1}
+.tooth[data-status="Note"]{background:#06b6d4;color:#111;border-color:#0e7490}
 
 /* Medical banners & chips */
 .banner{padding:10px 12px;border-radius:10px;margin:8px 0;font-weight:600}
@@ -57,9 +66,10 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif;back
 .modal{background:#fff;border:1px solid var(--border);border-radius:14px;max-width:560px;width:94%;padding:16px}
 .modal h3{margin:0 0 10px 0}
 .row{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
-select, textarea, input[type=text], input[type=number]{width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;background:#fff}
+select, textarea, input[type=text], input[type=number]{width:100%;padding:12px;border:1.5px solid #94a3b8;border-radius:12px;background:#f8fafc; box-shadow: inset 0 1px 2px rgba(0,0,0,0.08)}
 textarea{min-height:100px;resize:vertical}
 .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.light{color:var(--muted,#6b7280)}
 
 /* Disable medical banners/chips completely */
 .banner, .chips, .chip { display: none !important; }
@@ -69,11 +79,13 @@ textarea{min-height:100px;resize:vertical}
 .patient-card{display:flex;gap:12px;align-items:flex-start}
 .patient-avatar{width:42px;height:42px;border-radius:999px;background:#111827;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600}
 .patient-meta{display:flex;flex-direction:column;gap:4px;min-width:0}
-.patient-name{font-weight:600}
+.patient-name{font-weight:600;color:var(--ink,#111827)}
 .patient-sub{font-size:13px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
-.patient-notes{font-size:13px;color:#374151;background:#f3f4f6;border:1px solid var(--border);border-radius:10px;padding:8px}
+.patient-notes{font-size:13px;color:var(--ink,#111827);background:#f3f4f6;border:1px solid var(--border);border-radius:10px;padding:8px}
 /* Ensure subsequent content has spacing so nothing overlaps */
 .card + .card{margin-top:14px}
+
+.badge-pill{font-size:12px;padding:2px 8px;border:1px solid var(--border);border-radius:999px;display:inline-block;background:#fff;color:var(--ink,#111827)}
 
 
 /* Layout stability + centered patient card */
@@ -111,7 +123,7 @@ textarea{min-height:100px;resize:vertical}
 /* Tiny note indicator dot (shows if a note exists, regardless of status color) */
 .tooth{ position: relative }
 .tooth .note-dot{ position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:999px;
-  background:#fff; border:2px solid #111827; display:none; }
+  background:#fff; border:2px solid #111827; display:none; box-shadow:0 0 0 2px #fff; }
 .tooth[data-hasnote="1"] .note-dot{ display:block }
 
 

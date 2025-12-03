@@ -83,19 +83,11 @@
 }
 
 /* Common Styles */
-.card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   margin-bottom: 1rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid #e5e7eb;
@@ -108,72 +100,22 @@
   color: #1f2937;
 }
 
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-decoration: none;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
-}
-
-.btn-primary:hover {
-  background: #2563eb;
-  border-color: #2563eb;
-}
-
-.btn-secondary {
-  background: white;
-  color: #374151;
-  border-color: #d1d5db;
-}
-
-.btn-secondary:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-}
-
-.btn-success {
-  background: #10b981;
-  color: white;
-  border-color: #10b981;
-}
-
-.btn-success:hover {
-  background: #059669;
-  border-color: #059669;
-}
-
-.btn-danger {
-  background: #ef4444;
-  color: white;
-  border-color: #ef4444;
-}
-
-.btn-danger:hover {
-  background: #dc2626;
-  border-color: #dc2626;
-}
-
 .btn-sm {
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
 }
 
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.status-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 /* Table Styles */
@@ -409,6 +351,49 @@
   border-bottom: 1px solid #e5e7eb;
 }
 
+.logo-upload-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.logo-preview {
+  width: 180px;
+  height: 180px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  overflow: hidden;
+  color: #6b7280;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.logo-placeholder {
+  color: #6b7280;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.logo-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 /* Permission Groups */
 .permission-groups {
   display: grid;
@@ -530,31 +515,47 @@
     flex-direction: column;
   }
 
-  .modal-footer .btn {
-    width: 100%;
+.modal-footer .btn {
+  width: 100%;
   }
 }
+
+/* RTL tweaks */
+[dir="rtl"] .admin-tabs { flex-direction: row-reverse; }
+[dir="rtl"] .admin-tab { text-align: center; }
+[dir="rtl"] .card-header, [dir="rtl"] .actions-row { flex-direction: row-reverse; }
+[dir="rtl"] .admin-table th, [dir="rtl"] .admin-table td { text-align: start; }
+[dir="rtl"] .admin-tab-content { text-align: start; }
+[dir="rtl"] .admin-settings-header { text-align: center; }
 </style>
+
+{% macro tf(key, default_text) -%}
+  {%- set val = t(key) if t else default_text -%}
+  {{ default_text if val == key else val }}
+{%- endmacro %}
 
 <div class="admin-settings-container">
   <!-- Header -->
   <div class="admin-settings-header">
-    <h1>Admin Settings</h1>
-    <p>Manage users, roles, permissions, and doctor colors</p>
+    <h1>{{ tf('admin_settings', 'Admin Settings') }}</h1>
+    <p>{{ tf('admin_settings_intro', 'Manage users, roles, permissions, and doctors you add') }}</p>
   </div>
 
   <!-- Tab Navigation -->
-  <div class="admin-tabs">
-    <button class="admin-tab active" onclick="switchTab(event, 'users')">
-      👥 Manage Users
-    </button>
-    <button class="admin-tab" onclick="switchTab(event, 'roles')">
-      🛡️ Roles & Permissions
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchTab(event, 'users')">
+        👥 {{ tf('manage_users', 'Manage Users') }}
+      </button>
+      <button class="admin-tab" onclick="switchTab(event, 'roles')">
+      🛡️ {{ tf('roles_permissions', 'Roles & Permissions') }}
     </button>
     <button class="admin-tab" onclick="switchTab(event, 'colors')">
-      🎨 Doctor Colors
-    </button>
-  </div>
+      🩺 {{ tf('doctors', 'Doctors') }}
+      </button>
+      <button class="admin-tab" onclick="switchTab(event, 'theme')">
+        🎨 {{ tf('theme', 'Theme') }}
+      </button>
+    </div>
 
   <!-- Tab Content -->
   <div class="admin-tab-content">
@@ -562,9 +563,9 @@
     <div id="users-tab" class="admin-tab-pane active">
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">Users</h2>
+          <h2 class="card-title">{{ tf('users', 'Users') }}</h2>
           <button class="btn btn-primary" onclick="openUserModal()">
-            + New User
+            + {{ tf('new_user', 'New User') }}
           </button>
         </div>
 
@@ -572,12 +573,12 @@
           <table class="admin-table">
             <thead>
               <tr>
-                <th>Username</th>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Roles</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th scope="col">{{ tf('username', 'Username') }}</th>
+                <th scope="col">{{ tf('name', 'Name') }}</th>
+                <th scope="col">{{ tf('phone', 'Phone') }}</th>
+                <th scope="col">{{ tf('roles', 'Roles') }}</th>
+                <th scope="col">{{ tf('status', 'Status') }}</th>
+                <th scope="col">{{ tf('actions', 'Actions') }}</th>
               </tr>
             </thead>
             <tbody id="users-table-body">
@@ -588,25 +589,25 @@
                 <td>{{ user.phone or '—' }}</td>
                 <td>
                   {% if user.roles %}
-                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                    <div class="status-badge-row">
                       {% for role in user.roles %}
-                        <span class="status-badge {% if role.name == 'Admin' %}admin{% endif %}">{{ role.name }}</span>
-                      {% endfor %}
-                    </div>
-                  {% elif user.primary_role_name %}
+                    <span class="status-badge {% if role.name == 'Admin' %}admin{% endif %}">{{ role.name }}</span>
+                  {% endfor %}
+                </div>
+              {% elif user.primary_role_name %}
                     <span class="status-badge">{{ user.primary_role_name }}</span>
-                  {% else %}
-                    —
-                  {% endif %}
+              {% else %}
+                —
+              {% endif %}
                 </td>
                 <td>
                   <span class="status-badge {% if user.is_active %}active{% else %}inactive{% endif %}">
-                    {{ 'Active' if user.is_active else 'Disabled' }}
+                    {{ tf('active', 'Active') if user.is_active else tf('disabled', 'Disabled') }}
                   </span>
                 </td>
                 <td style="white-space: nowrap;">
-                  <button class="btn btn-secondary btn-sm" onclick="editUser('{{ user.id }}')">Edit</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteUser('{{ user.id }}', '{{ user.username }}')">Delete</button>
+                  <button class="btn btn-secondary btn-sm" onclick="editUser('{{ user.id }}')">{{ tf('edit', 'Edit') }}</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteUser('{{ user.id }}', '{{ user.username }}')">{{ tf('delete', 'Delete') }}</button>
                 </td>
               </tr>
               {% endfor %}
@@ -620,9 +621,9 @@
     <div id="roles-tab" class="admin-tab-pane">
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">Roles & Permissions</h2>
+          <h2 class="card-title">{{ tf('roles_permissions', 'Roles & Permissions') }}</h2>
           <button class="btn btn-primary" onclick="openRoleModal()">
-            + New Role
+            + {{ tf('new_role', 'New Role') }}
           </button>
         </div>
 
@@ -630,10 +631,10 @@
           <table class="admin-table">
             <thead>
               <tr>
-                <th>Role Name</th>
-                <th>Description</th>
-                <th>Permissions</th>
-                <th>Actions</th>
+                <th scope="col">{{ tf('role', 'Role') }}</th>
+                <th scope="col">{{ tf('description', 'Description') }}</th>
+                <th scope="col">{{ tf('permissions', 'Permissions') }}</th>
+                <th scope="col">{{ tf('actions', 'Actions') }}</th>
               </tr>
             </thead>
             <tbody id="roles-table-body">
@@ -649,16 +650,16 @@
                         <span class="status-badge permission" title="{{ perm.description or perm.code }}">{{ perm.code }}</span>
                       {% endfor %}
                       {% if perms|length > 6 %}
-                        <span class="status-badge more">+{{ perms|length - 6 }} more</span>
+                        <span class="status-badge more">+{{ perms|length - 6 }} {{ tf('more', 'more') }}</span>
                       {% endif %}
                     </div>
                   {% else %}
-                    <span class="status-badge inactive">No permissions</span>
+                    <span class="status-badge inactive">{{ tf('no_permissions', 'No permissions') }}</span>
                   {% endif %}
                 </td>
                 <td style="white-space: nowrap;">
-                  <button class="btn btn-secondary btn-sm" onclick="editRole({{ role.id }})">Edit</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteRole({{ role.id }}, '{{ role.name }}')">Delete</button>
+                  <button class="btn btn-secondary btn-sm" onclick="editRole({{ role.id }})">{{ tf('edit', 'Edit') }}</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteRole({{ role.id }}, '{{ role.name }}')">{{ tf('delete', 'Delete') }}</button>
                 </td>
               </tr>
               {% endfor %}
@@ -672,38 +673,230 @@
     <div id="colors-tab" class="admin-tab-pane">
       <div class="card">
         <div class="card-header">
-          <h2 class="card-title">Doctor Colors</h2>
-          <button class="btn btn-secondary" onclick="resetColors()">
-            Reset to Defaults
-          </button>
+          <h2 class="card-title">{{ tf('doctors', 'Doctors') }}</h2>
+          <div class="actions-row">
+            <button class="btn btn-primary" type="button" onclick="openDoctorModal()">{{ tf('add_doctor', 'Add Doctor') }}</button>
+            <button class="btn btn-secondary" type="button" onclick="resetColors()">{{ tf('reset_to_defaults', 'Reset to Defaults') }}</button>
+          </div>
         </div>
+
+        <div id="doctor-status" class="alert" style="display:none;"></div>
 
         <div style="overflow-x: auto;">
           <table class="admin-table">
             <thead>
               <tr>
-                <th>Doctor</th>
-                <th>Current Color</th>
-                <th>Preview</th>
-                <th>Actions</th>
+                <th scope="col">{{ tf('doctor', 'Doctor') }}</th>
+                <th scope="col">{{ tf('current_color', 'Current Color') }}</th>
+                <th scope="col">{{ tf('preview', 'Preview') }}</th>
+                <th scope="col">{{ tf('actions', 'Actions') }}</th>
               </tr>
             </thead>
             <tbody id="colors-table-body">
               {% for doctor in doctors %}
-              <tr data-doctor-id="{{ doctor.doctor_id }}">
-                <td>{{ doctor.doctor_label }}</td>
+              <tr data-doctor-id="{{ doctor.doctor_id }}" data-doctor-label="{{ doctor.doctor_label }}" data-doctor-color="{{ doctor.color }}" data-doctor-active="{{ doctor.is_active }}">
+                <td>
+                  <div class="doctor-name">{{ doctor.doctor_label }}</div>
+                  <div class="u-text-muted doctor-id">{{ tf('doctor_id', 'Doctor ID') }}: {{ doctor.doctor_id }}</div>
+                  {% if doctor.is_active == 0 %}
+                    <div class="status-badge inactive">{{ tf('inactive', 'Inactive') }}</div>
+                  {% endif %}
+                </td>
                 <td><code>{{ doctor.color|upper }}</code></td>
                 <td>
                   <div class="color-preview" style="background-color: {{ doctor.color }};"></div>
                 </td>
-                <td>
-                  <input type="color" value="{{ doctor.color }}" class="color-input" onchange="updateColor('{{ doctor.doctor_id }}', this.value)">
-                  <button class="btn btn-primary btn-sm" onclick="saveColor('{{ doctor.doctor_id }}')">Save</button>
+                <td class="table-actions">
+                  <button class="btn btn-secondary btn-sm" type="button" onclick="openDoctorModal('{{ doctor.doctor_id }}')">{{ tf('edit', 'Edit') }}</button>
+                  <button class="btn btn-danger btn-sm" type="button" onclick="deleteDoctor('{{ doctor.doctor_id }}', '{{ doctor.doctor_label }}')">{{ tf('delete', 'Delete') }}</button>
                 </td>
               </tr>
               {% endfor %}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">{{ tf('deleted_doctors', 'Deleted Doctors') }}</h2>
+        </div>
+        <div id="deleted-status" class="alert" style="display:none;"></div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th scope="col">{{ tf('doctor', 'Doctor') }}</th>
+                <th scope="col">{{ tf('last_color', 'Last Color') }}</th>
+                <th scope="col">{{ tf('deleted_at', 'Deleted At') }}</th>
+                <th scope="col">{{ tf('actions', 'Actions') }}</th>
+              </tr>
+            </thead>
+            <tbody id="deleted-doctors-body">
+              <tr><td colspan="4">{{ t('loading') }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme Tab -->
+    <div id="theme-tab" class="admin-tab-pane">
+      <div class="theme-grid">
+        <div class="card theme-card">
+          <div class="card-header">
+            <h2 class="card-title">{{ tf('colors', 'Colors') }}</h2>
+          </div>
+          <div class="admin-form">
+            <div class="form-group">
+              <label class="form-label" for="theme-primary">{{ tf('primary_color', 'Primary color') }}</label>
+              <div class="color-row">
+                <input type="color" id="theme-primary" class="form-input color-input" value="{{ theme_settings.get('primary_color', '#3b82f6') }}">
+                <div id="theme-primary-preview" class="color-preview chip" style="background: {{ theme_settings.get('primary_color', '#3b82f6') }}"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="theme-accent">{{ tf('accent_color', 'Accent color') }}</label>
+              <div class="color-row">
+                <input type="color" id="theme-accent" class="form-input color-input" value="{{ theme_settings.get('accent_color', '#0ea5e9') }}">
+                <div id="theme-accent-preview" class="color-preview chip" style="background: {{ theme_settings.get('accent_color', '#0ea5e9') }}"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="theme-font">{{ tf('base_font_size', 'Base font size (px)') }}</label>
+              <input type="number" id="theme-font" class="form-input" min="14" max="18" step="1" value="{{ theme_settings.get('base_font_size', '16') }}">
+              <small class="text-muted">{{ tf('font_clamp_hint', 'Clamped to 14–18px to protect layout.') }}</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="card theme-card">
+          <div class="card-header">
+            <h2 class="card-title">{{ tf('branding', 'Branding') }}</h2>
+          </div>
+          <div class="admin-form">
+            <div class="form-group">
+              <label class="form-label">
+                <input type="checkbox" id="clinic-name-enabled" {% if clinic_name_enabled %}checked{% endif %}>
+                {{ tf('show_clinic_name', 'Show clinic name next to logo') }}
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="clinic-name">{{ tf('clinic_name_label', 'Clinic display name') }}</label>
+              <input type="text" id="clinic-name" class="form-input" value="{{ clinic_name or '' }}" placeholder="{{ tf('clinic_name_placeholder', 'e.g., ISmile Dental Clinic') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">
+                <input type="checkbox" id="clinic-tagline-enabled" {% if clinic_tagline_enabled %}checked{% endif %}>
+                {{ tf('show_clinic_tagline', 'Show clinic tagline') }}
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="clinic-tagline">{{ tf('clinic_tagline_label', 'Clinic tagline') }}</label>
+              <input type="text" id="clinic-tagline" class="form-input" value="{{ clinic_tagline or '' }}" placeholder="{{ tf('clinic_tagline_placeholder', 'e.g., Dental Clinic') }}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="clinic-brand-color">{{ tf('clinic_brand_color', 'Clinic brand color') }}</label>
+              <div class="color-row">
+                <input type="color" id="clinic-brand-color" class="form-input color-input" value="{{ clinic_brand_color or theme_settings.get('primary_color', '#3b82f6') }}">
+                <div id="clinic-brand-preview" class="color-preview chip" style="background: {{ clinic_brand_color or theme_settings.get('primary_color', '#3b82f6') }}"></div>
+              </div>
+              <small class="text-muted">{{ tf('clinic_brand_hint', 'Used for the clinic name text in the header.') }}</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="logo-scale">{{ tf('logo_size', 'Logo size (%)') }}</label>
+              <input type="range" id="logo-scale" name="logo-scale" min="60" max="140" step="2" value="{{ logo_scale or '100' }}" oninput="document.getElementById('logo-scale-display').textContent = this.value + '%'">
+              <small class="text-muted">{{ tf('logo_size_hint', 'Adjust logo size; capped to fit the header.') }}</small>
+              <div><strong id="logo-scale-display">{{ logo_scale or '100' }}%</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card theme-card">
+          <div class="card-header">
+            <h2 class="card-title">{{ tf('clinic_logo', 'Clinic logo') }}</h2>
+          </div>
+          <div class="admin-form">
+            <div class="logo-upload-row">
+              <label class="form-label">{{ tf('current_logo', 'Current logo') }}</label>
+              <div class="logo-preview" id="theme-logo-preview">
+                {% if theme_logo_url %}
+                  <img src="{{ theme_logo_url }}" alt="{{ tf('clinic_logo', 'Clinic logo') }}" />
+                {% else %}
+                  <div class="logo-placeholder">{{ tf('no_logo', 'No logo uploaded') }}</div>
+                {% endif %}
+              </div>
+              <div class="logo-controls">
+                <input type="file" id="theme-logo" accept="image/png,image/jpeg">
+                <div class="actions-row" style="gap:6px;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-secondary" onclick="uploadLogo()">{{ tf('upload', 'Upload') }}</button>
+                  <button type="button" class="btn btn-danger" onclick="resetLogo()">{{ tf('remove_logo', 'Remove logo') }}</button>
+                </div>
+              </div>
+            </div>
+            <small class="text-muted">{{ tf('logo_hint', 'PNG or JPG, max 2MB. Appears in the top bar.') }}</small>
+            <div id="logo-status" class="alert" style="display:none;"></div>
+            <div class="form-group" id="logo-history-wrapper" style="display: none;">
+              <label class="form-label" for="logo-history">{{ tf('past_logos', 'Past logos') }}</label>
+              <select id="logo-history" class="form-select"></select>
+              <div class="actions-row" style="margin-top:8px;">
+                <button type="button" class="btn btn-secondary" onclick="useSelectedLogo()">{{ tf('use_selected_logo', 'Use selected logo') }}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card theme-card">
+          <div class="card-header">
+            <h2 class="card-title">{{ tf('preview', 'Preview') }}</h2>
+          </div>
+          <div class="admin-form">
+            <div id="theme-preview" class="theme-preview">
+              <span class="status-badge" id="theme-chip">Aa</span>
+              <div class="theme-preview-body">
+                <div id="theme-preview-title" class="theme-preview-title">{{ tf('theme_preview_title', 'Theme Preview') }}</div>
+                <div id="theme-preview-text" class="u-text-secondary">{{ tf('theme_preview_hint', 'Primary and accent applied here.') }}</div>
+              </div>
+            </div>
+            <div class="actions-row" style="margin-top:12px;">
+              <button class="btn btn-secondary" type="button" onclick="resetThemeDefaults()">{{ tf('reset_theme_defaults', 'Reset theme to defaults') }}</button>
+              <button class="btn btn-primary" type="button" onclick="saveTheme()">{{ tf('save_theme', 'Save Theme') }}</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card theme-card">
+          <div class="card-header">
+            <h2 class="card-title">{{ tf('pdf_branding', 'PDF branding') }}</h2>
+          </div>
+          <div class="admin-form">
+            <div class="logo-upload-row">
+              <label class="form-label">{{ tf('current_pdf_logo', 'Current PDF logo') }}</label>
+              <div class="logo-preview" id="pdf-logo-preview">
+                {% if pdf_logo_url %}
+                  <img src="{{ pdf_logo_url }}" alt="{{ tf('clinic_logo', 'Clinic logo') }}">
+                {% else %}
+                  <div class="logo-placeholder">{{ tf('no_logo', 'No logo uploaded') }}</div>
+                {% endif %}
+              </div>
+              <div class="logo-controls">
+                <input type="file" id="pdf-logo" accept="image/png,image/jpeg">
+                <div class="actions-row" style="gap:6px;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-secondary" onclick="uploadPdfLogo()">{{ tf('upload', 'Upload') }}</button>
+                  <button type="button" class="btn btn-danger" onclick="resetPdfLogo()">{{ tf('remove_logo', 'Remove logo') }}</button>
+                </div>
+              </div>
+            </div>
+            <small class="text-muted">{{ tf('logo_hint', 'PNG or JPG, max 2MB. Appears on PDF receipts.') }}</small>
+            <div id="pdf-logo-status" class="alert" style="display:none;"></div>
+            <div class="form-group" id="pdf-logo-history-wrapper" style="display:none;">
+              <label class="form-label" for="pdf-logo-history">{{ tf('past_logos', 'Past logos') }}</label>
+              <select id="pdf-logo-history" class="form-select"></select>
+              <div class="actions-row" style="margin-top:8px;">
+                <button type="button" class="btn btn-secondary" onclick="useSelectedPdfLogo()">{{ tf('use_selected_logo', 'Use selected logo') }}</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -714,7 +907,7 @@
 <div id="user-modal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
-      <h3 id="user-modal-title" class="modal-title">Create User</h3>
+      <h3 id="user-modal-title" class="modal-title">{{ tf('create_user', 'Create User') }}</h3>
       <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body">
@@ -723,27 +916,27 @@
         <input type="hidden" id="user-id" name="user_id">
 
         <div class="form-group">
-          <label class="form-label">Username *</label>
+          <label class="form-label">{{ tf('username', 'Username') }} *</label>
           <input type="text" id="user-username" class="form-input" required>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Full Name</label>
+          <label class="form-label">{{ tf('name', 'Name') }}</label>
           <input type="text" id="user-full-name" class="form-input">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Phone</label>
+          <label class="form-label">{{ tf('phone', 'Phone') }}</label>
           <input type="tel" id="user-phone" class="form-input">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Password *</label>
+          <label class="form-label">{{ tf('password', 'Password') }} *</label>
           <input type="password" id="user-password" class="form-input">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Roles</label>
+          <label class="form-label">{{ tf('roles', 'Roles') }}</label>
           <div class="form-checkbox-group">
             {% for role in roles %}
             <div class="checkbox-item">
@@ -757,14 +950,14 @@
         <div class="form-group">
           <label class="checkbox-item">
             <input type="checkbox" id="user-active" checked>
-            <span>Active</span>
+            <span>{{ tf('active', 'Active') }}</span>
           </label>
         </div>
       </form>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-      <button id="user-submit-btn" class="btn btn-primary" onclick="saveUser()">Create User</button>
+      <button class="btn btn-secondary" onclick="closeModal()">{{ tf('cancel', 'Cancel') }}</button>
+      <button id="user-submit-btn" class="btn btn-primary" onclick="saveUser()">{{ tf('create_user', 'Create User') }}</button>
     </div>
   </div>
 </div>
@@ -773,7 +966,7 @@
 <div id="role-modal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
-      <h3 id="role-modal-title" class="modal-title">Create Role</h3>
+      <h3 id="role-modal-title" class="modal-title">{{ tf('create_role', 'Create Role') }}</h3>
       <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body">
@@ -782,17 +975,17 @@
         <input type="hidden" id="role-id" name="role_id">
 
         <div class="form-group">
-          <label class="form-label">Role Name *</label>
+          <label class="form-label">{{ tf('role', 'Role') }} *</label>
           <input type="text" id="role-name" class="form-input" required>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Description</label>
+          <label class="form-label">{{ tf('description', 'Description') }}</label>
           <input type="text" id="role-description" class="form-input">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Permissions</label>
+          <label class="form-label">{{ tf('permissions', 'Permissions') }}</label>
           <div class="permission-groups">
             {% for group_name, group_permissions in permissions.items() %}
             <div class="permission-group">
@@ -812,50 +1005,585 @@
       </form>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-      <button id="role-submit-btn" class="btn btn-primary" onclick="saveRole()">Create Role</button>
+      <button class="btn btn-secondary" onclick="closeModal()">{{ tf('cancel', 'Cancel') }}</button>
+      <button id="role-submit-btn" class="btn btn-primary" onclick="saveRole()">{{ tf('create_role', 'Create Role') }}</button>
     </div>
   </div>
 </div>
 
-// Get CSRF token from meta tag
+<!-- Doctor Modal -->
+<div id="doctor-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="doctor-modal-title" class="modal-title">{{ tf('doctor', 'Doctor') }}</h3>
+      <button class="modal-close" onclick="closeDoctorModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="doctor-alert" class="alert alert-error" style="display: none;"></div>
+      <div class="form-group">
+        <label class="form-label">{{ tf('doctor_id', 'Doctor ID') }}</label>
+        <div id="doctor-id-display" class="u-text-muted">{{ tf('generated_automatically', 'Will be generated automatically') }}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">{{ tf('doctor_name', 'Doctor Name') }}</label>
+        <input type="text" id="doctor-label" class="form-input" placeholder="{{ tf('doctor_name', 'Dr. Sara') }}" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">{{ tf('color', 'Color') }}</label>
+        <input type="color" id="doctor-color" class="form-input color-input" value="#6b7280">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" type="button" onclick="closeDoctorModal()">{{ tf('cancel', 'Cancel') }}</button>
+      <button id="doctor-submit-btn" class="btn btn-primary" type="button" onclick="saveDoctor()">{{ tf('save', 'Save') }}</button>
+    </div>
+  </div>
+</div>
 <script>
-const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
-const CSRF_TOKEN = csrfMetaTag ? (csrfMetaTag.getAttribute('content') || '') : '';
+// Quick polyfills for older browsers (Edge/IE)
+if (window.NodeList && !NodeList.prototype.forEach) {
+  NodeList.prototype.forEach = function(callback, thisArg) {
+    thisArg = thisArg || window;
+    for (var i = 0; i < this.length; i++) {
+      callback.call(thisArg, this[i], i, this);
+    }
+  };
+}
+if (!Array.from) {
+  Array.from = function(iterable) {
+    return Array.prototype.slice.call(iterable || []);
+  };
+}
+
+// Get CSRF token from meta tag
+var csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
+var CSRF_TOKEN = csrfMetaTag ? (csrfMetaTag.getAttribute('content') || '') : '';
+var L = {
+  themeSaveFailed: "{{ tf('theme_save_failed', 'Failed to save theme') }}",
+  themeSavedReload: "{{ tf('theme_saved_reload', 'Theme saved. Reload to apply.') }}",
+  themeUnexpected: "{{ tf('theme_unexpected_error', 'Unexpected error while saving theme.') }}",
+  userLoadError: "{{ tf('admin_user_load_error', 'Error loading user data') }}",
+  genericError: "{{ tf('admin_generic_error', 'An error occurred. Please try again.') }}",
+  userDeleteConfirm: "{{ tf('admin_user_delete_confirm', 'Are you sure you want to delete user \"{name}\"?') }}",
+  errorPrefix: "{{ tf('admin_error_prefix', 'Error:') }}",
+  roleLoadError: "{{ tf('admin_role_load_error', 'Error loading role data') }}",
+  roleDeleteConfirm: "{{ tf('admin_role_delete_confirm', 'Are you sure you want to delete role \"{name}\"?') }}",
+  doctorSaveFailed: "{{ tf('admin_doctor_save_failed', 'Failed to save doctor') }}",
+  doctorSaveUnexpected: "{{ tf('admin_doctor_save_unexpected', 'Unexpected error saving doctor.') }}",
+  doctorDeleteError: "{{ tf('admin_doctor_delete_error', 'Error deleting doctor') }}",
+  doctorDeleted: "{{ tf('admin_doctor_deleted', 'Doctor deleted.') }}",
+  doctorDeleteConfirm: "{{ tf('admin_doctor_delete_confirm', 'Delete doctor \"{name}\"?') }}",
+  doctorDeleteConfirmSimple: "{{ tf('admin_doctor_delete_confirm_simple', 'Delete this doctor entry?') }}",
+  resetColorsConfirm: "{{ tf('admin_reset_colors_confirm', 'Are you sure you want to reset all doctor colors to defaults?') }}",
+  unknownError: "{{ tf('admin_unknown_error', 'Unknown error') }}",
+  deletedEmpty: "{{ tf('admin_deleted_doctors_empty', 'No deleted doctors.') }}",
+  doctorIdLabel: "{{ tf('doctor_id', 'Doctor ID') }}",
+  restore: "{{ tf('admin_restore', 'Restore') }}",
+  deletePermanent: "{{ tf('admin_delete_permanent', 'Delete Permanently') }}"
+};
 // Global variables
-let currentUserId = null;
-let currentRoleId = null;
-let colorChanges = {};
+var currentUserId = null;
+var currentRoleId = null;
+var colorChanges = {};
+var currentDoctorId = null;
 
 // Tab switching functionality
 function switchTab(evt, tabName) {
   // Update tab buttons
-  document.querySelectorAll('.admin-tab').forEach(tab => {
-    tab.classList.remove('active');
-  });
-  const trigger = (evt && (evt.currentTarget || evt.target)) || null;
-  if (trigger) {
+  var tabButtons = document.querySelectorAll('.admin-tab');
+  for (var i = 0; i < tabButtons.length; i++) {
+    tabButtons[i].classList.remove('active');
+  }
+  var trigger = (evt && (evt.currentTarget || evt.target)) || null;
+  if (trigger && trigger.classList) {
     trigger.classList.add('active');
   }
 
   // Update tab content
-  document.querySelectorAll('.admin-tab-pane').forEach(pane => {
-    pane.classList.remove('active');
-  });
+  var panes = document.querySelectorAll('.admin-tab-pane');
+  for (var j = 0; j < panes.length; j++) {
+    panes[j].classList.remove('active');
+  }
 
-  const targetPane = document.getElementById(tabName + '-tab');
-  if (targetPane) {
+  var targetPane = document.getElementById(tabName + '-tab');
+  if (targetPane && targetPane.classList) {
     targetPane.classList.add('active');
   }
+  // Persist tab in hash
+  window.location.hash = tabName;
 }
 
+// Theme save
+function saveTheme() {
+  var statusEl = document.getElementById('theme-status');
+  var primary = document.getElementById('theme-primary').value;
+  var accent = document.getElementById('theme-accent').value;
+  var fontSize = document.getElementById('theme-font').value;
+  var clinicNameEnabled = document.getElementById('clinic-name-enabled').checked;
+  var clinicName = document.getElementById('clinic-name').value || '';
+  var clinicBrandColor = document.getElementById('clinic-brand-color').value || '';
+  var clinicTaglineEnabled = document.getElementById('clinic-tagline-enabled').checked;
+  var clinicTagline = document.getElementById('clinic-tagline').value || '';
+  var logoScale = document.getElementById('logo-scale').value || '100';
+  var pdfLogoInput = document.getElementById('pdf-logo');
+
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  statusEl.className = 'alert';
+
+  fetch('/admin/settings/theme/update', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({
+      primary_color: primary,
+      accent_color: accent,
+      base_font_size: fontSize,
+      clinic_name_enabled: clinicNameEnabled,
+      clinic_name: clinicName,
+      clinic_brand_color: clinicBrandColor,
+      clinic_tagline_enabled: clinicTaglineEnabled,
+      clinic_tagline: clinicTagline,
+      logo_scale: logoScale,
+      csrf_token: CSRF_TOKEN
+    })
+  })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        return { res: res, data: data };
+      });
+    })
+    .then(function(result) {
+      var res = result.res;
+      var data = result.data;
+      if (!res.ok || !data.success) {
+        var errs = (data.errors || [L.themeSaveFailed]).join(', ');
+        statusEl.textContent = errs;
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+        return;
+      }
+      statusEl.textContent = L.themeSavedReload;
+      statusEl.className = 'alert alert-success';
+      statusEl.style.display = 'block';
+      // Auto-refresh to apply changes immediately
+      window.location.reload();
+    })
+    .catch(function() {
+      statusEl.textContent = L.themeUnexpected;
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    });
+}
+
+// Logo upload
+function uploadLogo() {
+  var fileInput = document.getElementById('theme-logo');
+  var statusEl = document.getElementById('logo-status');
+  var preview = document.getElementById('theme-logo-preview');
+
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  statusEl.className = 'alert';
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    statusEl.textContent = L.fileRequired || 'Please choose a logo file (PNG or JPG).';
+    statusEl.className = 'alert alert-error';
+    statusEl.style.display = 'block';
+    return;
+  }
+
+  var formData = new FormData();
+  formData.append('logo', fileInput.files[0]);
+
+  fetch("{{ url_for('admin_settings.upload_logo') }}", {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: formData
+  })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        return { res: res, data: data };
+      });
+    })
+    .then(function(result) {
+      var data = result.data;
+      if (!result.res.ok || !data.success) {
+        statusEl.textContent = (data.errors && data.errors.join(', ')) || (L.logoSaveFailed || 'Upload failed.');
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+        return;
+      }
+      statusEl.textContent = L.logoSaved || 'Logo saved.';
+      statusEl.className = 'alert alert-success';
+      statusEl.style.display = 'block';
+      window.location.reload();
+    })
+    .catch(function() {
+      statusEl.textContent = L.logoUnexpected || 'Unexpected error while uploading logo.';
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    });
+}
+
+// PDF Logo upload
+function uploadPdfLogo() {
+  var fileInput = document.getElementById('pdf-logo');
+  var statusEl = document.getElementById('pdf-logo-status');
+  var preview = document.getElementById('pdf-logo-preview');
+
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  statusEl.className = 'alert';
+
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+    statusEl.textContent = L.fileRequired || 'Please choose a logo file (PNG or JPG).';
+    statusEl.className = 'alert alert-error';
+    statusEl.style.display = 'block';
+    return;
+  }
+
+  var formData = new FormData();
+  formData.append('logo', fileInput.files[0]);
+
+  fetch("{{ url_for('admin_settings.upload_pdf_logo') }}", {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: formData
+  })
+    .then(function(res) { return res.json().then(function(data) { return { res: res, data: data }; }); })
+    .then(function(result) {
+      var data = result.data;
+      if (!result.res.ok || !data.success) {
+        statusEl.textContent = (data.errors && data.errors.join(', ')) || (L.logoSaveFailed || 'Upload failed.');
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+        return;
+      }
+      statusEl.textContent = L.logoSaved || 'Logo saved. It will appear on PDF receipts.';
+      statusEl.className = 'alert alert-success';
+      statusEl.style.display = 'block';
+      window.location.reload();
+    })
+    .catch(function() {
+      statusEl.textContent = L.logoUnexpected || 'Unexpected error while uploading logo.';
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    });
+}
+
+function resetPdfLogo() {
+  var statusEl = document.getElementById('pdf-logo-status');
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  statusEl.className = 'alert';
+
+  fetch("{{ url_for('admin_settings.reset_pdf_logo') }}", {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ csrf_token: CSRF_TOKEN })
+  })
+    .then(function(res) { return res.json().then(function(data) { return { res: res, data: data }; }); })
+    .then(function(result) {
+      if (!result.res.ok || !result.data.success) {
+        statusEl.textContent = (result.data.errors && result.data.errors.join(', ')) || (L.logoResetFailed || 'Reset failed.');
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+        return;
+      }
+      window.location.reload();
+    })
+    .catch(function() {
+      statusEl.textContent = L.logoUnexpected || 'Unexpected error while resetting logo.';
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    });
+}
+
+function loadPdfLogoHistory() {
+  var selectEl = document.getElementById('pdf-logo-history');
+  var wrapper = document.getElementById('pdf-logo-history-wrapper');
+  if (!selectEl || !wrapper) return;
+
+  fetch("{{ url_for('admin_settings.pdf_logo_history') }}", { credentials: 'same-origin' })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (!data || !data.logo_history || !data.logo_history.length) {
+        wrapper.style.display = 'none';
+        return;
+      }
+      wrapper.style.display = 'block';
+      selectEl.innerHTML = '';
+      data.logo_history.forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = item.path;
+        opt.textContent = item.label;
+        selectEl.appendChild(opt);
+      });
+    })
+    .catch(function() {
+      wrapper.style.display = 'none';
+    });
+}
+
+function useSelectedPdfLogo() {
+  var selectEl = document.getElementById('pdf-logo-history');
+  var statusEl = document.getElementById('pdf-logo-status');
+  if (!selectEl) return;
+  var selected = selectEl.value;
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  statusEl.className = 'alert';
+
+  if (!selected) {
+    statusEl.textContent = L.logoSelectRequired || 'Please select a logo.';
+    statusEl.className = 'alert alert-error';
+    statusEl.style.display = 'block';
+    return;
+  }
+
+  fetch("{{ url_for('admin_settings.select_pdf_logo') }}", {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ logo_path: selected, csrf_token: CSRF_TOKEN })
+  })
+    .then(function(res) { return res.json().then(function(data) { return { res: res, data: data }; }); })
+    .then(function(result) {
+      if (!result.res.ok || !result.data.success) {
+        statusEl.textContent = (result.data.errors && result.data.errors.join(', ')) || (L.logoSelectFailed || 'Could not switch logo.');
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+        return;
+      }
+      statusEl.textContent = L.logoSelectOk || 'Logo switched.';
+      statusEl.className = 'alert alert-success';
+      statusEl.style.display = 'block';
+      window.location.reload();
+    })
+    .catch(function() {
+      statusEl.textContent = L.logoUnexpected || 'Unexpected error while switching logo.';
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    });
+}
+
+function resetLogo() {
+  var statusEl = document.getElementById('logo-status');
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  statusEl.className = 'alert';
+
+  fetch("{{ url_for('admin_settings.reset_logo') }}", {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ csrf_token: CSRF_TOKEN })
+  })
+    .then(function(res) {
+      return res.json().then(function(data) { return { res: res, data: data }; });
+    })
+    .then(function(result) {
+      if (!result.res.ok || !result.data.success) {
+        statusEl.textContent = (result.data.errors && result.data.errors.join(', ')) || (L.logoResetFailed || 'Reset failed.');
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+        return;
+      }
+      statusEl.textContent = L.logoResetOk || 'Logo removed.';
+      statusEl.className = 'alert alert-success';
+      statusEl.style.display = 'block';
+      // Clear preview
+      var previewBox = document.getElementById('theme-logo-preview');
+      if (previewBox) { previewBox.innerHTML = '<div class="logo-placeholder">{{ tf("no_logo", "No logo uploaded") }}</div>'; }
+    })
+    .catch(function() {
+      statusEl.textContent = L.logoUnexpected || 'Unexpected error while resetting logo.';
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    });
+}
+
+function resetThemeDefaults() {
+  var statusEl = document.getElementById('theme-status');
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  statusEl.className = 'alert';
+
+  fetch("{{ url_for('admin_settings.reset_theme_defaults') }}", {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ csrf_token: CSRF_TOKEN })
+  })
+    .then(function(res) { return res.json().then(function(data) { return { res: res, data: data }; }); })
+    .then(function(result) {
+      if (!result.res.ok || !result.data.success) {
+        statusEl.textContent = (result.data.errors && result.data.errors.join(', ')) || (L.themeResetFailed || 'Reset failed.');
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+        return;
+      }
+      window.location.reload();
+    })
+    .catch(function() {
+      statusEl.textContent = L.themeUnexpected || 'Unexpected error while resetting theme.';
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    });
+}
+
+function loadLogoHistory() {
+  var selectEl = document.getElementById('logo-history');
+  var wrapper = document.getElementById('logo-history-wrapper');
+  if (!selectEl || !wrapper) return;
+
+  fetch("{{ url_for('admin_settings.logo_history') }}", { credentials: 'same-origin' })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (!data || !data.logo_history || !data.logo_history.length) {
+        wrapper.style.display = 'none';
+        return;
+      }
+      wrapper.style.display = 'block';
+      selectEl.innerHTML = '';
+      data.logo_history.forEach(function(item) {
+        var opt = document.createElement('option');
+        opt.value = item.path;
+        opt.textContent = item.label;
+        selectEl.appendChild(opt);
+      });
+    })
+    .catch(function() {
+      wrapper.style.display = 'none';
+    });
+}
+
+function useSelectedLogo() {
+  var selectEl = document.getElementById('logo-history');
+  var statusEl = document.getElementById('logo-status');
+  var preview = document.getElementById('theme-logo-preview');
+  if (!selectEl) return;
+  var selected = selectEl.value;
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  statusEl.className = 'alert';
+
+  if (!selected) {
+    statusEl.textContent = L.logoSelectRequired || 'Please select a logo.';
+    statusEl.className = 'alert alert-error';
+    statusEl.style.display = 'block';
+    return;
+  }
+
+  fetch("{{ url_for('admin_settings.select_logo') }}", {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ logo_path: selected, csrf_token: CSRF_TOKEN })
+  })
+    .then(function(res) { return res.json().then(function(data) { return { res: res, data: data }; }); })
+    .then(function(result) {
+      if (!result.res.ok || !result.data.success) {
+        statusEl.textContent = (result.data.errors && result.data.errors.join(', ')) || (L.logoSelectFailed || 'Could not switch logo.');
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+        return;
+      }
+      statusEl.textContent = L.logoSelectOk || 'Logo switched.';
+      statusEl.className = 'alert alert-success';
+      statusEl.style.display = 'block';
+      if (result.data.logo_url && preview) {
+        preview.innerHTML = '<img src="' + result.data.logo_url + '" alt="Logo">';
+      }
+      window.location.reload();
+    })
+    .catch(function() {
+      statusEl.textContent = L.logoUnexpected || 'Unexpected error while switching logo.';
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    });
+}
+// Theme previews
+function attachThemePreview() {
+  var primaryInput = document.getElementById('theme-primary');
+  var accentInput = document.getElementById('theme-accent');
+  var chip = document.getElementById('theme-chip');
+  var title = document.getElementById('theme-preview-title');
+  var text = document.getElementById('theme-preview-text');
+  var primaryBox = document.getElementById('theme-primary-preview');
+  var accentBox = document.getElementById('theme-accent-preview');
+  var clinicBrandInput = document.getElementById('clinic-brand-color');
+  var clinicBrandPreview = document.getElementById('clinic-brand-preview');
+
+  function refresh() {
+    var primary = primaryInput.value;
+    var accent = accentInput.value;
+    if (primaryBox) primaryBox.style.background = primary;
+    if (accentBox) accentBox.style.background = accent;
+    if (clinicBrandPreview && clinicBrandInput) {
+      clinicBrandPreview.style.background = clinicBrandInput.value;
+    }
+    if (chip) {
+      chip.style.background = primary;
+      chip.style.borderColor = primary;
+      chip.style.color = '#fff';
+    }
+    if (title) title.style.color = primary;
+    if (text) text.style.color = accent;
+  }
+
+  if (primaryInput) {
+    primaryInput.addEventListener('input', refresh);
+  }
+  if (accentInput) {
+    accentInput.addEventListener('input', refresh);
+  }
+    if (clinicBrandInput) {
+      clinicBrandInput.addEventListener('input', refresh);
+    }
+  refresh();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  attachThemePreview();
+  loadLogoHistory();
+  loadPdfLogoHistory();
+});
+
 // Modal functions
-function openUserModal(userId = null) {
+function openUserModal(userId) {
+  if (typeof userId === 'undefined') userId = null;
   currentUserId = userId;
-  const modal = document.getElementById('user-modal');
-  const title = document.getElementById('user-modal-title');
-  const submitBtn = document.getElementById('user-submit-btn');
-  const alert = document.getElementById('user-alert');
+  var modal = document.getElementById('user-modal');
+  var title = document.getElementById('user-modal-title');
+  var submitBtn = document.getElementById('user-submit-btn');
+  var alert = document.getElementById('user-alert');
 
   alert.style.display = 'none';
 
@@ -873,12 +1601,13 @@ function openUserModal(userId = null) {
   modal.classList.add('active');
 }
 
-function openRoleModal(roleId = null) {
+function openRoleModal(roleId) {
+  if (typeof roleId === 'undefined') roleId = null;
   currentRoleId = roleId;
-  const modal = document.getElementById('role-modal');
-  const title = document.getElementById('role-modal-title');
-  const submitBtn = document.getElementById('role-submit-btn');
-  const alert = document.getElementById('role-alert');
+  var modal = document.getElementById('role-modal');
+  var title = document.getElementById('role-modal-title');
+  var submitBtn = document.getElementById('role-submit-btn');
+  var alert = document.getElementById('role-alert');
 
   alert.style.display = 'none';
 
@@ -896,24 +1625,28 @@ function openRoleModal(roleId = null) {
 }
 
 function closeModal() {
-  document.querySelectorAll('.modal').forEach(modal => {
-    modal.classList.remove('active');
-  });
+  var modalList = document.querySelectorAll('.modal');
+  for (var i = 0; i < modalList.length; i++) {
+    modalList[i].classList.remove('active');
+  }
   currentUserId = null;
   currentRoleId = null;
 }
 
 // User functions
-async function saveUser() {
-  const submitBtn = document.getElementById('user-submit-btn');
-  const alert = document.getElementById('user-alert');
-  const selectedRoles = Array.from(
-    document.querySelectorAll('#user-form .form-checkbox-group input[type="checkbox"]:checked')
-  )
-    .map(cb => parseInt(cb.value, 10))
-    .filter(value => !isNaN(value));
+function saveUser() {
+  var submitBtn = document.getElementById('user-submit-btn');
+  var alert = document.getElementById('user-alert');
+  var checkboxes = document.querySelectorAll('#user-form .form-checkbox-group input[type="checkbox"]:checked');
+  var selectedRoles = [];
+  for (var i = 0; i < checkboxes.length; i++) {
+    var val = parseInt(checkboxes[i].value, 10);
+    if (!isNaN(val)) {
+      selectedRoles.push(val);
+    }
+  }
 
-  const userData = {
+  var userData = {
     username: document.getElementById('user-username').value.trim(),
     full_name: document.getElementById('user-full-name').value.trim(),
     phone: document.getElementById('user-phone').value.trim(),
@@ -929,110 +1662,121 @@ async function saveUser() {
   submitBtn.disabled = true;
   submitBtn.textContent = 'Saving...';
 
-  try {
-    console.log('DEBUG: Sending user data:', userData);  // Debug logging
-    const response = await fetch(currentUserId ? `/admin/settings/users/${currentUserId}/update` : '/admin/settings/users/create', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': CSRF_TOKEN
-      },
-      body: JSON.stringify(userData)
-    });
+  var url = currentUserId ? "/admin/settings/users/" + currentUserId + "/update" : '/admin/settings/users/create';
 
-    const result = await response.json();
-
-    if (result.success) {
-      closeModal();
-      location.reload(); // Refresh to show updated data
-    } else {
-      alert.textContent = result.errors.join(', ');
+  fetch(url, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify(userData)
+  })
+    .then(function(response) {
+      return response.json().then(function(data) {
+        return { response: response, data: data };
+      });
+    })
+    .then(function(result) {
+      if (result.data && result.data.success) {
+        closeModal();
+        location.reload();
+      } else {
+        alert.textContent = result.data && result.data.errors ? result.data.errors.join(', ') : 'Save failed.';
+        alert.style.display = 'block';
+      }
+    })
+    .catch(function() {
+      alert.textContent = 'An error occurred. Please try again.';
       alert.style.display = 'block';
-    }
-  } catch (error) {
-    alert.textContent = 'An error occurred. Please try again.';
-    alert.style.display = 'block';
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = currentUserId ? 'Update User' : 'Create User';
-  }
+    })
+    .then(function() {
+      submitBtn.disabled = false;
+      submitBtn.textContent = currentUserId ? 'Update User' : 'Create User';
+    });
 }
 
-async function loadUserData(userId) {
-  try {
-    const response = await fetch(`/admin/settings/users/${userId}`, { credentials: 'same-origin' });
-    const result = await response.json();
+function loadUserData(userId) {
+  fetch('/admin/settings/users/' + userId, { credentials: 'same-origin' })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+      if (result.success) {
+        var user = result.user;
+        document.getElementById('user-username').value = user.username;
+        document.getElementById('user-full-name').value = user.full_name || '';
+        document.getElementById('user-phone').value = user.phone || '';
+        document.getElementById('user-password').value = '';
 
-    if (result.success) {
-      const user = result.user;
-      document.getElementById('user-username').value = user.username;
-      document.getElementById('user-full-name').value = user.full_name || '';
-      document.getElementById('user-phone').value = user.phone || '';
-      document.getElementById('user-password').value = '';
-
-      // Clear all role checkboxes
-      document.querySelectorAll('#user-form .form-checkbox-group input[type="checkbox"]').forEach(cb => {
-        cb.checked = false;
-      });
-      document.getElementById('user-active').checked = Boolean(user.is_active);
-
-      // Check the user's roles
-      user.roles.forEach(roleId => {
-        const checkbox = document.getElementById(`role-${roleId}`);
-        if (checkbox) {
-          checkbox.checked = true;
+        // Clear all role checkboxes
+        var roleCheckboxes = document.querySelectorAll('#user-form .form-checkbox-group input[type="checkbox"]');
+        for (var i = 0; i < roleCheckboxes.length; i++) {
+          roleCheckboxes[i].checked = false;
         }
-      });
-    } else {
-      alert('Error loading user data: ' + result.errors.join(', '));
-    }
-  } catch (error) {
-    alert('Error loading user data');
-  }
+        document.getElementById('user-active').checked = Boolean(user.is_active);
+
+        // Check the user's roles
+        for (var j = 0; j < user.roles.length; j++) {
+          var checkbox = document.getElementById('role-' + user.roles[j]);
+          if (checkbox) {
+            checkbox.checked = true;
+          }
+        }
+      } else {
+        alert(L.userLoadError + ': ' + result.errors.join(', '));
+      }
+    })
+    .catch(function() {
+      alert(L.userLoadError);
+    });
 }
 
-async function editUser(userId) {
+function editUser(userId) {
   openUserModal(userId);
 }
 
-async function deleteUser(userId, username) {
-  if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+function deleteUser(userId, username) {
+  if (!confirm(L.userDeleteConfirm.replace('{name}', username))) {
     return;
   }
 
-try {
-    const response = await fetch(`/admin/settings/users/${userId}/delete`, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': CSRF_TOKEN
-      },
-      body: JSON.stringify({})
+  fetch('/admin/settings/users/' + userId + '/delete', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({})
+  })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+      if (result.success) {
+        location.reload();
+      } else {
+        alert(L.errorPrefix + ' ' + result.errors.join(', '));
+      }
+    })
+    .catch(function() {
+      alert(L.genericError);
     });
-
-    const result = await response.json();
-
-    if (result.success) {
-      location.reload();
-    } else {
-      alert('Error: ' + result.errors.join(', '));
-    }
-  } catch (error) {
-    alert('An error occurred. Please try again.');
-  }
 }
 
 // Role functions
-async function saveRole() {
-  const submitBtn = document.getElementById('role-submit-btn');
-  const alert = document.getElementById('role-alert');
+function saveRole() {
+  var submitBtn = document.getElementById('role-submit-btn');
+  var alert = document.getElementById('role-alert');
 
-  const roleData = {
+  var permissionBoxes = document.querySelectorAll('#role-form input[type="checkbox"]:checked');
+  var permissions = [];
+  for (var i = 0; i < permissionBoxes.length; i++) {
+    permissions.push(parseInt(permissionBoxes[i].value, 10));
+  }
+
+  var roleData = {
     name: document.getElementById('role-name').value.trim(),
     description: document.getElementById('role-description').value.trim(),
-    permissions: Array.from(document.querySelectorAll('#role-form input[type="checkbox"]:checked')).map(cb => parseInt(cb.value))
+    permissions: permissions
   };
 
   if (currentRoleId) {
@@ -1042,181 +1786,477 @@ async function saveRole() {
   submitBtn.disabled = true;
   submitBtn.textContent = 'Saving...';
 
-try {
-    const response = await fetch(currentRoleId ? `/admin/settings/roles/${currentRoleId}/update` : '/admin/settings/roles/create', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': CSRF_TOKEN
-      },
-      body: JSON.stringify(roleData)
-    });
+  var url = currentRoleId ? "/admin/settings/roles/" + currentRoleId + "/update" : '/admin/settings/roles/create';
 
-    const result = await response.json();
-
-    if (result.success) {
-      closeModal();
-      location.reload();
-    } else {
-      alert.textContent = result.errors.join(', ');
+  fetch(url, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify(roleData)
+  })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+      if (result.success) {
+        closeModal();
+        location.reload();
+      } else {
+        alert.textContent = result.errors.join(', ');
+        alert.style.display = 'block';
+      }
+    })
+    .catch(function() {
+      alert.textContent = 'An error occurred. Please try again.';
       alert.style.display = 'block';
-    }
-  } catch (error) {
-    alert.textContent = 'An error occurred. Please try again.';
-    alert.style.display = 'block';
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = currentRoleId ? 'Update Role' : 'Create Role';
-  }
+    })
+    .then(function() {
+      submitBtn.disabled = false;
+      submitBtn.textContent = currentRoleId ? 'Update Role' : 'Create Role';
+    });
 }
 
-async function loadRoleData(roleId) {
-  try {
-    const response = await fetch(`/admin/settings/roles/${roleId}`, { credentials: 'same-origin' });
-    const result = await response.json();
+function loadRoleData(roleId) {
+  fetch('/admin/settings/roles/' + roleId, { credentials: 'same-origin' })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+      if (result.success) {
+        var role = result.role;
+        document.getElementById('role-name').value = role.name;
+        document.getElementById('role-description').value = role.description || '';
 
-    if (result.success) {
-      const role = result.role;
-      document.getElementById('role-name').value = role.name;
-      document.getElementById('role-description').value = role.description || '';
-
-      // Clear all permission checkboxes
-      document.querySelectorAll('#role-form input[type="checkbox"]').forEach(cb => {
-        cb.checked = false;
-      });
-
-      // Check the role's permissions
-      role.permissions.forEach(permId => {
-        const checkbox = document.getElementById(`perm-${permId}`);
-        if (checkbox) {
-          checkbox.checked = true;
+        // Clear all permission checkboxes
+        var permBoxes = document.querySelectorAll('#role-form input[type="checkbox"]');
+        for (var i = 0; i < permBoxes.length; i++) {
+          permBoxes[i].checked = false;
         }
-      });
-    } else {
-      alert('Error loading role data: ' + result.errors.join(', '));
-    }
-  } catch (error) {
-    alert('Error loading role data');
-  }
+
+        // Check the role's permissions
+        for (var j = 0; j < role.permissions.length; j++) {
+          var checkbox = document.getElementById('perm-' + role.permissions[j]);
+          if (checkbox) {
+            checkbox.checked = true;
+          }
+        }
+      } else {
+        alert(L.roleLoadError + ': ' + result.errors.join(', '));
+      }
+    })
+    .catch(function() {
+      alert(L.roleLoadError);
+    });
 }
 
-async function editRole(roleId) {
+function editRole(roleId) {
   openRoleModal(roleId);
 }
 
-async function deleteRole(roleId, roleName) {
-  if (!confirm(`Are you sure you want to delete role "${roleName}"?`)) {
+function deleteRole(roleId, roleName) {
+  if (!confirm(L.roleDeleteConfirm.replace('{name}', roleName))) {
     return;
   }
 
-try {
-    const response = await fetch(`/admin/settings/roles/${roleId}/delete`, {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': CSRF_TOKEN
-      },
-      body: JSON.stringify({})
+  fetch('/admin/settings/roles/' + roleId + '/delete', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({})
+  })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+      if (result.success) {
+        location.reload();
+      } else {
+        alert(L.errorPrefix + ' ' + result.errors.join(', '));
+      }
+    })
+    .catch(function() {
+      alert(L.genericError);
     });
-
-    const result = await response.json();
-
-    if (result.success) {
-      location.reload();
-    } else {
-      alert('Error: ' + result.errors.join(', '));
-    }
-  } catch (error) {
-    alert('An error occurred. Please try again.');
-  }
 }
 
 // Color functions
-function updateColor(doctorId, color) {
-  colorChanges[doctorId] = color;
+function updateDoctorLabel(doctorId, label) {
+  if (!colorChanges[doctorId]) colorChanges[doctorId] = {};
+  colorChanges[doctorId].label = label;
+}
+
+// Doctor modal helpers
+function openDoctorModal(doctorId) {
+  if (typeof doctorId === 'undefined') doctorId = null;
+  currentDoctorId = doctorId;
+  var modal = document.getElementById('doctor-modal');
+  var title = document.getElementById('doctor-modal-title');
+  var alert = document.getElementById('doctor-alert');
+  alert.style.display = 'none';
+
+  if (doctorId) {
+    var row = document.querySelector('tr[data-doctor-id="' + doctorId + '"]');
+    var label = row ? row.getAttribute('data-doctor-label') : '';
+    var color = row ? row.getAttribute('data-doctor-color') : '#6b7280';
+    title.textContent = 'Edit Doctor';
+    document.getElementById('doctor-id-display').textContent = doctorId;
+    document.getElementById('doctor-label').value = label || '';
+    document.getElementById('doctor-color').value = color || '#6b7280';
+  } else {
+    title.textContent = 'Add Doctor';
+    document.getElementById('doctor-id-display').textContent = 'Will be generated automatically';
+    document.getElementById('doctor-label').value = '';
+    document.getElementById('doctor-color').value = '#6b7280';
+  }
+  modal.classList.add('active');
+}
+
+function closeDoctorModal() {
+  currentDoctorId = null;
+  var modal = document.getElementById('doctor-modal');
+  modal.classList.remove('active');
+}
+
+function saveDoctor() {
+  var statusEl = document.getElementById('doctor-alert');
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+
+  var label = (document.getElementById('doctor-label').value || '').trim();
+  var color = document.getElementById('doctor-color').value;
+  if (!label) {
+    statusEl.textContent = "{{ tf('doctor_name_required', 'Doctor name is required.') }}";
+    statusEl.style.display = 'block';
+    return;
+  }
+  var payload = {
+    doctor_id: null,
+    original_id: currentDoctorId,
+    doctor_label: label,
+    color: color,
+    csrf_token: CSRF_TOKEN
+  };
+
+  fetch('/admin/settings/colors/update', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify(payload)
+  })
+    .then(function(response) {
+      return response.json().then(function(data) {
+        return { response: response, data: data };
+      });
+  })
+    .then(function(result) {
+      var response = result.response;
+      var data = result.data;
+      if (!response.ok || !data.success) {
+        var errs = (data.errors || [L.doctorSaveFailed]).join(', ');
+        statusEl.textContent = errs;
+        statusEl.style.display = 'block';
+        return;
+      }
+      location.reload();
+    })
+    .catch(function() {
+      statusEl.textContent = L.doctorSaveUnexpected;
+      statusEl.style.display = 'block';
+    });
+}
+
+function deleteDoctor(doctorId, doctorLabel) {
+  if (!confirm(L.doctorDeleteConfirm.replace('{name}', doctorLabel))) return;
+  var slug = doctorId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || doctorId;
+  fetch('/admin/settings/colors/delete', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ doctor_id: slug, csrf_token: CSRF_TOKEN })
+  })
+    .then(function(response) { return response.json().then(function(data){ return {response: response, data: data}; }); })
+    .then(function(result) {
+      if (!result.response.ok || !result.data.success) {
+        alert(L.doctorDeleteError);
+        return;
+      }
+      var row = document.querySelector('tr[data-doctor-id="' + slug + '"]');
+      if (row) {
+        row.remove();
+      }
+      var status = document.getElementById('doctor-status');
+      if (status) {
+        status.textContent = L.doctorDeleted;
+        status.className = 'alert alert-success';
+        status.style.display = 'block';
+      }
+    })
+    .catch(function() {
+      alert(L.doctorDeleteError);
+    });
+}
+
+function updateColor(doctorId, color, label) {
+  if (!colorChanges[doctorId]) colorChanges[doctorId] = {};
+  colorChanges[doctorId].color = color;
+  if (label) {
+    colorChanges[doctorId].label = label;
+  }
   // Update preview
-  const row = document.querySelector(`tr[data-doctor-id="${doctorId}"]`);
+  var row = document.querySelector('tr[data-doctor-id= + doctorId + ]');
   if (row) {
-    const preview = row.querySelector('.color-preview');
+    var preview = row.querySelector('.color-preview');
     if (preview) {
       preview.style.backgroundColor = color;
     }
   }
 }
 
-async function saveColor(doctorId) {
-  const color = colorChanges[doctorId];
+function saveColor(doctorId) {
+  var payload = colorChanges[doctorId] || {};
+  var color = payload.color;
+  var label = payload.label;
   if (!color) return;
 
-try {
-    const response = await fetch('/admin/settings/colors/update', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': CSRF_TOKEN
-      },
-      body: JSON.stringify({ doctor_id: doctorId, color: color })
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-      delete colorChanges[doctorId];
-      // Update the displayed color code
-      const row = document.querySelector(`tr[data-doctor-id="${doctorId}"]`);
-      if (row) {
-        const codeElement = row.querySelector('code');
-        if (codeElement) {
-          codeElement.textContent = color.toUpperCase();
+  fetch('/admin/settings/colors/update', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ doctor_id: doctorId, color: color, doctor_label: label })
+  })
+    .then(function(response) {
+      return response.json().then(function(data) {
+        return { response: response, data: data };
+      });
+    })
+    .then(function(result) {
+      var data = result.data;
+      if (data && data.success) {
+        delete colorChanges[doctorId];
+        var row = document.querySelector('tr[data-doctor-id="' + doctorId + '"]');
+        if (row) {
+          var codeElement = row.querySelector('code');
+          if (codeElement) {
+            codeElement.textContent = color.toUpperCase();
+          }
         }
+      } else {
+        alert(L.errorPrefix + ' ' + (data && data.errors ? data.errors.join(', ') : L.unknownError));
       }
-    } else {
-      alert('Error: ' + (result.errors ? result.errors.join(', ') : 'Unknown error'));
-    }
-  } catch (error) {
-    alert('An error occurred. Please try again.');
-  }
+    })
+    .catch(function() {
+      alert(L.genericError);
+    });
 }
 
-async function resetColors() {
-  if (!confirm('Are you sure you want to reset all doctor colors to defaults?')) {
+function addDoctor() {
+  openDoctorModal();
+}
+
+function deleteDoctor(doctorId) {
+  if (!confirm(L.doctorDeleteConfirmSimple)) return;
+  var slug = doctorId.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || doctorId;
+  fetch('/admin/settings/colors/delete', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ doctor_id: slug, csrf_token: CSRF_TOKEN })
+  })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+      if (result.success) {
+        location.reload();
+      } else {
+        alert(L.errorPrefix + ' ' + (result.errors ? result.errors.join(', ') : L.unknownError));
+      }
+    })
+    .catch(function() {
+      alert(L.genericError);
+    });
+}
+
+function resetColors() {
+  if (!confirm(L.resetColorsConfirm)) {
     return;
   }
 
-try {
-    const response = await fetch('/admin/settings/colors/reset', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRFToken': CSRF_TOKEN
-      },
-      body: JSON.stringify({})
+  fetch('/admin/settings/colors/reset', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ csrf_token: CSRF_TOKEN })
+  })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+      if (result.success) {
+        window.location.hash = 'colors';
+        location.reload();
+      } else {
+        alert(L.errorPrefix + ' ' + (result.errors ? result.errors.join(', ') : L.unknownError));
+      }
+    })
+    .catch(function() {
+      alert(L.genericError);
     });
+}
 
-    const result = await response.json();
-
-    if (result.success) {
-      location.reload();
-    } else {
-      alert('Error: ' + (result.errors ? result.errors.join(', ') : 'Unknown error'));
-    }
-  } catch (error) {
-    alert('An error occurred. Please try again.');
+// Deleted doctors helpers
+function renderDeletedDoctors(rows) {
+  var tbody = document.getElementById('deleted-doctors-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (!rows || !rows.length) {
+    var empty = document.createElement('tr');
+    empty.innerHTML = '<td colspan="4">' + L.deletedEmpty + '</td>';
+    tbody.appendChild(empty);
+    return;
   }
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var tr = document.createElement('tr');
+
+    var tdInfo = document.createElement('td');
+    tdInfo.innerHTML = '<div style="font-weight:700;">' + row.doctor_label + '</div>'
+      + '<div class="u-text-muted" style="font-size:12px;">' + L.doctorIdLabel + ': ' + row.doctor_id + '</div>';
+
+    var tdColor = document.createElement('td');
+    tdColor.innerHTML = '<code>' + (row.color ? String(row.color).toUpperCase() : '') + '</code>';
+
+    var tdDeleted = document.createElement('td');
+    tdDeleted.textContent = row.deleted_at || '—';
+
+    var tdActions = document.createElement('td');
+    tdActions.style.display = 'flex';
+    tdActions.style.gap = '6px';
+
+    var restoreBtn = document.createElement('button');
+    restoreBtn.className = 'btn btn-secondary btn-sm';
+    restoreBtn.type = 'button';
+    restoreBtn.textContent = L.restore;
+    restoreBtn.onclick = (function(id) {
+      return function() { restoreDeletedDoctor(id); };
+    })(row.doctor_id);
+
+    var purgeBtn = document.createElement('button');
+    purgeBtn.className = 'btn btn-danger btn-sm';
+    purgeBtn.type = 'button';
+    purgeBtn.textContent = L.deletePermanent;
+    purgeBtn.onclick = (function(id) {
+      return function() { purgeDeletedDoctor(id); };
+    })(row.doctor_id);
+
+    tdActions.appendChild(restoreBtn);
+    tdActions.appendChild(purgeBtn);
+
+    tr.appendChild(tdInfo);
+    tr.appendChild(tdColor);
+    tr.appendChild(tdDeleted);
+    tr.appendChild(tdActions);
+
+    tbody.appendChild(tr);
+  }
+}
+
+function loadDeletedDoctors() {
+  var statusEl = document.getElementById('deleted-status');
+  if (statusEl) {
+    statusEl.style.display = 'none';
+  }
+  fetch('/admin/settings/colors/deleted', { credentials: 'same-origin' })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+      if (result.success) {
+        renderDeletedDoctors(result.deleted || []);
+      } else if (statusEl) {
+        statusEl.textContent = result.errors ? result.errors.join(', ') : 'Failed to load deleted doctors.';
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+      }
+    })
+    .catch(function() {
+      if (statusEl) {
+        statusEl.textContent = 'Failed to load deleted doctors.';
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+      }
+    });
+}
+
+function restoreDeletedDoctor(doctorId) {
+  if (!doctorId) return;
+  fetch('/admin/settings/colors/restore', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ doctor_id: doctorId, csrf_token: CSRF_TOKEN })
+  })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+      if (result.success) {
+        location.reload();
+      } else {
+        alert('Error: ' + (result.errors ? result.errors.join(', ') : 'Unknown error'));
+      }
+    })
+    .catch(function() {
+      alert('Error restoring doctor');
+    });
+}
+
+function purgeDeletedDoctor(doctorId) {
+  if (!doctorId) return;
+  if (!confirm('Permanently delete this doctor from history?')) {
+    return;
+  }
+  fetch('/admin/settings/colors/purge', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ doctor_id: doctorId, csrf_token: CSRF_TOKEN })
+  })
+    .then(function(response) { return response.json(); })
+    .then(function(result) {
+      if (result.success) {
+        loadDeletedDoctors();
+      } else {
+        alert('Error: ' + (result.errors ? result.errors.join(', ') : 'Unknown error'));
+      }
+    })
+    .catch(function() {
+      alert('Error deleting doctor');
+    });
 }
 
 // Close modal when clicking outside
 document.addEventListener('click', function(event) {
-  const modals = document.querySelectorAll('.modal');
-  modals.forEach(modal => {
+  var modals = document.querySelectorAll('.modal');
+  for (var i = 0; i < modals.length; i++) {
+    var modal = modals[i];
     if (event.target === modal) {
       closeModal();
     }
-  });
+  }
 });
 
 // Close modal on Escape key
@@ -1224,6 +2264,24 @@ document.addEventListener('keydown', function(event) {
   if (event.key === 'Escape') {
     closeModal();
   }
+});
+
+// Theme preview on load
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof attachThemePreview === 'function') {
+    attachThemePreview();
+  }
+  // Activate tab from hash if present
+  var hash = window.location.hash.replace('#', '');
+  if (hash) {
+    switchTab(null, hash);
+  } else {
+    var firstTab = document.querySelector('.admin-tab');
+    if (firstTab) {
+      firstTab.classList.add('active');
+    }
+  }
+  loadDeletedDoctors();
 });
 </script>
 

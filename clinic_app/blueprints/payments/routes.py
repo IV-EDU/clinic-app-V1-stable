@@ -5,7 +5,7 @@ import io
 from datetime import date, datetime
 from pathlib import Path
 
-from flask import Blueprint, flash, redirect, request, send_file, url_for, current_app, g
+from flask import Blueprint, flash, redirect, request, send_file, url_for, current_app, g, render_template
 
 from clinic_app.services.database import db
 from clinic_app.services.i18n import T, get_lang
@@ -18,11 +18,30 @@ from clinic_app.services.payments import (
     validate_payment_fields,
 )
 from clinic_app.services.pdf_enhanced import generate_payment_receipt_pdf
+from clinic_app.services.doctor_colors import (
+    ANY_DOCTOR_ID,
+    ANY_DOCTOR_LABEL,
+    DEFAULT_COLOR,
+    get_active_doctor_options,
+)
 from clinic_app.services.ui import render_page
 from clinic_app.services.security import require_permission
 from clinic_app.services.errors import record_exception
 
 bp = Blueprint("payments", __name__)
+
+
+def _doctor_options() -> list[dict[str, str]]:
+    options = get_active_doctor_options(include_any=True)
+    if not options:
+        options = [
+            {
+                "doctor_id": ANY_DOCTOR_ID,
+                "doctor_label": ANY_DOCTOR_LABEL,
+                "color": DEFAULT_COLOR,
+            }
+        ]
+    return options
 
 
 @bp.route("/", methods=["GET"])
@@ -70,6 +89,7 @@ def _receipt_context(pid: str, pay_id: str):
         "number": (pay_id or "")[-8:].upper(),
         "date": payment.get("paid_at") or date.today().isoformat(),
         "method": payment.get("method") or "",
+        "doctor": payment.get("doctor_label") or ANY_DOCTOR_LABEL,
         "treatment": payment.get("treatment") or "",
         "notes": payment.get("note") or "",
         "total": fmt(total_cents),
@@ -116,12 +136,14 @@ def edit_payment_get(pid, pay_id):
     if not pay or not p or p["id"] != pid:
         conn.close()
         return "Payment not found", 404
+    pay_dict = dict(pay)
     base_total_cents = (pay["total_amount_cents"] or 0) - (100 * 100 if (pay["examination_flag"] or 0) == 1 else 0)
     vt = (
         "exam"
         if (pay["examination_flag"] or 0) == 1
         else ("followup" if (pay["followup_flag"] or 0) == 1 else "none")
     )
+    doctor_options = _doctor_options()
     form = {
         "visit_type": vt,
         "total_amount": money_input(max(base_total_cents, 0)),
@@ -134,12 +156,15 @@ def edit_payment_get(pid, pay_id):
         "notes": pay["note"] or "",
         "paid_at": pay["paid_at"],
         "method": pay["method"] or "cash",
+        "doctor_id": pay_dict.get("doctor_id") or "",
     }
     html = render_page(
         "payments/form.html",
         p=p,
         today=date.today().isoformat(),
         form=form,
+        doctor_options=doctor_options,
+        doctor_error=None,
         action=url_for("payments.edit_payment_post", pid=p["id"], pay_id=pay_id),
         submit_label=T("update"),
         show_back=True,
@@ -152,6 +177,37 @@ def edit_payment_get(pid, pay_id):
 @bp.route("/patients/<pid>/payments/<pay_id>/edit", methods=["POST"])
 @require_permission("payments:edit")
 def edit_payment_post(pid, pay_id):
+    doctor_options = _doctor_options()
+    doctor_lookup = {opt["doctor_id"]: opt for opt in doctor_options}
+    doctor_id_raw = (request.form.get("doctor_id") or "").strip()
+    doctor_error = None if doctor_id_raw and doctor_id_raw in doctor_lookup else T("doctor_required")
+
+    conn, cur, p, pay = get_payment_and_patient(pay_id)
+    if not pay or not p or p["id"] != pid:
+        conn.close()
+        return "Payment not found", 404
+
+    def _render_form(form_values):
+        return render_page(
+            "payments/form.html",
+            p=p,
+            today=date.today().isoformat(),
+            form=form_values,
+            action=url_for("payments.edit_payment_post", pid=pid, pay_id=pay_id),
+            submit_label=T("update"),
+            show_back=True,
+            show_id_header=True,
+            doctor_options=doctor_options,
+            doctor_error=doctor_error,
+        )
+
+    if doctor_error:
+        flash(T("doctor_required"), "err")
+        form = dict(request.form)
+        html = _render_form(form)
+        conn.close()
+        return html
+
     vt = (request.form.get("visit_type") or "none")
     exam = vt == "exam"
     follow = vt == "followup"
@@ -167,20 +223,10 @@ def edit_payment_post(pid, pay_id):
     ok, info = validate_payment_fields(total_cents_raw, discount_cents_raw, down_cents_raw, exam)
     if not ok:
         flash(T(info), "err")
-        conn = db()
-        p = conn.execute("SELECT * FROM patients WHERE id=?", (pid,)).fetchone()
-        conn.close()
         form = dict(request.form)
-        return render_page(
-            "payments/form.html",
-            p=p,
-            today=date.today().isoformat(),
-            form=form,
-            action=url_for("payments.edit_payment_post", pid=pid, pay_id=pay_id),
-            submit_label=T("update"),
-            show_back=True,
-            show_id_header=True,
-        )
+        html = _render_form(form)
+        conn.close()
+        return html
 
     due_cents = info
     rem_cents_raw = max(due_cents - down_cents_raw, 0)
@@ -192,34 +238,23 @@ def edit_payment_post(pid, pay_id):
         rem_cents = cents_guard(rem_cents_raw, "Remaining")
     except ValueError:
         flash(T("err_money_too_large"), "err")
-        conn = db()
-        p = conn.execute("SELECT * FROM patients WHERE id=?", (pid,)).fetchone()
-        conn.close()
         form = dict(request.form)
-        return render_page(
-            "payments/form.html",
-            p=p,
-            today=date.today().isoformat(),
-            form=form,
-            action=url_for("payments.edit_payment_post", pid=pid, pay_id=pay_id),
-            submit_label=T("update"),
-            show_back=True,
-            show_id_header=True,
-        )
+        html = _render_form(form)
+        conn.close()
+        return html
 
     treatment = (request.form.get("treatment_type") or "").strip()
     notes = (request.form.get("notes") or "").strip()
     paid_at = (request.form.get("paid_at") or date.today().isoformat())
     method = (request.form.get("method") or "cash").strip()
 
-    conn, cur, p, pay = get_payment_and_patient(pay_id)
-    if not pay or not p or p["id"] != pid:
-        conn.close()
-        return "Payment not found", 404
+    selected_doctor = doctor_lookup.get(doctor_id_raw, {"doctor_label": ANY_DOCTOR_LABEL})
+    doctor_label = selected_doctor.get("doctor_label") or ANY_DOCTOR_LABEL
     cur.execute(
         """
         UPDATE payments
         SET paid_at=?, amount_cents=?, method=?, note=?, treatment=?,
+            doctor_id=?, doctor_label=?,
             remaining_cents=?, total_amount_cents=?, examination_flag=?, followup_flag=?, discount_cents=?
         WHERE id=?
         """,
@@ -229,6 +264,8 @@ def edit_payment_post(pid, pay_id):
             method,
             notes,
             treatment,
+            doctor_id_raw,
+            doctor_label,
             rem_cents,
             total_cents,
             1 if exam else 0,
@@ -242,6 +279,49 @@ def edit_payment_post(pid, pay_id):
     conn.close()
     flash(T("updated_payment_ok"), "ok")
     return redirect(url_for("patients.patient_detail", pid=pid))
+
+
+@bp.route("/patients/<pid>/payments/<pay_id>/edit-modal", methods=["GET"])
+@require_permission("payments:edit")
+def edit_payment_modal(pid, pay_id):
+    conn, cur, p, pay = get_payment_and_patient(pay_id)
+    if not pay or not p or p["id"] != pid:
+        conn.close()
+        return "Payment not found", 404
+    pay_dict = dict(pay)
+    base_total_cents = (pay["total_amount_cents"] or 0) - (100 * 100 if (pay["examination_flag"] or 0) == 1 else 0)
+    vt = (
+        "exam"
+        if (pay["examination_flag"] or 0) == 1
+        else ("followup" if (pay["followup_flag"] or 0) == 1 else "none")
+    )
+    doctor_options = _doctor_options()
+    form = {
+        "visit_type": vt,
+        "total_amount": money_input(max(base_total_cents, 0)),
+        "discount": money_input(pay["discount_cents"] or 0),
+        "down_payment": money_input(pay["amount_cents"] or 0),
+        "remaining_amount": money_input(
+            max(((pay["total_amount_cents"] or 0) - (pay["discount_cents"] or 0) - (pay["amount_cents"] or 0)), 0)
+        ),
+        "treatment_type": pay["treatment"] or "",
+        "notes": pay["note"] or "",
+        "paid_at": pay["paid_at"],
+        "method": pay["method"] or "cash",
+        "doctor_id": pay_dict.get("doctor_id") or "",
+    }
+    html = render_template(
+        "payments/form_modal_fragment.html",
+        p=p,
+        today=date.today().isoformat(),
+        form=form,
+        doctor_options=doctor_options,
+        doctor_error=None,
+        action=url_for("payments.edit_payment_post", pid=p["id"], pay_id=pay_id),
+        submit_label=T("update"),
+    )
+    conn.close()
+    return html
 
 
 @bp.route("/patients/<pid>/payments/<pay_id>/delete", methods=["GET"])
@@ -297,6 +377,21 @@ def view_payment_receipt(pid, pay_id):
     )
 
 
+@bp.route("/patients/<pid>/payments/<pay_id>/view-modal", methods=["GET"])
+@require_permission("payments:view")
+def view_payment_receipt_modal(pid, pay_id):
+    ctx = _receipt_context(pid, pay_id)
+    if ctx is None:
+        return "Receipt not found", 404
+
+    return render_template(
+        "payments/view_receipt_modal_fragment.html",
+        receipt=ctx["receipt"],
+        patient=ctx["patient"],
+        raw_payment=ctx["raw_payment"],
+    )
+
+
 @bp.route("/patients/<pid>/payments/<pay_id>/print", methods=["GET"])
 @bp.route("/patients/<pid>/payments/<pay_id>/print/<format_type>", methods=["GET"])
 @require_permission("payments:view")
@@ -336,6 +431,8 @@ def print_payment_receipt(pid, pay_id, format_type="full"):
 
         payment_data = dict(pay_dict)
         payment_data["id"] = pay_id
+        if not payment_data.get("doctor_label"):
+            payment_data["doctor_label"] = ANY_DOCTOR_LABEL
 
         patient_data = {
             "full_name": patient_dict.get("full_name"),
@@ -404,6 +501,8 @@ def preview_payment_receipt(pid, pay_id, format_type="full"):
 
         payment_data = dict(ctx["raw_payment"])
         payment_data["id"] = pay_id
+        if not payment_data.get("doctor_label"):
+            payment_data["doctor_label"] = ANY_DOCTOR_LABEL
 
         patient_data = {
             "full_name": ctx["raw_patient"].get("full_name"),
@@ -456,7 +555,7 @@ def export_payments_csv():
         """
       SELECT pay.id, p.short_id, p.full_name, pay.paid_at, pay.amount_cents, pay.method, pay.note,
              pay.treatment, pay.remaining_cents, pay.total_amount_cents, pay.examination_flag, pay.followup_flag,
-             pay.discount_cents
+             pay.discount_cents, pay.doctor_id, pay.doctor_label
       FROM payments pay JOIN patients p ON p.id = pay.patient_id
       ORDER BY pay.paid_at DESC
     """,
@@ -469,6 +568,8 @@ def export_payments_csv():
             "payment_id",
             "patient_short_id",
             "patient_name",
+            "doctor_id",
+            "doctor_label",
             "paid_at",
             "paid_today",
             "method",
@@ -491,6 +592,8 @@ def export_payments_csv():
                 r["id"],
                 r["short_id"],
                 r["full_name"],
+                r["doctor_id"],
+                r["doctor_label"],
                 r["paid_at"],
                 money(r["amount_cents"] or 0),
                 r["method"],

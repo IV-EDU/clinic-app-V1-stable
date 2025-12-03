@@ -1,35 +1,53 @@
 {% extends '_base.html' %}
 {% block content %}
-<div class="card">
-  <div class="grid sheet">
-    <div class="h">{{ t('file_no') }}</div>
-    <div class="h">{{ t('name') }}</div>
-    <div class="h">{{ t('phone') }}</div>
-    <div class="h">{{ t('sheet_notes') }}</div>
-    <div class="h">{{ t('overall_balance') }}</div>
-    <div class="h">{{ t('actions') }}</div>
-    <div class="c">{{ p['short_id'] }}</div>
-    <div class="c">{{ p['full_name'] }}</div>
-    <div class="c">{{ p['phone'] or '—' }}</div>
-    <div class="c">{{ p['notes'] or '—' }}</div>
-    <div class="c"><div class="bal-box {{ overall_class }}">{{ overall_fmt }}</div></div>
-    <div class="c">
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <a class="btn" href="{{ url_for('palmer_plus.diag_page', pid=p['id']) }}">{{ t('diagnosis') }}</a>
-        <a class="btn allow-wrap secondary" href="{{ url_for('patients.edit_patient', pid=p['id']) }}">{{ t('edit_patient') }}</a>
+<div class="card patient-header-card">
+  <div class="patient-summary-grid">
+    <div class="summary-item">
+      <div class="summary-label">{{ t('file_no') }}</div>
+      <div class="summary-value">{{ p['short_id'] }}</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">{{ t('name') }}</div>
+      <div class="summary-value">{{ p['full_name'] }}</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">{{ t('phone') }}</div>
+      <div class="summary-value">{{ p['phone'] or '—' }}</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">{{ t('overall_balance') }}</div>
+      <div class="summary-value">
+        <div class="bal-box {{ overall_class }}">{{ overall_fmt }}</div>
       </div>
+    </div>
+  </div>
+  <div class="patient-notes">
+    <div class="summary-label">{{ t('sheet_notes') }}</div>
+    <div class="summary-value wrap-text">{{ p['notes'] or '—' }}</div>
+  </div>
+  <div class="patient-actions">
+    <div class="actions-group">
+      <a class="btn primary" href="{{ url_for('palmer_plus.diag_page', pid=p['id']) }}">{{ t('diagnosis') }}</a>
+      <a class="btn secondary" href="{{ url_for('patients.edit_patient', pid=p['id']) }}">{{ t('edit_patient') }}</a>
+      <a class="btn danger" href="{{ url_for('patients.delete_patient_confirm', pid=p['id']) }}">{{ t('delete_patient') }}</a>
     </div>
   </div>
 </div>
 {% include 'payments/_list.html' %}
-<div class="card" style="padding:8px">
-  <div style="display:flex;justify-content:flex-end">
-    <a class="btn danger" href="{{ url_for('patients.delete_patient_confirm', pid=p['id']) }}">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="vertical-align:middle;margin-right:6px">
-        <path d="M9 3h6l1 2h4v2H4V5h4l1-2Zm1 7h2v8h-2v-8Zm4 0h2v8h-2v-8ZM6 7h12l-1 14H7L6 7Z"/>
-      </svg>
-      {{ t('delete_patient') }}
-    </a>
+
+<div class="modal" id="viewReceiptModal" style="display:none;">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ t('receipt') }}</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="{{ t('cancel') }}">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body" style="padding:0;">
+        <div id="viewReceiptContent" class="view-receipt-content"></div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}

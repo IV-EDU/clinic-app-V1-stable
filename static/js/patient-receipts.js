@@ -3,6 +3,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     initializeReceiptPrint();
     initializePrintModal();
+    initializeViewReceiptModal();
 });
 
 function initializeReceiptPrint() {
@@ -96,6 +97,63 @@ function hidePrintModal() {
     // Clear stored data
 delete modal.dataset.paymentId;
 delete modal.dataset.patientId;
+}
+
+function initializeViewReceiptModal() {
+    document.addEventListener('click', function(e) {
+        const link = e.target.closest('.view-receipt-btn');
+        if (!link) return;
+
+        e.preventDefault();
+
+        const paymentId = link.dataset.paymentId;
+        const patientId = link.dataset.patientId;
+        if (!paymentId || !patientId) {
+            return;
+        }
+
+        showViewReceiptModal(paymentId, patientId);
+    });
+
+    const modal = document.getElementById('viewReceiptModal');
+    if (modal) {
+        const closeButtons = modal.querySelectorAll('.close, [data-dismiss="modal"]');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', hideViewReceiptModal);
+        });
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                hideViewReceiptModal();
+            }
+        });
+    }
+}
+
+function showViewReceiptModal(paymentId, patientId) {
+    const modal = document.getElementById('viewReceiptModal');
+    const frame = document.getElementById('viewReceiptFrame');
+    if (!modal || !frame) return;
+
+    const url = `/patients/${patientId}/payments/${paymentId}/receipt/view`;
+    frame.src = url;
+
+    modal.style.display = 'block';
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function hideViewReceiptModal() {
+    const modal = document.getElementById('viewReceiptModal');
+    const frame = document.getElementById('viewReceiptFrame');
+    if (!modal) return;
+
+    modal.style.display = 'none';
+    modal.classList.remove('show');
+    document.body.style.overflow = '';
+
+    if (frame) {
+        frame.src = 'about:blank';
+    }
 }
 
 function gatherPrintOptions() {

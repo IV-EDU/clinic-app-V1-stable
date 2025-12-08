@@ -67,6 +67,7 @@ def render_page(template_name: str, **ctx: Any):
         primary = theme_vars.get("primary_color")
         accent = theme_vars.get("accent_color")
         base_font = theme_vars.get("base_font_size")
+        text_color = theme_vars.get("text_color")
         if primary:
             overrides.append(f"--primary-color: {primary};")
         if accent:
@@ -78,9 +79,45 @@ def render_page(template_name: str, **ctx: Any):
                 overrides.append(f"font-size: clamp(14px, {clamped}px, 18px);")
             except Exception:
                 pass
+        if text_color:
+            overrides.append(f"--ink: {text_color};")
+            overrides.append(f"--text-primary: {text_color};")
         if overrides:
             theme_css_parts.append(":root { " + " ".join(overrides) + " }")
     theme_css = "\n".join(theme_css_parts) if theme_css_parts else None
+
+    theme_logo_url = None
+    logo_path = theme_vars.get("logo_path") if theme_vars else None
+    if logo_path:
+        try:
+            theme_logo_url = url_for("admin_settings.theme_logo", _ts=int(time.time()))
+        except Exception:
+            theme_logo_url = None
+
+    # Clinic brand settings (optional text next to logo)
+    clinic_brand_color = theme_vars.get("clinic_brand_color") if theme_vars else None
+    clinic_name = theme_vars.get("clinic_name") if theme_vars else ""
+    clinic_name_enabled = False
+    clinic_tagline = theme_vars.get("clinic_tagline") if theme_vars else ""
+    clinic_tagline_enabled = False
+    logo_scale = 100
+    pdf_logo_url = None
+    if theme_vars:
+        raw = theme_vars.get("clinic_name_enabled", "")
+        clinic_name_enabled = str(raw).lower() in {"1", "true", "yes", "on"}
+        tag_raw = theme_vars.get("clinic_tagline_enabled", "")
+        clinic_tagline_enabled = str(tag_raw).lower() in {"1", "true", "yes", "on"}
+        try:
+            logo_scale = int(float(theme_vars.get("logo_scale", 100)))
+        except Exception:
+            logo_scale = 100
+        logo_scale = max(60, min(logo_scale, 140))
+        pdf_logo_path = theme_vars.get("pdf_logo_path")
+        if pdf_logo_path:
+            try:
+                pdf_logo_url = url_for("admin_settings.theme_pdf_logo", _external=False)
+            except Exception:
+                pdf_logo_url = None
 
     return render_template(
         template_name,
@@ -91,6 +128,14 @@ def render_page(template_name: str, **ctx: Any):
         current_user=getattr(g, "current_user", None),
         user_has_permission=user_has_permission,
         theme_css=theme_css,
+        theme_logo_url=theme_logo_url,
+        clinic_name=clinic_name,
+        clinic_name_enabled=clinic_name_enabled,
+        clinic_brand_color=clinic_brand_color,
+        clinic_tagline=clinic_tagline,
+        clinic_tagline_enabled=clinic_tagline_enabled,
+        logo_scale=logo_scale,
+        pdf_logo_url=pdf_logo_url,
         **ctx,
     )
 

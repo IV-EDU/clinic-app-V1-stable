@@ -7,10 +7,38 @@ import os, sqlite3, uuid, json
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Tuple
 from flask import Blueprint, current_app, request, jsonify, render_template
+from clinic_app.services.theme_settings import get_theme_variables
 
 from clinic_app.services.security import require_permission
 from clinic_app.extensions import csrf
 from clinic_app.services.csrf import ensure_csrf_token
+
+def _theme_css() -> str:
+    vars = get_theme_variables()
+    parts = []
+    if vars:
+        overrides = []
+        primary = vars.get("primary_color")
+        accent = vars.get("accent_color")
+        base_font = vars.get("base_font_size")
+        text_color = vars.get("text_color")
+        if primary:
+            overrides.append(f"--primary-color: {primary};")
+        if accent:
+            overrides.append(f"--accent-color: {accent};")
+        if base_font:
+            try:
+                size_val = int(float(base_font))
+                clamped = max(14, min(size_val, 18))
+                overrides.append(f"font-size: clamp(14px, {clamped}px, 18px);")
+            except Exception:
+                pass
+        if text_color:
+            overrides.append(f"--ink: {text_color};")
+            overrides.append(f"--text-primary: {text_color};")
+        if overrides:
+            parts.append(":root { " + " ".join(overrides) + " }")
+    return "\n".join(parts)
 
 def _db_path():
     app = current_app
@@ -214,7 +242,8 @@ def diag_page(pid):
             "prosthetic_valve": flags["prosthetic_valve"],
             "pacemaker_icd": flags["pacemaker_icd"],
             "latex_allergy": flags["latex_allergy"],
-        }
+        },
+        theme_css=_theme_css(),
     )
 
 @bp.post("/diagnosis/api/set")
@@ -290,7 +319,7 @@ def med_page(pid):
     data = _fetch_medical(conn, pid)
     flags = _parse_flags(data.get("vitals","{}"))
     conn.close()
-    return render_template("diag_plus/medical.html", patient=_fetch_patient(pid), pid=pid, data=data, flags=flags)
+    return render_template("diag_plus/medical.html", patient=_fetch_patient(pid), pid=pid, data=data, flags=flags, theme_css=_theme_css())
 
 @bp.post("/medical/api/save")
 @csrf.exempt
@@ -326,9 +355,8 @@ def med_save(pid):
 
 # --- Patient images storage helpers & routes ---
 def _patient_images_dir(pid:int) -> Path:
-    # data root anchored to the application root, not this file location
-    base = Path(current_app.root_path)
-    root = (base / 'data' / 'patient_images' / str(pid))
+    data_root = Path(current_app.config.get("DATA_ROOT", Path(current_app.root_path) / "data"))
+    root = (data_root / 'patient_images' / str(pid))
     root.mkdir(parents=True, exist_ok=True)
     return root
 
@@ -341,7 +369,7 @@ def images_page(pid):
     for p in sorted(pdir.glob("*")):
         if p.is_file():
             images.append({"name": p.name, "size": p.stat().st_size})
-    return render_template("diag_plus/images.html", pid=pid, chart_type=chart_type, images=images)
+    return render_template("diag_plus/images.html", pid=pid, chart_type=chart_type, images=images, theme_css=_theme_css())
 
 @bp.route("/images/upload", methods=["POST"])
 @require_permission("patients:edit")

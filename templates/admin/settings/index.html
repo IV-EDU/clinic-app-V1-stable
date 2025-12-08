@@ -1,6 +1,16 @@
 {% extends '_base.html' %}
 {% block content %}
 <style>
+{# Override theme variables on this page using saved settings, since this view does not go through render_page() #}
+{% set _primary = theme_settings.get('primary_color') if theme_settings else None %}
+{% set _accent = theme_settings.get('accent_color') if theme_settings else None %}
+{% set _text = theme_settings.get('text_color') if theme_settings else None %}
+:root {
+  {% if _primary %}--primary-color: {{ _primary }};{% endif %}
+  {% if _accent %}--accent-color: {{ _accent }};{% endif %}
+  {% if _text %}--ink: {{ _text }}; --text-primary: {{ _text }};{% endif %}
+}
+
 /* Admin Settings Styles */
 .admin-settings-container {
   max-width: 1400px;
@@ -9,8 +19,12 @@
 }
 
 .admin-settings-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color, #3b82f6) 20%, #eff6ff),
+    color-mix(in srgb, var(--accent-color, #0ea5e9) 14%, #ffffff)
+  );
+  color: var(--text-primary, var(--ink, #1f2937));
   padding: 2rem;
   border-radius: 12px;
   margin-bottom: 2rem;
@@ -25,8 +39,9 @@
 
 .admin-settings-header p {
   margin: 0.5rem 0 0 0;
-  opacity: 0.9;
+  opacity: 0.85;
   font-size: 1.1rem;
+  color: var(--text-secondary, #475569);
 }
 
 /* Tab Navigation */
@@ -62,7 +77,7 @@
 .admin-tab.active {
   background: white;
   color: #1e293b;
-  border-bottom-color: #3b82f6;
+  border-bottom-color: var(--primary-color, #3b82f6);
 }
 
 /* Tab Content */
@@ -318,7 +333,7 @@
 .form-input:focus,
 .form-select:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--primary-color, #3b82f6);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -455,7 +470,7 @@
   width: 20px;
   height: 20px;
   margin: -10px 0 0 -10px;
-  border: 2px solid #3b82f6;
+  border: 2px solid var(--primary-color, #3b82f6);
   border-radius: 50%;
   border-top-color: transparent;
   animation: spin 1s linear infinite;
@@ -767,6 +782,35 @@
               <input type="number" id="theme-font" class="form-input" min="14" max="18" step="1" value="{{ theme_settings.get('base_font_size', '16') }}">
               <small class="text-muted">{{ tf('font_clamp_hint', 'Clamped to 14–18px to protect layout.') }}</small>
             </div>
+            <div class="form-group">
+              <label class="form-label" for="theme-text-color">{{ tf('theme_text_color', 'Text color') }}</label>
+              <div class="color-row">
+                <input type="color" id="theme-text-color" class="form-input color-input" value="{{ theme_settings.get('text_color', '#111827') }}">
+                <div id="theme-text-preview" class="color-preview chip" style="background: {{ theme_settings.get('text_color', '#111827') }}"></div>
+              </div>
+              <small class="text-muted">{{ tf('theme_text_color_hint', 'Used for main text and labels.') }}</small>
+            </div>
+            <div class="theme-preview" id="theme-preview">
+              <span class="status-badge" id="theme-chip">Aa</span>
+              <div class="theme-preview-body">
+                <div id="theme-preview-title" class="theme-preview-title">{{ tf('theme_preview_title', 'Theme Preview') }}</div>
+                <div id="theme-preview-text" class="u-text-secondary">{{ tf('theme_preview_hint', 'Primary and accent applied here.') }}</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">{{ tf('theme_presets', 'Theme presets') }}</label>
+              <div class="actions-row" style="gap:6px;flex-wrap:wrap;">
+                <button type="button" class="btn secondary" onclick="applyThemePreset('calm')">{{ tf('theme_preset_calm', 'Calm blue') }}</button>
+                <button type="button" class="btn secondary" onclick="applyThemePreset('warm')">{{ tf('theme_preset_warm', 'Warm gold') }}</button>
+                <button type="button" class="btn secondary" onclick="applyThemePreset('mint')">{{ tf('theme_preset_mint', 'Soft mint') }}</button>
+              </div>
+            </div>
+            <div id="theme-status-colors" class="alert" style="display:none;"></div>
+            <div class="actions-row" style="margin-top:12px;">
+              <button class="btn btn-secondary" type="button" onclick="resetThemeDefaults()">{{ tf('reset_theme_defaults', 'Reset to default') }}</button>
+              <button class="btn btn-secondary" type="button" onclick="pickColorsFromLogo()">{{ tf('theme_pick_from_logo', 'Use colors from logo') }}</button>
+              <button class="btn btn-primary" type="button" onclick="saveThemeColors()">{{ tf('save_theme', 'Save Theme') }}</button>
+            </div>
           </div>
         </div>
 
@@ -809,6 +853,11 @@
               <small class="text-muted">{{ tf('logo_size_hint', 'Adjust logo size; capped to fit the header.') }}</small>
               <div><strong id="logo-scale-display">{{ logo_scale or '100' }}%</strong></div>
             </div>
+            <div id="theme-status-branding" class="alert" style="display:none;"></div>
+            <div class="actions-row" style="margin-top:12px;">
+              <button class="btn btn-secondary" type="button" onclick="pickBrandingFromLogo()">{{ tf('theme_pick_from_logo', 'Use colors from logo') }}</button>
+              <button class="btn btn-primary" type="button" onclick="saveThemeBranding()">{{ tf('save_theme', 'Save Theme') }}</button>
+            </div>
           </div>
         </div>
 
@@ -842,25 +891,6 @@
               <div class="actions-row" style="margin-top:8px;">
                 <button type="button" class="btn btn-secondary" onclick="useSelectedLogo()">{{ tf('use_selected_logo', 'Use selected logo') }}</button>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card theme-card">
-          <div class="card-header">
-            <h2 class="card-title">{{ tf('preview', 'Preview') }}</h2>
-          </div>
-          <div class="admin-form">
-            <div id="theme-preview" class="theme-preview">
-              <span class="status-badge" id="theme-chip">Aa</span>
-              <div class="theme-preview-body">
-                <div id="theme-preview-title" class="theme-preview-title">{{ tf('theme_preview_title', 'Theme Preview') }}</div>
-                <div id="theme-preview-text" class="u-text-secondary">{{ tf('theme_preview_hint', 'Primary and accent applied here.') }}</div>
-              </div>
-            </div>
-            <div class="actions-row" style="margin-top:12px;">
-              <button class="btn btn-secondary" type="button" onclick="resetThemeDefaults()">{{ tf('reset_theme_defaults', 'Reset theme to defaults') }}</button>
-              <button class="btn btn-primary" type="button" onclick="saveTheme()">{{ tf('save_theme', 'Save Theme') }}</button>
             </div>
           </div>
         </div>
@@ -1113,19 +1143,13 @@ function switchTab(evt, tabName) {
   window.location.hash = tabName;
 }
 
-// Theme save
-function saveTheme() {
-  var statusEl = document.getElementById('theme-status');
+// Theme save (colors only)
+function saveThemeColors() {
+  var statusEl = document.getElementById('theme-status-colors');
   var primary = document.getElementById('theme-primary').value;
   var accent = document.getElementById('theme-accent').value;
   var fontSize = document.getElementById('theme-font').value;
-  var clinicNameEnabled = document.getElementById('clinic-name-enabled').checked;
-  var clinicName = document.getElementById('clinic-name').value || '';
-  var clinicBrandColor = document.getElementById('clinic-brand-color').value || '';
-  var clinicTaglineEnabled = document.getElementById('clinic-tagline-enabled').checked;
-  var clinicTagline = document.getElementById('clinic-tagline').value || '';
-  var logoScale = document.getElementById('logo-scale').value || '100';
-  var pdfLogoInput = document.getElementById('pdf-logo');
+  var textColor = document.getElementById('theme-text-color').value;
 
   statusEl.style.display = 'none';
   statusEl.textContent = '';
@@ -1139,9 +1163,92 @@ function saveTheme() {
       'X-CSRFToken': CSRF_TOKEN
     },
     body: JSON.stringify({
+      scope: 'colors',
       primary_color: primary,
       accent_color: accent,
+      text_color: textColor,
       base_font_size: fontSize,
+      csrf_token: CSRF_TOKEN
+    })
+  })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        return { res: res, data: data };
+      });
+    })
+    .then(function(result) {
+      var res = result.res;
+      var data = result.data;
+      if (!res.ok || !data.success) {
+        var errs = (data.errors || [L.themeSaveFailed]).join(', ');
+        statusEl.textContent = errs;
+        statusEl.className = 'alert alert-error';
+        statusEl.style.display = 'block';
+        return;
+      }
+      statusEl.textContent = L.themeSavedReload;
+      statusEl.className = 'alert alert-success';
+      statusEl.style.display = 'block';
+      window.location.reload();
+    })
+    .catch(function() {
+      statusEl.textContent = L.themeUnexpected;
+      statusEl.className = 'alert alert-error';
+      statusEl.style.display = 'block';
+    });
+}
+
+// Apply simple theme presets (colors only, no auto-save)
+function applyThemePreset(name) {
+  var presets = {
+    calm: { primary: '#3b82f6', accent: '#0ea5e9' },
+    warm: { primary: '#d97706', accent: '#f59e0b' },
+    mint: { primary: '#059669', accent: '#10b981' }
+  };
+  var preset = presets[name];
+  if (!preset) return;
+
+  var primaryInput = document.getElementById('theme-primary');
+  var primaryPreview = document.getElementById('theme-primary-preview');
+  var accentInput = document.getElementById('theme-accent');
+  var accentPreview = document.getElementById('theme-accent-preview');
+  var statusEl = document.getElementById('theme-status-colors');
+
+  if (primaryInput) primaryInput.value = preset.primary;
+  if (primaryPreview) primaryPreview.style.background = preset.primary;
+  if (accentInput) accentInput.value = preset.accent;
+  if (accentPreview) accentPreview.style.background = preset.accent;
+
+  if (statusEl) {
+    statusEl.textContent = L.themeSavedReload;
+    statusEl.className = 'alert alert-success';
+    statusEl.style.display = 'block';
+  }
+}
+
+// Theme save (branding only)
+function saveThemeBranding() {
+  var statusEl = document.getElementById('theme-status-branding');
+  var clinicNameEnabled = document.getElementById('clinic-name-enabled').checked;
+  var clinicName = document.getElementById('clinic-name').value || '';
+  var clinicBrandColor = document.getElementById('clinic-brand-color').value || '';
+  var clinicTaglineEnabled = document.getElementById('clinic-tagline-enabled').checked;
+  var clinicTagline = document.getElementById('clinic-tagline').value || '';
+  var logoScale = document.getElementById('logo-scale').value || '100';
+
+  statusEl.style.display = 'none';
+  statusEl.textContent = '';
+  statusEl.className = 'alert';
+
+  fetch('/admin/settings/theme/update', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({
+      scope: 'branding',
       clinic_name_enabled: clinicNameEnabled,
       clinic_name: clinicName,
       clinic_brand_color: clinicBrandColor,
@@ -1169,7 +1276,6 @@ function saveTheme() {
       statusEl.textContent = L.themeSavedReload;
       statusEl.className = 'alert alert-success';
       statusEl.style.display = 'block';
-      // Auto-refresh to apply changes immediately
       window.location.reload();
     })
     .catch(function() {
@@ -1177,6 +1283,107 @@ function saveTheme() {
       statusEl.className = 'alert alert-error';
       statusEl.style.display = 'block';
     });
+}
+
+// Internal helper: fetch suggested colors from current logo
+function _fetchLogoColorSuggestion(onSuccess, onError) {
+  var statusColors = document.getElementById('theme-status-colors');
+  var statusBranding = document.getElementById('theme-status-branding');
+  if (statusColors) {
+    statusColors.style.display = 'none';
+    statusColors.textContent = '';
+    statusColors.className = 'alert';
+  }
+  if (statusBranding) {
+    statusBranding.style.display = 'none';
+    statusBranding.textContent = '';
+    statusBranding.className = 'alert';
+  }
+
+  fetch("{{ url_for('admin_settings.theme_colors_from_logo') }}", {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN
+    },
+    body: JSON.stringify({ csrf_token: CSRF_TOKEN })
+  })
+    .then(function(res) {
+      return res.json().then(function(data) { return { res: res, data: data }; });
+    })
+    .then(function(result) {
+      var res = result.res;
+      var data = result.data || {};
+      if (!res.ok || !data.success) {
+        var message = (data.errors && data.errors.join(', ')) || L.themeUnexpected;
+        if (typeof onError === 'function') {
+          onError(message, statusColors);
+        }
+        return;
+      }
+      if (typeof onSuccess === 'function') {
+        onSuccess(data, statusColors, statusBranding);
+      }
+    })
+    .catch(function() {
+      if (typeof onError === 'function') {
+        onError(L.themeUnexpected, statusColors);
+      }
+    });
+}
+
+// Suggest theme colors from logo for Colors card (no auto-save)
+function pickColorsFromLogo() {
+  _fetchLogoColorSuggestion(function(data, statusColors) {
+    if (data.primary_color) {
+      var primaryInput = document.getElementById('theme-primary');
+      var primaryPreview = document.getElementById('theme-primary-preview');
+      if (primaryInput) primaryInput.value = data.primary_color;
+      if (primaryPreview) primaryPreview.style.background = data.primary_color;
+    }
+    if (data.accent_color) {
+      var accentInput = document.getElementById('theme-accent');
+      var accentPreview = document.getElementById('theme-accent-preview');
+      if (accentInput) accentInput.value = data.accent_color;
+      if (accentPreview) accentPreview.style.background = data.accent_color;
+    }
+    if (statusColors) {
+      statusColors.textContent = L.themeSavedReload;
+      statusColors.className = 'alert alert-success';
+      statusColors.style.display = 'block';
+    }
+  }, function(message, statusColors) {
+    if (statusColors) {
+      statusColors.textContent = message;
+      statusColors.className = 'alert alert-error';
+      statusColors.style.display = 'block';
+    }
+  });
+}
+
+// Suggest theme colors from logo for Branding card (no auto-save)
+function pickBrandingFromLogo() {
+  _fetchLogoColorSuggestion(function(data, _statusColors, statusBranding) {
+    if (data.clinic_brand_color) {
+      var brandInput = document.getElementById('clinic-brand-color');
+      var brandPreview = document.getElementById('clinic-brand-preview');
+      if (brandInput) brandInput.value = data.clinic_brand_color;
+      if (brandPreview) brandPreview.style.background = data.clinic_brand_color;
+    }
+    if (statusBranding) {
+      statusBranding.textContent = L.themeSavedReload;
+      statusBranding.className = 'alert alert-success';
+      statusBranding.style.display = 'block';
+    }
+  }, function(message, _statusColors) {
+    var statusBranding = document.getElementById('theme-status-branding');
+    if (statusBranding) {
+      statusBranding.textContent = message;
+      statusBranding.className = 'alert alert-error';
+      statusBranding.style.display = 'block';
+    }
+  });
 }
 
 // Logo upload
@@ -1424,7 +1631,7 @@ function resetLogo() {
 }
 
 function resetThemeDefaults() {
-  var statusEl = document.getElementById('theme-status');
+  var statusEl = document.getElementById('theme-status-colors');
   statusEl.style.display = 'none';
   statusEl.textContent = '';
   statusEl.className = 'alert';
@@ -1446,6 +1653,9 @@ function resetThemeDefaults() {
         statusEl.style.display = 'block';
         return;
       }
+      statusEl.textContent = L.themeSavedReload || 'Theme reset. Reloading...';
+      statusEl.className = 'alert alert-success';
+      statusEl.style.display = 'block';
       window.location.reload();
     })
     .catch(function() {
@@ -1538,14 +1748,20 @@ function attachThemePreview() {
   var text = document.getElementById('theme-preview-text');
   var primaryBox = document.getElementById('theme-primary-preview');
   var accentBox = document.getElementById('theme-accent-preview');
+  var textInput = document.getElementById('theme-text-color');
+  var textPreview = document.getElementById('theme-text-preview');
   var clinicBrandInput = document.getElementById('clinic-brand-color');
   var clinicBrandPreview = document.getElementById('clinic-brand-preview');
 
   function refresh() {
     var primary = primaryInput.value;
     var accent = accentInput.value;
+     var textColor = textInput ? textInput.value : null;
     if (primaryBox) primaryBox.style.background = primary;
     if (accentBox) accentBox.style.background = accent;
+    if (textPreview && textColor) {
+      textPreview.style.background = textColor;
+    }
     if (clinicBrandPreview && clinicBrandInput) {
       clinicBrandPreview.style.background = clinicBrandInput.value;
     }
@@ -1563,6 +1779,9 @@ function attachThemePreview() {
   }
   if (accentInput) {
     accentInput.addEventListener('input', refresh);
+  }
+  if (textInput) {
+    textInput.addEventListener('input', refresh);
   }
     if (clinicBrandInput) {
       clinicBrandInput.addEventListener('input', refresh);

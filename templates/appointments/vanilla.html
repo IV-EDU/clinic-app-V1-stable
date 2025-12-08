@@ -1,4 +1,8 @@
 {% extends '_base.html' %}
+{% macro tf(key, default_text) -%}
+  {%- set val = t(key) if t else default_text -%}
+  {{ default_text if val == key else val }}
+{%- endmacro %}
 {% block head %}
 {{ super() }}
 <style>
@@ -30,28 +34,14 @@
   font-weight: 600;
   color: #1f2937;
 }
-.btn {
-  display: inline-flex;
+.appt-title {
+  margin: 0;
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-decoration: none;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  gap: 12px;
+  font-weight: 800;
 }
-.btn-primary { background: #3b82f6; color: white; border-color: #3b82f6; }
-.btn-primary:hover { background: #2563eb; border-color: #2563eb; }
-.btn-secondary { background: white; color: #374151; border-color: #d1d5db; }
-.btn-secondary:hover { background: #f9fafb; border-color: #9ca3af; }
-.btn-success { background: #10b981; color: white; border-color: #10b981; }
-.btn-success:hover { background: #059669; border-color: #059669; }
-.btn-danger { background: #ef4444; color: white; border-color: #ef4444; }
-.btn-danger:hover { background: #dc2626; border-color: #dc2626; }
-.btn-sm { padding: 0.25rem 0.75rem; font-size: 0.75rem; }
+.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
 .btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Modal Styles */
@@ -89,13 +79,13 @@
   background: none;
   border: none;
   font-size: 1.5rem;
-  color: #6b7280;
+  color: var(--muted, #6b7280);
   cursor: pointer;
   padding: 0.25rem;
   border-radius: 4px;
   transition: all 0.2s ease;
 }
-.modal-close:hover { background: #f3f4f6; color: #374151; }
+.modal-close:hover { background: #f3f4f6; color: var(--ink, #374151); }
 .modal-body { padding: 1.5rem; }
 .modal-footer {
   padding: 1.5rem;
@@ -108,7 +98,7 @@
 /* Form Styles */
 .admin-form { display: grid; gap: 1rem; }
 .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
-.form-label { font-size: 0.875rem; font-weight: 600; color: #374151; }
+.form-label { font-size: 0.875rem; font-weight: 600; color: var(--ink, #374151); }
 .form-input, .form-select {
   padding: 0.5rem;
   border: 1px solid #d1d5db;
@@ -146,23 +136,25 @@
   margin: 0;
   font-size: 2.5rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--ink, #1f2937);
 }
 
 .filter-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 12px;
 }
 .filter-card-header h2 {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink, #1f2937);
 }
 
 /* Filter Styles */
+.appt-header-card{padding:20px;margin-bottom:16px}
+.appt-filter-card{padding:20px}
 .appt-filter-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -172,26 +164,34 @@
   border-bottom: 1px solid #e5e7eb;
 }
 .filter-btn {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  text-decoration: none;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   background: #f9fafb;
-  color: #374151;
-  cursor: pointer;
+  color: var(--ink);
   transition: all 0.2s ease;
 }
-.filter-btn:hover {
+.filter-btn:not(.active):hover {
   background: #f3f4f6;
-  border-color: #9ca3af;
+  border-color: var(--border);
 }
 .filter-btn.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+  border-color: var(--primary-color, #2563eb);
+}
+/* Ensure active filters stay solid on hover */
+.btn.filter-btn.active,
+.btn.filter-btn.active:hover {
+  background: var(--primary-color, #2563eb);
+  color: var(--btn-text-on-primary, #fff);
+  border-color: var(--primary-color, #2563eb);
+}
+.filter-btn:focus-visible,
+.status-button:focus-visible,
+.appt-group-header:focus-visible,
+.btn:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary-color, #2563eb);
+  outline-offset: 2px;
 }
 .appt-filter-form {
   display: grid;
@@ -243,7 +243,7 @@
 }
 #end-date-group.visible {
   opacity: 1;
-  max-height: 60px;
+  max-height: 120px;
 }
 .filter-controls-group {
   display: flex;
@@ -290,12 +290,16 @@
 .appt-group-header {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ink,#1f2937);
   padding: 1rem 1.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid color-mix(in srgb, var(--primary-color,#2563eb) 18%, var(--border,#d1d5db));
   border-radius: 8px;
   margin-bottom: 0;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color,#2563eb) 8%, #f9fafb),
+    color-mix(in srgb, var(--accent-color,#0ea5e9) 4%, #ffffff)
+  );
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -306,21 +310,30 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 .appt-group-header:hover {
-  background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color,#2563eb) 10%, #f3f4f6),
+    color-mix(in srgb, var(--accent-color,#0ea5e9) 6%, #f9fafb)
+  );
   transform: translateY(-1px);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 .appt-group-header.expanded {
-  background: linear-gradient(135deg, #dbeafe 0%, #93c5fd 100%);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color,#2563eb) 16%, #e5f0ff),
+    color-mix(in srgb, var(--accent-color,#0ea5e9) 10%, #ffffff)
+  );
   margin-bottom: 1rem;
+  border-color: var(--primary-color,#2563eb);
 }
 .appt-group-header .date-day {
-  color: #1d4ed8;
+  color: var(--metric-color, var(--primary-color,#2563eb));
   font-weight: 700;
 }
 .appt-group-header .date-count {
-  background: rgba(59, 130, 246, 0.1);
-  color: #1d4ed8;
+  background: color-mix(in srgb, var(--metric-color, var(--primary-color,#2563eb)) 20%, #e0f2ff);
+  color: var(--metric-color, var(--primary-color,#2563eb));
   padding: 0.25rem 0.5rem;
   border-radius: 12px;
   font-size: 0.875rem;
@@ -360,8 +373,8 @@
   text-align: center;
   padding: 3rem;
   background: #f9fafb;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  border: 1px solid var(--border, #e5e7eb);
 }
 .no-appointments-icon {
   font-size: 2.5rem;
@@ -369,7 +382,7 @@
 }
 .no-appointments-text {
   font-size: 1rem;
-  color: #6b7280;
+  color: var(--muted, #6b7280);
   margin-top: 0.5rem;
 }
 
@@ -381,23 +394,23 @@
 }
 
 .appt-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
   transition: box-shadow 0.2s ease;
   min-height: 330px; 
 }
 .appt-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 /* Patient Chip Header */
 .appt-card-patient-chip {
   display: block;
   padding: 1.25rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border, #e5e7eb);
   text-decoration: none;
   background: #f9fafb;
   border-radius: 12px 12px 0 0;
@@ -410,7 +423,7 @@
 .appt-card-patient-name {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--ink, #111827);
   margin-bottom: 0.5rem;
   text-align: center;
   white-space: nowrap;
@@ -422,7 +435,7 @@
   justify-content: center; /* Centered details */
   gap: 1rem; /* Added more gap */
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--muted, #6b7280);
   white-space: nowrap; /* Prevent wrapping */
   overflow: hidden;
 }
@@ -445,7 +458,7 @@
   align-items: center;
   gap: 0.75rem;
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--ink, #374151);
   overflow: hidden;
 }
 .appt-card-row span,
@@ -470,23 +483,24 @@
   font-size: 0.75rem;
   font-weight: 600;
   line-height: 1.2;
-  background: #e0f2fe;
-  color: #0369a1;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  background: var(--chip-color, rgba(59, 130, 246, 0.08));
+  color: var(--ink, #111827);
+  border: 1px solid var(--chip-color, rgba(148, 163, 184, 0.7));
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
 }
 .appt-card-icon {
   width: 20px;
   height: 20px;
-  color: #6b7280;
+  color: var(--muted, #6b7280);
   flex-shrink: 0; /* Prevent icon from shrinking */
 }
 .appt-card-reason {
   font-style: italic;
-  color: #6b7280;
+  color: var(--muted, #6b7280);
 }
 .appt-card-footer {
   padding: 1rem 1.25rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border, #e5e7eb);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -508,7 +522,7 @@
   border-radius: 6px;
   font-size: 0.875rem;
   font-weight: 500;
-  border: 1px solid transparent;
+  border: 1px solid var(--border, #e5e7eb);
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0; /* Prevent button from shrinking/wrapping */
@@ -523,9 +537,9 @@
 }
 .status-pending:hover,
 .status-checked_in:hover { background: #ffedd5; }
-.status-done { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+.status-done { background: var(--green-bg, #d1fae5); color: var(--green, #065f46); border-color: #a7f3d0; }
 .status-done:hover { background: #bbf7d0; }
-.status-cancelled { background: #e5e7eb; color: #374151; border-color: #d1d5db; }
+.status-cancelled { background: #e5e7eb; color: var(--ink, #374151); border-color: #d1d5db; }
 .status-cancelled:hover { background: #e0e7ff; }
 
 /* Status Modal */
@@ -832,16 +846,16 @@
   {% set default_doctor_color = default_doctor_color or '#2563EB' %}
   
   <!-- Header -->
-  <div class="appt-header">
-    <h1>Appointments</h1>
+  <div class="appt-header u-card appt-header-card">
+    <h1 class="appt-title">{{ t('appointments') }}</h1>
   </div>
 
   <!-- Filter Bar -->
-  <div class="card">
+  <div class="u-card appt-filter-card">
     <div class="filter-card-header">
-      <h2>Filters</h2>
+      <h2 class="section-title">{{ t('appointments_filters') }}</h2>
       <button class="btn btn-primary" type="button" onclick="openApptModal()">
-        + New Appointment
+        + {{ t('appointments_new') }}
       </button>
     </div>
 
@@ -854,17 +868,17 @@
       
       <!-- Quick Filter Buttons -->
       <div class="appt-filter-buttons">
-        <button type="button" class="filter-btn {% if start_arg == today_str and single_day_filter %}active{% endif %}" onclick="setQuickFilter('today')" data-filter="today">
-          Today
+        <button type="button" class="btn secondary filter-btn {% if start_arg == today_str and single_day_filter %}active{% endif %}" onclick="setQuickFilter('today')" data-filter="today">
+          {{ t('today') }}
         </button>
-        <button type="button" class="filter-btn {% if start_arg == yesterday_str and single_day_filter %}active{% endif %}" onclick="setQuickFilter('yesterday')" data-filter="yesterday">
-          Yesterday
+        <button type="button" class="btn secondary filter-btn {% if start_arg == yesterday_str and single_day_filter %}active{% endif %}" onclick="setQuickFilter('yesterday')" data-filter="yesterday">
+          {{ t('yesterday') }}
         </button>
-        <button type="button" class="filter-btn {% if start_arg == tomorrow_str and single_day_filter %}active{% endif %}" onclick="setQuickFilter('tomorrow')" data-filter="tomorrow">
-          Tomorrow
+        <button type="button" class="btn secondary filter-btn {% if start_arg == tomorrow_str and single_day_filter %}active{% endif %}" onclick="setQuickFilter('tomorrow')" data-filter="tomorrow">
+          {{ t('tomorrow') }}
         </button>
-        <button type="button" class="filter-btn {% if not start_arg %}active{% endif %}" onclick="setQuickFilter('all')" data-filter="all">
-          All Days
+        <button type="button" class="btn secondary filter-btn {% if not start_arg %}active{% endif %}" onclick="setQuickFilter('all')" data-filter="all">
+          {{ t('all') }}
         </button>
       </div>
 
@@ -872,14 +886,14 @@
       <div class="appt-filter-form">
         <!-- Search Row -->
         <div class="form-group">
-          <label class="form-label" for="search_term">Search Patient</label>
-          <input type="text" id="search_term" name="search_term" class="form-input" value="{{ request.args.get('search_term', '') }}" placeholder="Name, phone, or file...">
+          <label class="form-label" for="search_term">{{ t('appointments_search_label') }}</label>
+          <input type="text" id="search_term" name="search_term" class="form-input" value="{{ request.args.get('search_term', '') }}" placeholder="{{ t('appointments_search_placeholder') }}">
         </div>
         <!-- Doctor Row -->
         <div class="form-group">
           <label class="form-label" for="doctor_id">Doctor</label>
           <select id="doctor_id" name="doctor_id" class="form-select">
-            <option value="all" {% if selected_doctor == 'all' %}selected{% endif %}>All Doctors</option>
+            <option value="all" {% if selected_doctor == 'all' %}selected{% endif %}>All doctors</option>
             {% for doctor in doctors %}
               <option value="{{ doctor.doctor_id }}" {% if selected_doctor|string == doctor.doctor_id|string %}selected{% endif %}>{{ doctor.doctor_label }}</option>
             {% endfor %}
@@ -891,24 +905,24 @@
           <div class="appt-date-range-group">
             <div class="appt-date-row">
               <div class="form-group date-input-group">
-                <label class="form-label" for="start_date">Date <span class="use-range-inline">
-                  <label class="form-checkbox-group">
-                    <input type="checkbox" id="use_range_check" name="use_range" value="on" {% if use_range %}checked{% endif %}>
-                    <span>Use Range</span>
-                  </label>
-                </span></label>
+            <label class="form-label" for="start_date">{{ t('date') }} <span class="use-range-inline">
+              <label class="form-checkbox-group">
+                <input type="checkbox" id="use_range_check" name="use_range" value="on" {% if use_range %}checked{% endif %}>
+                <span>{{ t('appointments_range_label') }}</span>
+              </label>
+            </span></label>
                 <input type="date" id="start_date" name="start_date" class="form-input" value="{{ start_date_value }}">
               </div>
               
               <div class="form-group end-date-inline" id="end-date-group" {% if not use_range %}style="display: none;"{% endif %}>
-                <label class="form-label" for="end_date">End Date</label>
+                <label class="form-label" for="end_date">{{ tf('appointments_end_date', 'End date') }}</label>
                 <input type="date" id="end_date" name="end_date" class="form-input" value="{{ end_date_value }}">
               </div>
             </div>
           </div>
 
           <div class="filter-controls-group">
-            <button type="button" id="clear-filters" class="btn btn-secondary">Clear</button>
+            <button type="button" id="clear-filters" class="btn btn-secondary">{{ t('clear') }}</button>
           </div>
         </div>
       </div>
@@ -919,25 +933,26 @@
   <!-- Appointment List with Tab-style Headers -->
   {% if grouped_appointments %}
     {% set status_labels = {
-      'scheduled': 'Scheduled',
-      'pending': 'Pending',
-      'checked_in': 'Pending',
-      'done': 'Done',
-      'cancelled': 'Cancelled',
-      'in_progress': 'In Progress',
-      'no_show': 'No Show'
+      'scheduled': t('appointment_status_scheduled'),
+      'pending': t('appointment_status_checked_in'),
+      'checked_in': t('appointment_status_checked_in'),
+      'done': t('appointment_status_done'),
+      'cancelled': t('appointment_status_cancelled'),
+      'in_progress': t('appointment_status_in_progress'),
+      'no_show': t('appointment_status_no_show')
     } %}
     {% for date_iso, appts in grouped_appointments.items() %}
     <div class="appt-group" data-date="{{ date_iso }}">
       <button class="appt-group-header" onclick="toggleDateGroup(this, '{{ date_iso }}')" data-expanded="false" data-date="{{ date_iso }}">
+        {% set date_label = appts[0].start_time.strftime('%Y-%m-%d') %}
         {% if date_iso == today_str %}
-          <span class="date-day">Today</span> - {{ appts[0].start_time.strftime('%A, %B %d, %Y') }}
+          <span class="date-day">{{ t('today') }}</span> - {{ date_label }}
         {% elif date_iso == yesterday_str %}
-          <span class="date-day">Yesterday</span> - {{ appts[0].start_time.strftime('%A, %B %d, %Y') }}
+          <span class="date-day">{{ t('yesterday') }}</span> - {{ date_label }}
         {% elif date_iso == tomorrow_str %}
-          <span class="date-day">Tomorrow</span> - {{ appts[0].start_time.strftime('%A, %B %d, %Y') }}
+          <span class="date-day">{{ t('tomorrow') }}</span> - {{ date_label }}
         {% else %}
-          {{ appts[0].start_time.strftime('%A, %B %d, %Y') }}
+          {{ date_label }}
         {% endif %}
         <span class="date-count">({{ appts|length }})</span>
         <span class="date-toggle">▼</span>
@@ -950,7 +965,7 @@
             <!-- Patient Chip Header -->
             {% set patient = appt.patient %}
             <a href="{% if patient %}{{ url_for('patients.patient_detail', pid=patient.id) }}{% else %}#{% endif %}" target="_blank" class="appt-card-patient-chip">
-              <div class="appt-card-patient-name">{{ patient.full_name if patient else (appt.patient_name or 'Unknown Patient') }}</div>
+              <div class="appt-card-patient-name">{{ patient.full_name if patient else (appt.patient_name or t('unknown_patient', 'Unknown Patient')) }}</div>
               <div class="appt-card-patient-details">
                 <span>📁 {{ (patient.short_id if patient else '—') or '—' }}</span>
                 <span>📞 {{ (patient.phone if patient else appt.patient_phone) or '—' }}</span>
@@ -959,28 +974,23 @@
             
             <!-- Card Body -->
             <div class="appt-card-body">
-              <div class="appt-card-row">
-                <span class="appt-card-icon">🕒</span>
-                <strong>{{ appt.start_time.strftime('%I:%M %p') }}</strong>
-              </div>
-              <div class="appt-card-row">
-                <span class="appt-card-icon">👨‍⚕️</span>
-                {% set raw_doc_label = appt.doctor_label or 'Doctor' %}
-                {% set doc_has_prefix = raw_doc_label.lower().startswith('dr') %}
-                {% if doc_has_prefix %}
-                  {% set doc_display = raw_doc_label %}
-                {% else %}
-                  {% set doc_display = 'Dr. ' ~ raw_doc_label %}
-                {% endif %}
+            <div class="appt-card-row">
+              <span class="appt-card-icon">🕒</span>
+              <strong>{{ appt.start_time.strftime('%H:%M') }}</strong>
+            </div>
+            <div class="appt-card-row">
+              <span class="appt-card-icon">👨‍⚕️</span>
+                {% set raw_doc_label = appt.doctor_label or t('doctor') %}
+            {% set doc_display = raw_doc_label %}
                 {% set doc_key = appt.doctor_id if appt.doctor_id is not none else '' %}
                 {% set doc_color = doctor_color_map.get(doc_key, default_doctor_color) or default_doctor_color %}
-                <span class="doctor-chip" style="background-color: {{ doc_color }}1f; color: {{ doc_color }};">
+                <span class="doctor-chip" style="--chip-color: {{ doc_color }};">
                   {{ doc_display }}
                 </span>
               </div>
               <div class="appt-card-row appt-card-reason">
                 <span class="appt-card-icon">📝</span>
-                <span>{{ appt.title or 'No reason provided' }}</span>
+                <span>{{ appt.title or t('no_reason_provided', 'No reason provided') }}</span>
               </div>
             </div>
 
@@ -995,9 +1005,9 @@
               </button>
               <!-- Enhanced buttons with proper spacing -->
               <div class="appt-card-footer-buttons">
-                <button class="btn btn-secondary btn-sm" onclick="openViewModal('{{ appt.id }}')">View</button>
-                <button class="btn btn-secondary btn-sm" onclick="openApptModal('{{ appt.id }}')">Edit</button>
-                <button class="btn btn-danger btn-sm" onclick="openDeleteModal('{{ appt.id }}', 'Unknown Patient')">Delete</button>
+                <button class="btn btn-secondary btn-sm" onclick="openViewModal('{{ appt.id }}')">{{ t('view') }}</button>
+                <button class="btn btn-secondary btn-sm" onclick="openApptModal('{{ appt.id }}')">{{ t('edit') }}</button>
+                <button class="btn btn-danger btn-sm" onclick="openDeleteModal('{{ appt.id }}', '{{ tf('patient_fallback_name', 'Patient') }}')">{{ t('delete') }}</button>
               </div>
             </div>
           </div>
@@ -1009,8 +1019,8 @@
   {% else %}
     <div class="card no-appointments-card">
       <div class="no-appointments-icon">🤷‍♂️</div>
-      <h2 class="card-title">No Appointments Found</h2>
-      <p class="no-appointments-text">Try adjusting your filters or selecting a different date.</p>
+      <h2 class="section-title">{{ t('no_rows') }}</h2>
+      <p class="no-appointments-text">{{ t('search_placeholder') }}</p>
     </div>
   {% endif %}
   </div>
@@ -1022,7 +1032,7 @@
 <div id="appt-modal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
-      <h3 id="appt-modal-title" class="modal-title">New Appointment</h3>
+      <h3 id="appt-modal-title" class="modal-title">{{ t('appointments_new') }}</h3>
       <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body">
@@ -1034,9 +1044,9 @@
 
         <!-- Patient Section with Enhanced Layout -->
         <div class="form-group" id="patient-form-group">
-          <label class="form-label">Patient *</label>
+          <label class="form-label">{{ tf('appointment_patient_label', 'Patient') }} *</label>
           <div class="patient-search-wrapper">
-            <input type="text" id="appt-patient-search" class="form-input" placeholder="Type patient name, file number, or phone..." required autocomplete="off">
+            <input type="text" id="appt-patient-search" class="form-input" placeholder="{{ tf('appointment_patient_placeholder', 'Type patient name, file number, or phone...') }}" required autocomplete="off">
             <input type="hidden" id="appt-patient" name="patient_id">
             <div id="patient-suggestions" class="patient-suggestions" style="display: none;"></div>
           </div>
@@ -1059,9 +1069,9 @@
         <!-- Doctor and Status Row -->
         <div class="appt-form-row">
           <div class="form-group">
-            <label class="form-label">Doctor *</label>
+            <label class="form-label">{{ tf('appointment_doctor_label', 'Doctor') }} *</label>
             <select id="appt-doctor" class="form-select" required>
-              <option value="" disabled selected hidden>Choose a doctor</option>
+              <option value="" disabled selected hidden>{{ tf('appointment_choose_doctor', 'Choose a doctor') }}</option>
               {% for d in doctors %}
               <option value="{{ d.doctor_id }}">{{ d.doctor_label }}</option>
               {% endfor %}
@@ -1069,12 +1079,12 @@
           </div>
           
           <div class="form-group">
-            <label class="form-label">Status *</label>
+            <label class="form-label">{{ tf('appointment_status_label', 'Status') }} *</label>
             <select id="appt-status" class="form-select" required>
-              <option value="scheduled">Scheduled</option>
-              <option value="checked_in">Pending</option>
-              <option value="done">Done</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="scheduled">{{ t('appointment_status_scheduled') }}</option>
+              <option value="checked_in">{{ t('appointment_status_checked_in') }}</option>
+              <option value="done">{{ t('appointment_status_done') }}</option>
+              <option value="cancelled">{{ t('appointment_status_cancelled') }}</option>
             </select>
           </div>
         </div>
@@ -1082,30 +1092,30 @@
         <!-- Date and Time Row -->
         <div class="appt-form-row">
           <div class="form-group">
-            <label class="form-label">Date *</label>
+            <label class="form-label">{{ tf('appointment_date_label', 'Date') }} *</label>
             <input type="date" id="appt-date" class="form-input" required value="{{ today_str }}">
           </div>
           <div class="form-group">
-            <label class="form-label">Start Time *</label>
-            <input type="time" id="appt-start-time" class="form-input" required step="60" min="08:00" max="20:00" placeholder="Select time">
+            <label class="form-label">{{ tf('appointment_start_time_label', 'Start Time') }} *</label>
+            <input type="time" id="appt-start-time" class="form-input" required step="60" min="08:00" max="20:00" placeholder="{{ tf('appointment_start_time_placeholder', 'Select time') }}">
           </div>
         </div>
         
         <!-- Title and Notes Fields -->
         <div class="form-group">
-          <label class="form-label">Search Title</label>
-          <input type="text" id="appt-title" class="form-input" placeholder="e.g., Checkup, Filling...">
+          <label class="form-label">{{ tf('appointment_title_label', 'Search Title') }}</label>
+          <input type="text" id="appt-title" class="form-input" placeholder="{{ tf('appointment_title_placeholder', 'e.g., Checkup, Filling...') }}">
         </div>
 
         <div class="form-group">
-          <label class="form-label">Notes</label>
-          <textarea id="appt-notes" class="form-input auto-resize-textarea" rows="3" placeholder="Additional notes..."></textarea>
+          <label class="form-label">{{ tf('notes', 'Notes') }}</label>
+          <textarea id="appt-notes" class="form-input auto-resize-textarea" rows="3" placeholder="{{ tf('notes_optional', 'Additional notes...') }}"></textarea>
         </div>
       </form>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-      <button id="appt-submit-btn" class="btn btn-primary" onclick="saveAppt()">Create Appointment</button>
+      <button class="btn btn-secondary" onclick="closeModal()">{{ t('cancel') }}</button>
+      <button id="appt-submit-btn" class="btn btn-primary" onclick="saveAppt()">{{ t('appointments_submit') }}</button>
     </div>
   </div>
 </div>
@@ -1114,7 +1124,7 @@
 <div id="view-modal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
-      <h3 class="modal-title">View Appointment</h3>
+      <h3 class="modal-title">{{ tf('appointment_view_title', 'View Appointment') }}</h3>
       <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body">
@@ -1124,7 +1134,7 @@
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+      <button class="btn btn-secondary" onclick="closeModal()">{{ t('close') }}</button>
     </div>
   </div>
 </div>
@@ -1133,17 +1143,17 @@
 <div id="status-modal" class="modal">
   <div class="modal-content" style="max-width: 500px;">
     <div class="modal-header">
-      <h3 class="modal-title">Change Status</h3>
+      <h3 class="modal-title">{{ tf('change_status', 'Change Status') }}</h3>
       <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="status-appt-id">
       <div id="status-alert" class="alert alert-error" style="display: none;"></div>
       <div class="status-modal-grid">
-        <button class="btn status-modal-btn status-scheduled" data-status="scheduled" onclick="updateStatus('scheduled')">Scheduled</button>
-        <button class="btn status-modal-btn status-pending" data-status="pending" onclick="updateStatus('checked_in')">Pending</button>
-        <button class="btn status-modal-btn status-done" data-status="done" onclick="updateStatus('done')">Done</button>
-        <button class="btn status-modal-btn status-cancelled" data-status="cancelled" onclick="updateStatus('cancelled')">Cancelled</button>
+        <button class="btn status-modal-btn status-scheduled" data-status="scheduled" onclick="updateStatus('scheduled')">{{ t('appointment_status_scheduled') }}</button>
+        <button class="btn status-modal-btn status-pending" data-status="pending" onclick="updateStatus('checked_in')">{{ t('appointment_status_checked_in') }}</button>
+        <button class="btn status-modal-btn status-done" data-status="done" onclick="updateStatus('done')">{{ t('appointment_status_done') }}</button>
+        <button class="btn status-modal-btn status-cancelled" data-status="cancelled" onclick="updateStatus('cancelled')">{{ t('appointment_status_cancelled') }}</button>
       </div>
     </div>
   </div>
@@ -1153,16 +1163,16 @@
 <div id="delete-modal" class="modal">
   <div class="modal-content" style="max-width: 450px;">
     <div class="modal-header">
-      <h3 class="modal-title">Delete Appointment</h3>
+      <h3 class="modal-title">{{ tf('appointment_delete_title', 'Delete Appointment') }}</h3>
       <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body">
       <input type="hidden" id="delete-id">
-      <p>Are you sure you want to delete the appointment for <strong id="delete-name"></strong>? This action cannot be undone.</p>
+      <p>{{ tf('appointment_delete_confirm', 'Are you sure you want to delete the appointment for') }} <strong id="delete-name"></strong>? {{ tf('appointment_delete_warning', 'This action cannot be undone.') }}</p>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-      <button id="delete-submit-btn" class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+      <button class="btn btn-secondary" onclick="closeModal()">{{ t('cancel') }}</button>
+      <button id="delete-submit-btn" class="btn btn-danger" onclick="confirmDelete()">{{ t('delete') }}</button>
     </div>
   </div>
 </div>
@@ -1176,6 +1186,39 @@
 // Get CSRF token from meta tag
 const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
 const CSRF_TOKEN = csrfMetaTag ? (csrfMetaTag.getAttribute('content') || '') : '';
+const APPT_I18N = {
+  status: {
+    scheduled: "{{ t('appointment_status_scheduled') }}",
+    pending: "{{ t('appointment_status_checked_in') }}",
+    checked_in: "{{ t('appointment_status_checked_in') }}",
+    done: "{{ t('appointment_status_done') }}",
+    cancelled: "{{ t('appointment_status_cancelled') }}",
+    in_progress: "{{ t('appointment_status_in_progress') }}",
+    no_show: "{{ t('appointment_status_no_show') }}"
+  },
+  newTitle: "{{ t('appointments_new') }}",
+  editTitle: "{{ tf('appointment_edit_title', 'Edit Appointment') }}",
+  createBtn: "{{ t('appointments_submit') }}",
+  updateBtn: "{{ tf('appointment_update_btn', 'Update Appointment') }}",
+  deleteBtn: "{{ t('delete') }}",
+  deleteWorking: "{{ tf('appointment_delete_working', 'Deleting...') }}",
+  deleteSuccess: "{{ tf('appointment_deleted', 'Appointment deleted') }}",
+  deleteFailed: "{{ tf('appointment_delete_failed', 'Failed to delete appointment.') }}",
+  foundCount: "{{ tf('appointments_found_count', 'Found {count} appointments') }}",
+  showAll: "{{ tf('appointments_show_all_count', 'Showing all {count} appointments') }}",
+  genericError: "{{ tf('appointments_generic_error', 'An error occurred') }}",
+  searchError: "{{ tf('appointments_search_error', 'Error searching patients') }}",
+  loading: "{{ tf('appointment_loading', 'Loading...') }}",
+  viewPatient: "{{ tf('appointment_patient_label','Patient') }}",
+  viewTime: "{{ tf('appointment_time_label','Time') }}",
+  viewDoctor: "{{ tf('appointment_doctor_label','Doctor') }}",
+  viewStatus: "{{ tf('appointment_status_label','Status') }}",
+  viewTitle: "{{ tf('appointment_title_label','Title') }}",
+  viewNotes: "{{ tf('notes','Notes') }}",
+  saveFailed: "{{ tf('appointment_save_failed','Failed to save appointment.') }}",
+  updated: "{{ tf('appointment_updated','Appointment updated') }}",
+  added: "{{ tf('appointment_added','Appointment added') }}"
+};
 
 // Global variables for enhanced functionality
 let notesExpanded = false;
@@ -1202,14 +1245,14 @@ function openApptModal(apptId = null) {
 
   if (apptId) {
     // This is an EDIT - disable patient fields for editing existing appointment
-    title.textContent = 'Edit Appointment';
-    submitBtn.textContent = 'Update Appointment';
+    title.textContent = APPT_I18N.editTitle;
+    submitBtn.textContent = APPT_I18N.updateBtn;
     disablePatientFields(true); // Disable patient fields in edit mode
     loadApptData(apptId, 'edit');
   } else {
     // This is a NEW appointment
-    title.textContent = 'New Appointment';
-    submitBtn.textContent = 'Create Appointment';
+    title.textContent = APPT_I18N.newTitle;
+    submitBtn.textContent = APPT_I18N.createBtn;
     disablePatientFields(false); // Enable patient fields for new appointment
     modal.classList.add('active');
   }
@@ -1219,7 +1262,7 @@ function openViewModal(apptId) {
   const modal = document.getElementById('view-modal');
   const content = document.getElementById('view-content');
   const alert = document.getElementById('view-alert');
-  content.innerHTML = '<p>Loading...</p>';
+  content.innerHTML = '<p>' + (APPT_I18N.loading || 'Loading...') + '</p>';
   alert.style.display = 'none';
   modal.classList.add('active');
   loadApptData(apptId, 'view');
@@ -1387,35 +1430,35 @@ async function loadApptData(apptId, mode = 'edit') {
       const contentEl = document.getElementById('view-content');
       contentEl.innerHTML = `
         <div class="form-group">
-          <label class="form-label">Patient</label>
+          <label class="form-label">${APPT_I18N.viewPatient || "{{ tf('appointment_patient_label','Patient') }}"}</label>
           <div class="form-input" style="background:#f9fafb;">
             <div style="font-weight:600;">${appt.patient_name || '—'}</div>
-            <div style="font-size:0.875rem; color:#6b7280; margin-top:0.25rem;">
+            <div style="font-size:0.875rem; color:var(--muted,#6b7280); margin-top:0.25rem;">
               📁 ${appt.patient_short_id || '—'} | 📞 ${appt.patient_phone || '—'}
             </div>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Time</label>
+          <label class="form-label">${APPT_I18N.viewTime || "{{ tf('appointment_time_label','Time') }}"}</label>
           <div class="form-input" style="background:#f9fafb;">${start.toLocaleString('en-US', {dateStyle: 'long', timeStyle: 'short'})}</div>
         </div>
         <div class="appt-form-row">
           <div class="form-group">
-            <label class="form-label">Doctor</label>
+            <label class="form-label">${APPT_I18N.viewDoctor || "{{ tf('appointment_doctor_label','Doctor') }}"}</label>
             <div class="form-input" style="background:#f9fafb;">${appt.doctor_label || appt.doctor_name || '—'}</div>
           </div>
         <div class="form-group">
-          <label class="form-label">Status</label>
+          <label class="form-label">${APPT_I18N.viewStatus || "{{ tf('appointment_status_label','Status') }}"}</label>
           <div class="form-input" style="background:#f9fafb;">${formatStatusLabel(appt.status)}</div>
         </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Title</label>
+          <label class="form-label">${APPT_I18N.viewTitle || "{{ tf('appointment_title_label','Title') }}"}</label>
           <div class="form-input" style="background:#f9fafb;">${appt.title || '—'}</div>
         </div>
         ${appt.notes ? `
         <div class="form-group">
-          <label class="form-label">Notes</label>
+          <label class="form-label">${APPT_I18N.viewNotes || "{{ tf('notes','Notes') }}"}</label>
           <div class="form-input" style="background:#f9fafb; min-height: 60px; white-space: pre-wrap;">${appt.notes}</div>
         </div>
         ` : ''}
@@ -1451,7 +1494,7 @@ async function saveAppt() {
   if (!apptData.patient_id) validationErrors.push('Patient is required');
   if (!apptData.doctor_id) validationErrors.push('Doctor is required');
   if (!apptData.date) validationErrors.push('Date is required');
-  if (!apptData.start_time) validationErrors.push('Time is required');
+  if (!apptData.start_time) validationErrors.push(APPT_I18N.startTimeRequired || "{{ tf('appointment_start_time_required','Time is required') }}");
   
   if (validationErrors.length > 0) {
     alert.textContent = 'Please correct the following: ' + validationErrors.join(', ');
@@ -1473,20 +1516,20 @@ async function saveAppt() {
     const result = await parseJsonResponse(response);
 
     if (!response.ok || !result.success) {
-      throw new Error(result.error || 'Failed to save appointment.');
+      throw new Error(result.error || APPT_I18N.saveFailed || 'Failed to save appointment.');
     }
 
     closeModal();
-    const refreshed = await refreshAppointmentsList(apptData.id ? '✏️ Appointment updated' : '✅ Appointment added');
+    const refreshed = await refreshAppointmentsList(apptData.id ? (APPT_I18N.updated || '') : (APPT_I18N.added || ''));
     if (refreshed) {
       filterAppointments({ silent: true });
     }
   } catch (error) {
-    alert.textContent = 'An error occurred: ' + error.message;
+    alert.textContent = (APPT_I18N.genericError || 'An error occurred') + ': ' + error.message;
     alert.style.display = 'block';
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = apptData.id ? 'Update Appointment' : 'Create Appointment';
+    submitBtn.textContent = apptData.id ? APPT_I18N.updateBtn : APPT_I18N.createBtn;
     submitBtn.classList.remove('loading');
   }
 }
@@ -1575,7 +1618,7 @@ async function searchPatients(query) {
     const patients = await response.json();
 
     if (patients.length === 0) {
-      suggestionsDiv.innerHTML = '<div class="patient-suggestion-item">No patients found</div>';
+      suggestionsDiv.innerHTML = '<div class="patient-suggestion-item">{{ t("no_patients") }}</div>';
       suggestionsDiv.style.display = 'block';
       return;
     }
@@ -1622,7 +1665,7 @@ async function searchPatients(query) {
 
   } catch (error) {
     console.error('Patient search error:', error);
-    suggestionsDiv.innerHTML = '<div class="patient-suggestion-item">Error searching patients</div>';
+    suggestionsDiv.innerHTML = '<div class="patient-suggestion-item">' + (APPT_I18N.searchError || '') + '</div>';
     suggestionsDiv.style.display = 'block';
   }
 }
@@ -1661,7 +1704,7 @@ async function confirmDelete() {
   const apptId = document.getElementById('delete-id').value;
   
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Deleting...';
+  submitBtn.textContent = APPT_I18N.deleteWorking || APPT_I18N.deleteBtn;
   submitBtn.classList.add('loading');
 
   try {
@@ -1674,19 +1717,19 @@ async function confirmDelete() {
     const result = await parseJsonResponse(response);
 
     if (!response.ok || !result.success) {
-      throw new Error(result.error || 'Failed to delete appointment.');
+      throw new Error(result.error || APPT_I18N.deleteFailed);
     }
 
     closeModal();
-    const refreshed = await refreshAppointmentsList('🗑️ Appointment deleted');
+    const refreshed = await refreshAppointmentsList(APPT_I18N.deleteSuccess);
     if (refreshed) {
       filterAppointments({ silent: true });
     }
   } catch (error) {
-    alert('An error occurred: ' + error.message);
+    alert((APPT_I18N.genericError || '') + ': ' + error.message);
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = 'Delete';
+    submitBtn.textContent = APPT_I18N.deleteBtn;
     submitBtn.classList.remove('loading');
   }
 }
@@ -1754,17 +1797,9 @@ function getReferenceDate(type) {
 
 function formatStatusLabel(status) {
   if (!status) {
-    return 'Scheduled';
+    return APPT_I18N.status.scheduled;
   }
-  const lookup = {
-    scheduled: 'Scheduled',
-    pending: 'Pending',
-    checked_in: 'Pending',
-    done: 'Done',
-    cancelled: 'Cancelled',
-    in_progress: 'In Progress',
-    no_show: 'No Show'
-  };
+  const lookup = APPT_I18N.status;
   const key = status.toLowerCase();
   if (lookup[key]) {
     return lookup[key];
@@ -1824,6 +1859,9 @@ async function refreshAppointmentsList(successMessage = null, options = {}) {
       throw new Error('Unable to refresh appointments list');
     }
     target.innerHTML = newGroups.innerHTML;
+    if (window.applyDoctorChipContrast) {
+      window.applyDoctorChipContrast();
+    }
     expandedDateIds = new Set(preservedExpanded);
     initAppointmentData();
     applyGroupExpansionState();
@@ -2107,9 +2145,9 @@ function filterAppointments(options = {}) {
   if (!silent) {
     const activeFilters = [searchTerm, doctorFilterRaw !== 'all' ? doctorFilterRaw : null, startDate].filter(Boolean);
     if (activeFilters.length > 0) {
-      showSearchFeedback(`✅ Found ${filteredAppointments.length} appointments`);
+      showSearchFeedback((APPT_I18N.foundCount || '').replace('{count}', filteredAppointments.length));
     } else {
-      showSearchFeedback(`📋 Showing all ${filteredAppointments.length} appointments`);
+      showSearchFeedback((APPT_I18N.showAll || '').replace('{count}', filteredAppointments.length));
     }
   }
 }
@@ -2236,8 +2274,8 @@ function updateNoResultsMessage() {
     noResultsDiv.className = 'card no-results-message';
     noResultsDiv.innerHTML = `
       <div class="no-appointments-icon">🔍</div>
-      <h2 class="card-title">No Appointments Found</h2>
-      <p class="no-appointments-text">Try adjusting your search term or clearing the search.</p>
+      <h2 class="section-title">{{ t('no_rows') }}</h2>
+      <p class="no-appointments-text">{{ t('search_placeholder') }}</p>
     `;
     
     // Insert after the filter card

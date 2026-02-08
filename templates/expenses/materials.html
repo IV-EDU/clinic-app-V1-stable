@@ -1,17 +1,17 @@
 {% extends 'expenses/base.html' %}
 
-{% block title %}Materials{% endblock %}
+{% block title %}{{ tf('materials', 'Materials') }}{% endblock %}
 
 {% block actions %}
 <a href="{{ url_for('expenses.new_material') }}" class="btn primary">
-  <i class="fa fa-plus"></i> New Material
+  <i class="fa fa-plus"></i> {{ tf('new_material', 'New Material') }}
 </a>
 {% endblock %}
 
 {% block expenses_content %}
 <div class="card">
   <div class="card-header">
-    <h3>Materials ({{ materials|length }})</h3>
+    <h3>{{ tf('materials', 'Materials') }} ({{ materials|length }})</h3>
   </div>
   <div class="card-body">
     {% if materials %}
@@ -19,12 +19,12 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Category</th>
-              <th>Unit</th>
-              <th>Price per Unit</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>{{ tf('name', 'Name') }}</th>
+              <th>{{ tf('category', 'Category') }}</th>
+              <th>{{ tf('unit', 'Unit') }}</th>
+              <th>{{ tf('price_per_unit', 'Price per Unit') }}</th>
+              <th>{{ tf('status', 'Status') }}</th>
+              <th>{{ tf('actions', 'Actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -47,15 +47,15 @@
               </td>
               <td>
                 {% if material.is_active %}
-                  <span class="badge badge-success">Active</span>
+                  <span class="badge badge-success">{{ tf('active', 'Active') }}</span>
                 {% else %}
-                  <span class="badge badge-inactive">Inactive</span>
+                  <span class="badge badge-inactive">{{ tf('inactive', 'Inactive') }}</span>
                 {% endif %}
               </td>
               <td>
                 <div class="action-buttons">
                   <a href="{{ url_for('expenses.edit_material', material_id=material.id) }}" 
-                     class="btn btn-sm secondary" title="Edit">
+                     class="btn btn-sm secondary" title="{{ tf('edit', 'Edit') }}">
                     <i class="fa fa-edit"></i>
                   </a>
                 </div>
@@ -68,10 +68,10 @@
     {% else %}
       <div class="empty-state">
         <i class="fa fa-box empty-icon"></i>
-        <h3>No Materials Found</h3>
-        <p>Create your first material to get started.</p>
+        <h3>{{ tf('no_materials_found', 'No Materials Found') }}</h3>
+        <p>{{ tf('create_first_material_hint', 'Create your first material to get started.') }}</p>
         <a href="{{ url_for('expenses.new_material') }}" class="btn primary">
-          <i class="fa fa-plus"></i> Create First Material
+          <i class="fa fa-plus"></i> {{ tf('create_first_material', 'Create First Material') }}
         </a>
       </div>
     {% endif %}

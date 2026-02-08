@@ -10,12 +10,19 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 LEGACY_ROLE_CODES = {
     "admin": "admin",
+    # Keep legacy `users.role` compatible with older SQLite CHECK constraints
+    # that only allow: admin/doctor/assistant. RBAC roles remain the source of
+    # truth for permissions.
+    "manager": "assistant",
     "doctor": "doctor",
     "reception": "assistant",
 }
 
+_ALLOWED_LEGACY_ROLE_VALUES = {"admin", "doctor", "assistant"}
+
 LEGACY_ROLE_DISPLAY = {
     "admin": "Admin",
+    "manager": "Manager",
     "doctor": "Doctor",
     "assistant": "Reception",
 }
@@ -28,10 +35,55 @@ LEGACY_PERMISSION_ALIAS = {
     "admin.user.manage": "users:manage",
 }
 
+# Reverse lookup so either permission code grants access.
+_REVERSE_PERMISSION_ALIAS: dict[str, set[str]] = {}
+for old_code, new_code in LEGACY_PERMISSION_ALIAS.items():
+    _REVERSE_PERMISSION_ALIAS.setdefault(new_code, set()).add(old_code)
+
+
+def permission_candidates(code: str) -> set[str]:
+    """Return permission codes that should be treated as equivalent."""
+    candidates = {code}
+    alias = LEGACY_PERMISSION_ALIAS.get(code)
+    if alias:
+        candidates.add(alias)
+    for rev in _REVERSE_PERMISSION_ALIAS.get(code, set()):
+        candidates.add(rev)
+    return candidates
+
 LEGACY_ROLE_PERMISSIONS = {
     "admin": {
         "patients:view",
         "patients:edit",
+        "patients:merge",
+        "patients:delete",
+        "payments:view",
+        "payments:edit",
+        "payments:delete",
+        "reports:view",
+        "appointments:view",
+        "appointments:edit",
+        "receipts:view",
+        "receipts:issue",
+        "receipts:reprint",
+        "diagnostics:view",
+        "backup:create",
+        "backup:restore",
+        "users:manage",
+        "expenses:view",
+        "expenses:create",
+        "expenses:edit",
+        "expenses:delete",
+        "expenses:print",
+        "suppliers:view",
+        "suppliers:manage",
+        "materials:view",
+        "materials:manage",
+    },
+    "manager": {
+        "patients:view",
+        "patients:edit",
+        "patients:merge",
         "patients:delete",
         "payments:view",
         "payments:edit",
@@ -78,7 +130,9 @@ LEGACY_ROLE_PERMISSIONS = {
         "patients:view",
         "patients:edit",
         "payments:view",
+        "payments:edit",
         "appointments:view",
+        "appointments:edit",
         "receipts:view",
         "receipts:issue",
         "expenses:view",
@@ -182,7 +236,8 @@ class User(Base, UserMixin):
         return check_password_hash(self.password_hash, password)
 
     def has_permission(self, code: str) -> bool:
-        if any(role.has_permission(code) for role in self.roles):
+        candidates = permission_candidates(code)
+        if any(any(role.has_permission(c) for c in candidates) for role in self.roles):
             return True
         legacy_role = (self.role or "").lower()
         if not legacy_role:
@@ -190,10 +245,6 @@ class User(Base, UserMixin):
         allowed = LEGACY_ROLE_PERMISSIONS.get(legacy_role, set())
         if not allowed:
             return False
-        candidates = {code}
-        alias = LEGACY_PERMISSION_ALIAS.get(code)
-        if alias:
-            candidates.add(alias)
         return any(c in allowed for c in candidates)
 
     @property
@@ -204,10 +255,19 @@ class User(Base, UserMixin):
         return legacy
 
     def sync_legacy_role(self) -> None:
-        for role in self.roles:
-            mapped = LEGACY_ROLE_CODES.get(role.name.lower())
-            if mapped:
-                self.role = mapped
-                return
-        if not self.role:
+        # Keep `users.role` within the legacy CHECK constraint (admin/doctor/assistant).
+        # RBAC roles remain the source of truth for permissions, but older DBs still
+        # enforce the legacy constraint.
+        role_names = {str(role.name or "").strip().lower() for role in (self.roles or [])}
+
+        # Deterministic priority so an Admin that also has other roles stays "admin".
+        for preferred in ("admin", "doctor", "manager", "reception"):
+            if preferred in role_names:
+                mapped = LEGACY_ROLE_CODES.get(preferred)
+                if mapped:
+                    self.role = mapped
+                    break
+
+        current = (self.role or "").strip().lower()
+        if current not in _ALLOWED_LEGACY_ROLE_VALUES:
             self.role = "assistant"

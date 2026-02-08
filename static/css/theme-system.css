@@ -1,0 +1,134 @@
+:root {
+  /* Base brand palette (aligned with existing app.css) */
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --accent-color: #0ea5e9;
+  --bg-primary: var(--bg, #f7f7f8);
+  /* Page background, very softly tinted by theme colors, horizontal 3‑stop (color → light → color) */
+  --page-bg: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--primary-color, #3b82f6) 4%, #f9fafb) 0%,
+    #fdfdfd 52%,
+    color-mix(in srgb, var(--primary-color, #3b82f6) 4%, #f9fafb) 100%
+  );
+  --bg-surface: #ffffff;
+  --text-primary: var(--ink, #111827);
+  --text-secondary: #475569;
+  --text-muted: #6b7280;
+  --border-strong: var(--border, #e5e7eb);
+  --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.06);
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --card-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+  --card-radius: var(--radius-lg, 16px);
+  --card-padding: var(--spacing-lg, 20px);
+  --spacing-sm: 10px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --font-arabic: 'Tajawal', 'Noto Sans Arabic', 'Segoe UI', Arial, sans-serif;
+  --font-latin: 'Segoe UI', Arial, sans-serif;
+  --success-color: var(--green, #16a34a);
+  --success-bg: var(--green-bg, #dcfce7);
+  --warning-color: var(--yellow, #b45309);
+  --warning-bg: var(--yellow-bg, #fef3c7);
+  --danger-color: var(--red, #b91c1c);
+  --danger-bg: var(--red-bg, #fee2e2);
+  --info-color: var(--accent-color, #0ea5e9);
+  --info-bg: #e0f2fe;
+}
+
+/* Unified, optional utility styles (prefix u- to avoid conflicts) */
+.u-card {
+  background: var(--bg-surface, var(--card, #fff));
+  border: 1px solid var(--border-strong, var(--border, #e5e7eb));
+  border-radius: var(--card-radius, var(--radius-lg, 16px));
+  box-shadow: var(--card-shadow, var(--shadow-soft));
+  padding: var(--card-padding, var(--spacing-lg));
+}
+
+.u-app-header {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--primary-color, #3b82f6) 18%, #f3f4ff) 0%,
+    #fdfdfd 52%,
+    color-mix(in srgb, var(--primary-color, #3b82f6) 18%, #f3f4ff) 100%
+  );
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.u-app-header .btn.secondary,
+.u-app-header button.secondary,
+.u-app-header a.secondary {
+  background: var(--bg-surface, #ffffff);
+  color: var(--text-primary);
+  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 12%, #dbeafe);
+}
+
+.u-app-header .btn.secondary:hover,
+.u-app-header button.secondary:hover,
+.u-app-header a.secondary:hover {
+  background: color-mix(in srgb, var(--primary-color, #3b82f6) 4%, #f1f5f9);
+}
+
+.u-app-header .title {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.u-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.u-btn.primary {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  color: #fff;
+  border-color: var(--primary-color);
+  box-shadow: 0 10px 20px rgba(59, 130, 246, 0.25);
+}
+
+.u-btn.secondary {
+  background: #eef2f7;
+  color: var(--text-primary);
+  border-color: #dce3ed;
+}
+
+.u-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: var(--text-primary);
+  border: 1px solid #d9e5ff;
+  font-weight: 700;
+}
+
+.u-field-label {
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.u-text-muted { color: var(--text-muted); }
+.u-text-secondary { color: var(--text-secondary); }
+
+/* Arabic support helpers (optional) */
+html[lang="ar"] body, body.rtl {
+  font-family: var(--font-arabic);
+}
+
+/* Minimal spacing helpers */
+.u-stack-sm > * + * { margin-top: 8px; }
+.u-stack-md > * + * { margin-top: 14px; }
+.u-stack-lg > * + * { margin-top: 20px; }

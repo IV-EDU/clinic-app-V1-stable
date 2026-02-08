@@ -17,6 +17,7 @@ except ImportError:
 
 from fpdf import FPDF, XPos, YPos
 from flask import current_app
+from clinic_app.services.theme_settings import get_setting
 
 # Optional Arabic shaping dependencies (graceful fallback)
 try:
@@ -548,201 +549,313 @@ def generate_payment_receipt_pdf(payment: dict, patient: dict, treatment_details
 
     pdf = ReceiptPDF(font_path=str(font_path), locale=locale)
     
-    # Enable RTL mode for Arabic
+    # Ensure correct text direction and margins per locale
     if locale == "ar":
         pdf.set_rtl_mode(True)
+    else:
+        pdf.set_rtl_mode(False)
+    
+    def _pdf_logo_path() -> str | None:
+        """Resolve the best available logo path for PDFs.
+
+        Order of preference:
+        1) Explicit PDF logo from settings.
+        2) Auto-detected pdf-logo-current.* under data/theme/.
+        3) Existing header logo from settings.
+        4) Auto-detected header logo under data/theme/.
+        """
+        try:
+            root = Path(getattr(current_app, "config", {}).get("DATA_ROOT", "data"))
+
+            def _existing(path: Path) -> str | None:
+                return str(path) if path.exists() else None
+
+            rel_pdf = get_setting("pdf_logo_path")
+            if rel_pdf:
+                # Handle absolute paths or Windows-style separators safely
+                cand = Path(rel_pdf)
+                if cand.is_absolute() and _existing(cand):
+                    return str(cand)
+                rel_norm = Path(rel_pdf.replace("\\", "/"))
+                hit = _existing(root / rel_norm)
+                if hit:
+                    return hit
+
+            # Auto-detect a current PDF logo if the setting is empty/stale
+            for cand in root.glob("theme/pdf-logo-current.*"):
+                hit = _existing(cand)
+                if hit:
+                    return hit
+
+            rel_header = get_setting("logo_path")
+            if rel_header:
+                cand = Path(rel_header)
+                if cand.is_absolute() and _existing(cand):
+                    return str(cand)
+                rel_norm = Path(rel_header.replace("\\", "/"))
+                hit = _existing(root / rel_norm)
+                if hit:
+                    return hit
+
+            for cand in root.glob("theme/logo-current.*"):
+                hit = _existing(cand)
+                if hit:
+                    return hit
+        except Exception:
+            return None
+        return None
+
+    logo_path = _pdf_logo_path()
+    logo_used = False
+    if logo_path:
+        try:
+            pdf.set_y(pdf.t_margin)
+            # Center a generous stamp-like logo; clamp width to printable area
+            printable_w = pdf.w - pdf.l_margin - pdf.r_margin
+            target_w = min(printable_w, 120)
+            pdf.set_x((pdf.w - target_w) / 2)
+            pdf.image(logo_path, w=target_w)
+            pdf.ln(8)
+            logo_used = True
+        except Exception:
+            pass
     
     # Add watermark if requested (light, centered, after page creation)
     if add_watermark:
         _add_watermark(pdf, "CLINIC COPY", locale)
 
-    # Clean centered title only (no clinic name)
-    pdf.set_font(pdf._family, "B", 16)
-    title_txt = "Payment Receipt" if locale == "en" else "إيصال دفع"
-    pdf.cell(0, 10, pdf._shape_if_arabic(title_txt) if pdf._rtl_mode else title_txt, align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    pdf.ln(6)
-    
-    # Format-specific content with proper translation keys
-    if format_type == "full":
-        # Helpers for clean labels
-        def lbl(key_en: str, key_ar: str) -> str:
-            return key_ar if pdf._rtl_mode else key_en
+    from clinic_app.services.i18n import translate_text
 
-        # Meta + patient (two-column band with highlighted headers)
-        receipt_id = payment.get("id", "")[-8:].upper() if payment.get("id") else "N/A"
-        meta_rows = [
-            (lbl("Receipt No.", "رقم الإيصال"), receipt_id),
-            (lbl("Date", "تاريخ الدفع"), payment.get("paid_at", "")),
-            (lbl("Method", "طريقة الدفع"), payment.get("method", "")),
-        ]
-        patient_rows = [
-            (lbl("Patient", "المريض"), patient.get("full_name", "")),
-            (lbl("File No.", "رقم الملف"), patient.get("short_id", "")),
-            (lbl("Phone", "رقم الهاتف"), patient.get("phone", "")),
-        ]
-        col_w = (pdf.w - pdf.l_margin - pdf.r_margin) / 2
-        pdf.set_font(pdf._family, "B", 11)
-        pdf.set_fill_color(240, 242, 245)
+    def fallback_text(en_text: str, ar_text: str) -> str:
+        return ar_text if locale == "ar" else en_text
+
+    def translate_label(key: str, fallback: str) -> str:
+        text = translate_text(locale, key)
+        return text if text != key else fallback
+
+    def shape_text(value: str | None) -> str:
+        if value is None:
+            value = ""
+        return pdf._shape_if_arabic(str(value)) if pdf._rtl_mode else str(value)
+
+    def format_currency(amount_cents: int | None) -> str:
+        amount = (amount_cents or 0) / 100
+        return f"{amount:.2f} {currency_label}"
+
+    def render_header(meta_rows: list[tuple[str, str]], logo_shown: bool) -> None:
+        clinic_name = treatment_details.get("clinic_name") or "Clinic App"
+        clinic_address = treatment_details.get("clinic_address", "")
+        clinic_phone = treatment_details.get("clinic_phone", "")
+        total_width = pdf.w - pdf.l_margin - pdf.r_margin
+        gap = 6
+        left_width = total_width * 0.55
+        right_width = total_width - left_width - gap
+        if right_width < 60:
+            right_width = 60
+            left_width = total_width - right_width - gap
+        start_y = pdf.y
         if pdf._rtl_mode:
-            pdf.cell(col_w, 8, pdf._shape_if_arabic("بيانات الدفع"), border=1, fill=True, align="R")
-            pdf.cell(col_w, 8, pdf._shape_if_arabic("بيانات المريض"), border=1, fill=True, align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            clinic_x = pdf.w - pdf.r_margin - left_width
+            meta_x = pdf.l_margin
         else:
-            pdf.cell(col_w, 8, "Payment Info", border=1, fill=True, align="L")
-            pdf.cell(col_w, 8, "Patient Info", border=1, fill=True, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            clinic_x = pdf.l_margin
+            meta_x = pdf.l_margin + left_width + gap
+        align = "R" if pdf._rtl_mode else "L"
+        pdf.set_xy(clinic_x, start_y)
+        pdf.set_font(pdf._family, "B", 15)
+        if not logo_shown:
+            pdf.cell(left_width, 8, shape_text(clinic_name), border=0, align=align)
+            cursor_y = start_y + 8
+        else:
+            cursor_y = start_y
         pdf.set_font(pdf._family, "", 10)
-        max_rows = max(len(meta_rows), len(patient_rows))
-        for i in range(max_rows):
-            left = meta_rows[i] if i < len(meta_rows) else ("", "")
-            right = patient_rows[i] if i < len(patient_rows) else ("", "")
-            if pdf._rtl_mode:
-                pdf.set_x(pdf.l_margin)
-                lbl_left = pdf._shape_if_arabic(left[0]) if left[0] else ""
-                val_left = pdf._shape_if_arabic(left[1]) if left[1] else ""
-                lbl_right = pdf._shape_if_arabic(right[0]) if right[0] else ""
-                val_right = pdf._shape_if_arabic(right[1]) if right[1] else ""
-                pdf.cell(col_w, 7, f"{val_left} : {lbl_left}" if left[0] else "", border=1, align="R")
-                pdf.cell(col_w, 7, f"{val_right} : {lbl_right}" if right[0] else "", border=1, align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            else:
-                pdf.cell(col_w, 7, f"{left[0]}: {left[1]}", border=1, align="L")
-                pdf.cell(col_w, 7, f"{right[0]}: {right[1]}", border=1, align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        pdf.ln(4)
+        if clinic_address:
+            pdf.set_xy(clinic_x, cursor_y)
+            pdf.multi_cell(left_width, 5.5, shape_text(clinic_address), border=0, align=align)
+            cursor_y = pdf.y
+        if clinic_phone:
+            pdf.set_xy(clinic_x, cursor_y)
+            pdf.multi_cell(left_width, 5.5, shape_text(clinic_phone), border=0, align=align)
+            cursor_y = pdf.y
+        clinic_bottom = cursor_y
+        label_height = 4
+        value_height = 6
+        padding = 3
+        meta_height = padding * 2 + len(meta_rows) * (label_height + value_height + 2)
+        pdf.set_fill_color(249, 250, 253)
+        pdf.set_draw_color(220, 223, 230)
+        pdf.rect(meta_x, start_y, right_width, meta_height, style="DF")
+        meta_cursor = start_y + padding
+        for label, value in meta_rows:
+            pdf.set_xy(meta_x + padding, meta_cursor)
+            pdf.set_font(pdf._family, "", 8)
+            pdf.cell(right_width - 2 * padding, label_height, shape_text(label), align=align)
+            meta_cursor += label_height + 0.8
+            pdf.set_xy(meta_x + padding, meta_cursor)
+            pdf.set_font(pdf._family, "B", 11)
+            pdf.cell(right_width - 2 * padding, value_height, shape_text(value or "—"), align=align)
+            meta_cursor += value_height + 1.8
+        pdf.set_draw_color(0, 0, 0)
+        meta_bottom = start_y + meta_height
+        pdf.set_y(max(clinic_bottom, meta_bottom) + 6)
 
-        # Payment details table (centered header cells, single header)
-        pdf.set_font(pdf._family, "B", 12)
-        section_title = "Payment Details" if locale == "en" else "تفاصيل الدفع"
-        pdf.cell(0, 10, pdf._shape_if_arabic(section_title) if pdf._rtl_mode else section_title, border=1, fill=True, align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    def draw_info_block(x: float, width: float, title: str, rows: list[tuple[str, str]], top_y: float) -> float:
+        saved_y = pdf.y
+        align = "R" if pdf._rtl_mode else "L"
+        header_height = 8
+        pdf.set_fill_color(245, 247, 252)
+        pdf.rect(x, top_y, width, header_height, style="F")
+        pdf.set_xy(x + 3, top_y + 2)
         pdf.set_font(pdf._family, "B", 11)
-        table_w = pdf.w - pdf.l_margin - pdf.r_margin
-        col_label = table_w * 0.6
-        col_value = table_w - col_label
-        pdf.set_fill_color(255, 255, 255)
-        pdf.set_draw_color(200, 200, 200)
-        summary_rows = [
-            (lbl("Total Amount", "إجمالي المبلغ"), f"{payment.get('total_amount_cents', 0)/100:.2f} {currency_label}"),
-            (lbl("Discount", "الخصم"), f"{payment.get('discount_cents', 0)/100:.2f} {currency_label}"),
-            (lbl("Amount Paid", "المبلغ المدفوع"), f"{payment.get('amount_cents', 0)/100:.2f} {currency_label}"),
-            (lbl("Balance", "الرصيد المتبقي"), f"{payment.get('remaining_cents', 0)/100:.2f} {currency_label}"),
-        ]
-        pdf.set_font(pdf._family, "", 11)
-        pdf.set_fill_color(255, 255, 255)
-        for label, val in summary_rows:
+        pdf.cell(width - 6, 4, shape_text(title), align=align)
+        block_cursor = top_y + header_height + 2
+        for label, value in rows:
+            pdf.set_xy(x + 3, block_cursor)
+            pdf.set_font(pdf._family, "", 8.5)
+            pdf.multi_cell(width - 6, 4, shape_text(label), border=0, align=align)
+            block_cursor = pdf.y + 0.8
+            pdf.set_xy(x + 3, block_cursor)
+            pdf.set_font(pdf._family, "B", 11)
+            val_text = value if value not in (None, "") else "—"
+            pdf.multi_cell(width - 6, 6, shape_text(val_text), border=0, align=align)
+            block_cursor = pdf.y + 2
+        block_height = max(header_height + 4, block_cursor - top_y)
+        pdf.set_draw_color(224, 227, 234)
+        pdf.rect(x, top_y, width, block_height)
+        pdf.set_draw_color(0, 0, 0)
+        pdf.set_y(saved_y)
+        return top_y + block_height
+
+    def render_info_blocks(
+        left_title: str,
+        left_rows: list[tuple[str, str]],
+        right_title: str | None = None,
+        right_rows: list[tuple[str, str]] | None = None,
+    ) -> None:
+        total_width = pdf.w - pdf.l_margin - pdf.r_margin
+        gap = 6
+        start_y = pdf.y
+        if right_rows:
+            left_width = total_width * 0.5
+            right_width = total_width - left_width - gap
             if pdf._rtl_mode:
-                # For RTL: show value on the left cell, label on the right cell
-                pdf.cell(col_value, 7, pdf._shape_if_arabic(val), border=1, align="R")
-                pdf.cell(col_label, 7, pdf._shape_if_arabic(label), border=1, align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+                left_x = pdf.l_margin + right_width + gap
+                right_x = pdf.l_margin
             else:
-                pdf.cell(col_label, 7, f"{label}:", border=1, align="L")
-                pdf.cell(col_value, 7, val, border=1, align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-
-        # Totals bar
-        pdf.ln(1)
-        pdf.set_draw_color(80, 120, 200)
-        pdf.set_line_width(0.6)
-        pdf.line(pdf.l_margin, pdf.y, pdf.w - pdf.r_margin, pdf.y)
-        pdf.ln(1)
-        pdf.set_font(pdf._family, "B", 13)
-        paid_label = "Paid" if locale == "en" else "المدفوع"
-        remaining_label = "Balance" if locale == "en" else "الرصيد"
-        paid_val = f"{payment.get('amount_cents', 0)/100:.2f} {currency_label}"
-        remaining_val = f"{payment.get('remaining_cents', 0)/100:.2f} {currency_label}"
-        if pdf._rtl_mode:
-            paid_line = pdf._shape_if_arabic(f"{paid_val} : {paid_label}")
-            remaining_line = pdf._shape_if_arabic(f"{remaining_val} : {remaining_label}")
-            pdf.cell(0, 8, paid_line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="R")
-            pdf.cell(0, 8, remaining_line, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="R")
+                left_x = pdf.l_margin
+                right_x = pdf.l_margin + left_width + gap
+            left_bottom = draw_info_block(left_x, left_width, left_title, left_rows, start_y)
+            right_bottom = draw_info_block(right_x, right_width, right_title or "", right_rows, start_y)
+            pdf.set_y(max(left_bottom, right_bottom) + 6)
         else:
-            pdf.cell(0, 8, f"{paid_label}: {paid_val}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="L")
-            pdf.cell(0, 8, f"{remaining_label}: {remaining_val}", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="L")
-        pdf.set_line_width(0.2)
+            bottom = draw_info_block(pdf.l_margin, total_width, left_title, left_rows, start_y)
+            pdf.set_y(bottom + 6)
+
+    def render_text_panel(title: str, text: str) -> None:
+        if not text:
+            return
+        align = "R" if pdf._rtl_mode else "L"
         pdf.ln(2)
+        pdf.set_font(pdf._family, "B", 11)
+        pdf.cell(0, 6, shape_text(title), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align=align)
+        pdf.set_font(pdf._family, "", 10)
+        pdf.set_fill_color(249, 250, 252)
+        pdf.set_draw_color(224, 227, 234)
+        pdf.multi_cell(0, 6, shape_text(text), border=1, align=align, fill=True)
+        pdf.ln(1)
 
-        # Treatment details - only if both switches are on
+    receipt_number = payment.get("id", "")[-8:].upper() if payment.get("id") else "N/A"
+    receipt_date = payment.get("paid_at", "") or ""
+    method_value = (payment.get("method") or "cash").lower()
+    method_label = translate_label(f"method_{method_value}", (payment.get("method") or "cash").title())
+    patient_rows = [
+        (translate_label("name", fallback_text("Name", "الاسم")), patient.get("full_name") or "—"),
+        (translate_label("file_no", fallback_text("File No.", "رقم الملف")), patient.get("short_id") or "—"),
+        (translate_label("phone", fallback_text("Phone", "الهاتف")), patient.get("phone") or "—"),
+    ]
+    payment_rows = [
+        (translate_label("summary_total", fallback_text("Total", "الإجمالي")), format_currency(payment.get("total_amount_cents"))),
+        (translate_label("summary_discount", fallback_text("Discount", "الخصم")), format_currency(payment.get("discount_cents"))),
+        (translate_label("summary_paid", fallback_text("Paid", "المدفوع")), format_currency(payment.get("amount_cents"))),
+        (translate_label("summary_remaining", fallback_text("Remaining", "المتبقي")), format_currency(payment.get("remaining_cents"))),
+    ]
+    meta_rows = [
+        (translate_label("receipt_number_label", fallback_text("Receipt No.", "رقم الإيصال")), receipt_number),
+        (translate_label("receipt_date_label", fallback_text("Date", "التاريخ")), receipt_date),
+        (translate_label("payment_method", fallback_text("Payment Method", "طريقة الدفع")), method_label),
+    ]
+
+    patient_block_title = translate_label("receipt_patient_label", fallback_text("Patient", "المريض"))
+    payments_block_title = translate_label("payments", fallback_text("Payments", "المدفوعات"))
+
+    if format_type == "full":
+        render_header(meta_rows, logo_used)
+        render_info_blocks(patient_block_title, patient_rows, payments_block_title, payment_rows)
         if include_treatment and payment.get("treatment"):
-            pdf.ln(6)
-            pdf.set_font(pdf._family, "B", 12)
-            treatment_details_label = "Treatment" if locale == "en" else "العلاج"
-            txt = pdf._shape_if_arabic(treatment_details_label) if pdf._rtl_mode else treatment_details_label
-            pdf.cell(0, 8, txt, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="R" if pdf._rtl_mode else "L")
-            pdf.set_font(pdf._family, "", 11)
-            pdf.note(payment["treatment"])
-
-        # Notes - only if include_notes is True
+            render_text_panel(translate_label("treatment", fallback_text("Treatment", "العلاج")), payment["treatment"])
         if include_notes and payment.get("note"):
-            pdf.ln(4)
-            notes_label = "Notes" if locale == "en" else "ملاحظات"
-            txt = pdf._shape_if_arabic(notes_label) if pdf._rtl_mode else notes_label
-            pdf.set_font(pdf._family, "B", 12)
-            pdf.cell(0, 8, txt, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="R" if pdf._rtl_mode else "L")
-            pdf.set_font(pdf._family, "", 11)
-            pdf.note(payment["note"])
-        else:
-            pdf.ln(4)
-    
+            render_text_panel(translate_label("sheet_notes", fallback_text("Notes", "ملاحظات")), payment["note"])
+
     elif format_type == "summary":
-        format_title = "Payment Receipt - Summary" if locale == "en" else "إيصال دفع - ملخص"
-        pdf.heading(format_title, locale)
-        
-        rows = [
-            ("key:patient", patient.get("full_name", "")),
-            ("key:file_no", patient.get("short_id", "")),
-            ("key:date", payment.get("paid_at", "")),
-            ("key:amount_paid", f"{payment.get('amount_cents', 0)/100:.2f} {currency_label}"),
-            ("key:method", payment.get("method", "")),
+        render_header(meta_rows, logo_used)
+        summary_rows = [
+            (translate_label("receipt_date_label", fallback_text("Date", "التاريخ")), receipt_date or "—"),
+            (translate_label("summary_paid", fallback_text("Paid", "المدفوع")), format_currency(payment.get("amount_cents"))),
+            (translate_label("payment_method", fallback_text("Payment Method", "طريقة الدفع")), method_label),
         ]
+        render_info_blocks(patient_block_title, patient_rows, payments_block_title, summary_rows)
         if include_treatment and payment.get("treatment"):
-            rows.append(("key:treatment", payment.get("treatment", "")))
-        pdf.kv_block(rows, locale)
-    
-    elif format_type == "treatment":
-        format_title = "Treatment Receipt" if locale == "en" else "إيصال علاج"
-        pdf.heading(format_title, locale)
-        
-        rows = [
-            ("key:patient", patient.get("full_name", "")),
-            ("key:file_no", patient.get("short_id", "")),
-            ("key:treatment_date", payment.get("paid_at", "")),
-            ("key:total_cost", f"{payment.get('total_amount_cents', 0)/100:.2f} {currency_label}"),
-        ]
-        if include_treatment:
-            rows.insert(3, ("key:treatment", payment.get("treatment", "General Treatment" if locale == "en" else "علاج عام")))
-        pdf.kv_block(rows, locale)
-        
-        # Treatment notes - only if include_notes is True
+            render_text_panel(translate_label("treatment", fallback_text("Treatment", "العلاج")), payment["treatment"])
         if include_notes and payment.get("note"):
-            pdf.ln(2)
-            treatment_notes_label = "Treatment Notes:" if locale == "en" else "ملاحظات العلاج:"
-            pdf.cell(0, 8, treatment_notes_label, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            pdf.note(payment["note"])
-    
-    elif format_type == "payment":
-        format_title = "Payment Only" if locale == "en" else "دفع فقط"
-        pdf.heading(format_title, locale)
-        
-        rows = [
-            ("key:patient", patient.get("full_name", "")),
-            ("key:payment_date", payment.get("paid_at", "")),
-            ("key:amount", f"{payment.get('amount_cents', 0)/100:.2f} {currency_label}"),
-            ("key:method", payment.get("method", "")),
-            ("key:reference", payment.get("id", "")[-8:].upper() if payment.get("id") else ""),  # Last 8 chars of payment ID
+            render_text_panel(translate_label("sheet_notes", fallback_text("Notes", "ملاحظات")), payment["note"])
+
+    elif format_type == "treatment":
+        render_header(meta_rows, logo_used)
+        treatment_rows = [
+            (translate_label("treatment_date", fallback_text("Treatment Date", "تاريخ العلاج")), receipt_date or "—"),
+            (translate_label("total_cost", fallback_text("Total Cost", "التكلفة الإجمالية")), format_currency(payment.get("total_amount_cents"))),
         ]
         if include_treatment and payment.get("treatment"):
-            rows.append(("key:treatment", payment.get("treatment", "")))
-        pdf.kv_block(rows, locale)
+            treatment_rows.insert(0, (translate_label("treatment", fallback_text("Treatment", "العلاج")), payment.get("treatment", "")))
+        render_info_blocks(patient_block_title, patient_rows, translate_label("treatment", fallback_text("Treatment", "العلاج")), treatment_rows)
+        if include_notes and payment.get("note"):
+            render_text_panel(translate_label("sheet_notes", fallback_text("Notes", "ملاحظات")), payment["note"])
+
+    elif format_type == "payment":
+        render_header(meta_rows, logo_used)
+        payment_only_rows = [
+            (translate_label("payment_date", fallback_text("Payment Date", "تاريخ الدفع")), receipt_date or "—"),
+            (translate_label("summary_paid", fallback_text("Paid", "المدفوع")), format_currency(payment.get("amount_cents"))),
+            (translate_label("payment_method", fallback_text("Payment Method", "طريقة الدفع")), method_label),
+            (translate_label("reference", fallback_text("Reference", "المرجع")), receipt_number),
+        ]
+        render_info_blocks(patient_block_title, patient_rows, translate_label("payment", fallback_text("Payment", "الدفع")), payment_only_rows)
+        if include_treatment and payment.get("treatment"):
+            render_text_panel(translate_label("treatment", fallback_text("Treatment", "العلاج")), payment["treatment"])
+        if include_notes and payment.get("note"):
+            render_text_panel(translate_label("sheet_notes", fallback_text("Notes", "ملاحظات")), payment["note"])
 
     elif format_type == "receipt":
-        # Compact receipt style
-        format_title = "Receipt" if locale == "en" else "إيصال"
-        pdf.heading(format_title, locale)
-        rows = [
-            ("key:patient", patient.get("full_name", "")),
-            ("key:date", payment.get("paid_at", "")),
-            ("key:paid", f"{payment.get('amount_cents', 0)/100:.2f} {currency_label}"),
-            ("key:method", payment.get("method", "")),
+        render_header(meta_rows, logo_used)
+        compact_rows = [
+            (translate_label("receipt_date_label", fallback_text("Date", "التاريخ")), receipt_date or "—"),
+            (translate_label("summary_paid", fallback_text("Paid", "المدفوع")), format_currency(payment.get("amount_cents"))),
+            (translate_label("payment_method", fallback_text("Payment Method", "طريقة الدفع")), method_label),
         ]
+        render_info_blocks(patient_block_title, patient_rows, translate_label("receipt", fallback_text("Receipt", "إيصال")), compact_rows)
         if include_treatment and payment.get("treatment"):
-            rows.append(("key:treatment", payment.get("treatment", "")))
-        pdf.kv_block(rows, locale)
-    
+            render_text_panel(translate_label("treatment", fallback_text("Treatment", "العلاج")), payment["treatment"])
+        if include_notes and payment.get("note"):
+            render_text_panel(translate_label("sheet_notes", fallback_text("Notes", "ملاحظات")), payment["note"])
+    else:
+        # Fallback to full layout if the format is unknown
+        render_header(meta_rows, logo_used)
+        render_info_blocks(patient_block_title, patient_rows, payments_block_title, payment_rows)
+        if include_treatment and payment.get("treatment"):
+            render_text_panel(translate_label("treatment", fallback_text("Treatment", "العلاج")), payment["treatment"])
+        if include_notes and payment.get("note"):
+            render_text_panel(translate_label("sheet_notes", fallback_text("Notes", "ملاحظات")), payment["note"])
+
     # Enhanced professional footer
     pdf.ln(8)
     
@@ -751,27 +864,19 @@ def generate_payment_receipt_pdf(payment: dict, patient: dict, treatment_details
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M")
     
     # Get localized footer texts
-    from clinic_app.services.i18n import translate_text
-    
-    if locale == "ar":
-        footer_texts = [
-            pdf._shape_if_arabic(translate_text("ar", "receipt_id_label", receipt_id=receipt_id) if translate_text("ar", "receipt_id_label", receipt_id=receipt_id) != "receipt_id_label" else f"رقم الإيصال: {receipt_id}"),
-            pdf._shape_if_arabic(translate_text("ar", "generated_label", current_time=current_time) if translate_text("ar", "generated_label", current_time=current_time) != "generated_label" else f"تاريخ الطباعة: {current_time}"),
-            pdf._shape_if_arabic(translate_text("ar", "thank_you_message") if translate_text("ar", "thank_you_message") != "thank_you_message" else "شكرا لاختيار عيادتنا!"),
-        ]
-    else:
-        footer_texts = [
-            translate_text("en", "receipt_id_label", receipt_id=receipt_id),
-            translate_text("en", "generated_label", current_time=current_time),
-            translate_text("en", "thank_you_message")
-        ]
-        # Fallback if translations not found
-        if footer_texts[0] == "receipt_id_label":
-            footer_texts[0] = f"Receipt ID: {receipt_id}"
-        if footer_texts[1] == "generated_label":
-            footer_texts[1] = f"Generated: {current_time}"
-        if footer_texts[2] == "thank_you_message":
-            footer_texts[2] = "Thank you for choosing our clinic!"
+    def translate_line(key: str, fallback_en: str, fallback_ar: str, **fmt) -> str:
+        text = translate_text(locale, key, **fmt)
+        if text == key:
+            template = fallback_ar if locale == "ar" else fallback_en
+            return template.format(**fmt)
+        return text
+
+    footer_lines = [
+        translate_line("receipt_id_label", "Receipt ID: {receipt_id}", "رقم الإيصال: {receipt_id}", receipt_id=receipt_id),
+        translate_line("generated_label", "Generated: {current_time}", "تاريخ الطباعة: {current_time}", current_time=current_time),
+        translate_line("thank_you_message", "Thank you for choosing our clinic!", "شكرا لاختيار عيادتنا!"),
+    ]
+    footer_texts = [shape_text(line) if pdf._rtl_mode else line for line in footer_lines]
     
     # Centered footer block (text over QR)
     pdf.ln(6)

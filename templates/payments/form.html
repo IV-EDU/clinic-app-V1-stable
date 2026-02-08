@@ -1,65 +1,13 @@
 {% extends '_base.html' %}
 {% block content %}
 {% if show_id_header %}
-<div class="card">
-  <div class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr));align-items:center">
+<div class="card payment-summary-card">
+  <div class="grid payment-patient-grid">
     <div><div class="h">{{ t('file_no') }}</div><div class="c">{{ p['short_id'] }}</div></div>
     <div><div class="h">{{ t('name') }}</div><div class="c">{{ p['full_name'] }}</div></div>
     <div><div class="h">{{ t('phone') }}</div><div class="c">{{ p['phone'] or '—' }}</div></div>
   </div>
 </div>
 {% endif %}
-<div class="card">
-  <form method="post" action="{{ action }}" id="paymentForm">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="grid excel">
-      <div class="h">{{ t('visit_type') }}</div>
-      <div class="h">{{ t('total_amount') }}</div>
-      <div class="h">{{ t('discount') }}</div>
-      <div class="h">{{ t('down_payment') }}</div>
-      <div class="h">{{ t('remaining_amount') }}</div>
-      <div class="h">{{ t('treatment_type') }}</div>
-      <div class="h">{{ t('sheet_notes') }}</div>
-      <div class="h">{{ t('date') }}</div>
-      <div class="h">{{ t('method') }}</div>
-      <div class="c">
-        {% set vt = form.visit_type|default('none') %}
-        <select name="visit_type" id="visit_type">
-          <option value="none" {{ 'selected' if vt=='none' else '' }}>{{ t('vt_none') }}</option>
-          <option value="exam" {{ 'selected' if vt=='exam' else '' }}>{{ t('vt_exam') }}</option>
-          <option value="followup" {{ 'selected' if vt=='followup' else '' }}>{{ t('vt_follow') }}</option>
-        </select>
-      </div>
-      <div class="c">
-        <input class="num" name="total_amount" id="total_amount" inputmode="decimal" step="0.01" maxlength="12" pattern="\d+(?:\.\d{1,2})?" placeholder="0" value="{{ form.total_amount|default('') }}">
-        <input type="hidden" name="total_amount_effective" id="total_amount_effective" value="{{ form.total_amount_effective|default('') }}">
-        <div class="bonus-inline" id="bonus_badge" style="display:none">{{ t('exam_bonus') }}</div>
-      </div>
-      <div class="c">
-        <input class="num" name="discount" inputmode="decimal" step="0.01" maxlength="12" pattern="\d+(?:\.\d{1,2})?" placeholder="0" value="{{ form.discount|default('') }}" title="{{ t('discount_hint') }}">
-      </div>
-      <div class="c">
-        <input class="num" name="down_payment" inputmode="decimal" step="0.01" maxlength="12" pattern="\d+(?:\.\d{1,2})?" placeholder="0" value="{{ form.down_payment|default('') }}">
-      </div>
-      <div class="c">
-        <input class="num" id="remaining_amount" name="remaining_amount" inputmode="decimal" step="0.01" maxlength="14" pattern="^\d+(?:\.\d{1,2})?$" placeholder="0" value="{{ form.remaining_amount|default('') }}" readonly>
-      </div>
-      <div class="c"><textarea name="treatment_type" rows="1">{{ form.treatment_type|default('') }}</textarea></div>
-      <div class="c"><textarea name="notes" rows="1">{{ form.notes|default('') }}</textarea></div>
-      <div class="c"><input name="paid_at" type="date" value="{{ form.paid_at|default(today) }}"></div>
-      <div class="c">
-        {% set m = form.method|default('cash') %}
-        <select name="method">
-          <option value="cash" {{ 'selected' if m=='cash' else '' }}>cash</option>
-          <option value="card" {{ 'selected' if m=='card' else '' }}>card</option>
-          <option value="transfer" {{ 'selected' if m=='transfer' else '' }}>transfer</option>
-        </select>
-      </div>
-    </div>
-    <div class="row" style="margin-top:10px;justify-content:center">
-      <div style="flex:0"><a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=p['id']) }}">{{ t('back_to_patient') }}</a></div>
-      <div style="flex:0"><button class="btn">{{ submit_label }}</button></div>
-    </div>
-  </form>
-</div>
+{% include 'payments/_form_fields.html' %}
 {% endblock %}

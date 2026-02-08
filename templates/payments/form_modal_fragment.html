@@ -1,0 +1,10 @@
+<div class="payment-patient-header">
+  <div class="payment-patient-name">{{ p['full_name'] }}</div>
+  <div class="payment-patient-details">
+    <span>📁 {{ p['short_id'] or '—' }}</span>
+    <span>📞 {{ p['phone'] or '—' }}</span>
+  </div>
+</div>
+
+{% set in_modal = True %}
+{% include 'payments/_form_fields.html' %}

@@ -1,12 +1,16 @@
 {% extends '_base.html' %}
+{% macro tf(key, default_text) -%}
+  {%- set val = t(key) if t else default_text -%}
+  {{ default_text if val == key else val }}
+{%- endmacro %}
 {% block content %}
 <div class="expenses-container">
   <div class="expenses-header">
-    <h1>{% block title %}Expense Management{% endblock %}</h1>
+    <h1>{% block title %}{{ tf('expenses_management_title', 'Expense Management') }}{% endblock %}</h1>
     <div class="expenses-actions">
       {% block actions %}
       <a href="{{ url_for('expenses.new_receipt') }}" class="btn primary">
-        <i class="fa fa-plus"></i> New Expense Receipt
+        <i class="fa fa-plus"></i> {{ tf('expenses_new_receipt', 'New Expense Receipt') }}
       </a>
       {% endblock %}
     </div>
@@ -18,6 +22,12 @@
 
 {% block scripts %}
 {{ super() }}
+<script>
+  window.EXPENSES_I18N = {
+    enter_total: "{{ tf('expenses_enter_total', 'Please enter how much you paid.') }}",
+    searching: "{{ tf('expenses_searching', 'Searching...') }}"
+  };
+</script>
 <script src="{{ url_for('static', filename='js/expenses.js') }}"></script>
 
 {% endblock %}

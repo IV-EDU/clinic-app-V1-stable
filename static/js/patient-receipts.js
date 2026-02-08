@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeReceiptPrint();
     initializePrintModal();
     initializeViewReceiptModal();
+    initializeFormModal();
 });
 
 function initializeReceiptPrint() {
@@ -22,50 +23,37 @@ function initializeReceiptPrint() {
 
 function initializePrintModal() {
     const modal = document.getElementById('printReceiptModal');
-    
-    // Preview button
-    const previewBtn = document.getElementById('previewReceiptBtn');
-    if (previewBtn) {
-        previewBtn.addEventListener('click', function() {
+    if (!modal) return;
+
+    const confirmBtn = document.getElementById('confirmPrintReceiptBtn');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
             const paymentId = modal.dataset.paymentId;
             const patientId = modal.dataset.patientId;
-            
-            if (paymentId && patientId) {
-                const options = gatherPrintOptions();
-                printPreview(paymentId, patientId, options);
+            if (!paymentId || !patientId) {
+                return;
             }
+            const includeTreatment = document.getElementById('include-treatment')?.checked ?? true;
+            const includeNotes = document.getElementById('include-notes')?.checked ?? true;
+            const langChoice = document.querySelector('input[name="receipt-lang"]:checked')?.value || 'current';
+            openReceiptForPrint(paymentId, patientId, {
+                includeTreatment,
+                includeNotes,
+                language: langChoice
+            });
         });
     }
-    
-    // Download button
-    const downloadBtn = document.getElementById('downloadReceiptBtn');
-    if (downloadBtn) {
-        downloadBtn.addEventListener('click', function() {
-            const paymentId = modal.dataset.paymentId;
-            const patientId = modal.dataset.patientId;
-            
-            if (paymentId && patientId) {
-                const options = gatherPrintOptions();
-                printReceipt(paymentId, patientId, 'full', options);
-                hidePrintModal();
-            }
-        });
-    }
-    
-    // Close modal when clicking close button or backdrop
-    if (modal) {
-        const closeButtons = modal.querySelectorAll('.close, [data-dismiss="modal"]');
-        closeButtons.forEach(button => {
-            button.addEventListener('click', hidePrintModal);
-        });
-        
-        // Close on backdrop click
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                hidePrintModal();
-            }
-        });
-    }
+
+    const closeButtons = modal.querySelectorAll('.close, [data-dismiss="modal"], .modal-close');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', hidePrintModal);
+    });
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            hidePrintModal();
+        }
+    });
 }
 
 function showPrintModal(paymentId, patientId) {
@@ -76,9 +64,8 @@ function showPrintModal(paymentId, patientId) {
     modal.dataset.paymentId = paymentId;
     modal.dataset.patientId = patientId;
     
-    // Show modal
-    modal.style.display = 'block';
-    modal.classList.add('show');
+    // Show modal using modern approach
+    modal.classList.add('active');
     
     // Prevent body scroll
     document.body.style.overflow = 'hidden';
@@ -88,15 +75,22 @@ function hidePrintModal() {
     const modal = document.getElementById('printReceiptModal');
     if (!modal) return;
     
-    modal.style.display = 'none';
-    modal.classList.remove('show');
+    modal.classList.remove('active');
     
     // Restore body scroll
     document.body.style.overflow = '';
     
     // Clear stored data
-delete modal.dataset.paymentId;
-delete modal.dataset.patientId;
+    delete modal.dataset.paymentId;
+    delete modal.dataset.patientId;
+}
+
+// Unified close modal function for consistency
+function closeModal() {
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.remove('active');
+    });
+    document.body.style.overflow = '';
 }
 
 function initializeViewReceiptModal() {
@@ -117,7 +111,7 @@ function initializeViewReceiptModal() {
 
     const modal = document.getElementById('viewReceiptModal');
     if (modal) {
-        const closeButtons = modal.querySelectorAll('.close, [data-dismiss="modal"]');
+        const closeButtons = modal.querySelectorAll('.close, [data-dismiss="modal"], .modal-close');
         closeButtons.forEach(btn => {
             btn.addEventListener('click', hideViewReceiptModal);
         });
@@ -129,32 +123,243 @@ function initializeViewReceiptModal() {
     }
 }
 
-function showViewReceiptModal(paymentId, patientId) {
+async function showViewReceiptModal(paymentId, patientId) {
     const modal = document.getElementById('viewReceiptModal');
-    const frame = document.getElementById('viewReceiptFrame');
-    if (!modal || !frame) return;
+    const content = document.getElementById('viewReceiptContent');
+    if (!modal || !content) return;
 
-    const url = `/patients/${patientId}/payments/${paymentId}/receipt/view`;
-    frame.src = url;
-
-    modal.style.display = 'block';
-    modal.classList.add('show');
+    content.innerHTML = '<p>Loading receipt...</p>';
+    modal.classList.add('active');
     document.body.style.overflow = 'hidden';
+
+    const url = `/patients/${encodeURIComponent(patientId)}/payments/${encodeURIComponent(paymentId)}/view-modal`;
+    try {
+        const response = await fetch(url, { method: 'GET' });
+        if (!response.ok) {
+            throw new Error('Failed to load receipt view');
+        }
+        const html = await response.text();
+        content.innerHTML = html;
+    } catch (err) {
+        console.error('Error loading receipt modal:', err);
+        content.innerHTML = '<div class="alert alert-error">Unable to load receipt.</div>';
+    }
 }
 
 function hideViewReceiptModal() {
     const modal = document.getElementById('viewReceiptModal');
-    const frame = document.getElementById('viewReceiptFrame');
+    const content = document.getElementById('viewReceiptContent');
     if (!modal) return;
 
-    modal.style.display = 'none';
-    modal.classList.remove('show');
+    modal.classList.remove('active');
     document.body.style.overflow = '';
 
-    if (frame) {
-        frame.src = 'about:blank';
+    if (content) {
+        content.innerHTML = '';
     }
 }
+
+function initializeFormModal() {
+    const modal = document.getElementById('formModal');
+    if (!modal) return;
+
+    const titleEl = document.getElementById('formModalTitle');
+    const bodyEl = document.getElementById('formModalBody');
+
+    function openFormModal(url, title) {
+        if (!bodyEl || !titleEl) return;
+        titleEl.textContent = title || '';
+        bodyEl.innerHTML = '<p>Loading...</p>';
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+
+        fetch(url, { method: 'GET' })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to load form');
+                }
+                return response.text();
+            })
+            .then(html => {
+                bodyEl.innerHTML = html;
+                if (window.initializePaymentForm) {
+                    try {
+                        window.initializePaymentForm(bodyEl);
+                    } catch (e) {
+                        console.warn('initializePaymentForm failed', e);
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Error loading form modal:', err);
+                bodyEl.innerHTML = '<div class="alert alert-error">Unable to load form.</div>';
+            });
+    }
+
+    document.addEventListener('click', function(e) {
+        const newPaymentLink = e.target.closest('.new-payment-btn');
+        if (newPaymentLink) {
+            e.preventDefault();
+            const patientId = newPaymentLink.href.split('/patients/')[1]?.split('/')[0];
+            if (!patientId) return;
+            const url = `/patients/${encodeURIComponent(patientId)}/excel-entry/modal`;
+            openFormModal(url, newPaymentLink.textContent.trim() || 'Add Payment');
+            return;
+        }
+
+        const editPaymentLink = e.target.closest('.edit-payment-btn');
+        if (editPaymentLink) {
+            e.preventDefault();
+            const paymentId = editPaymentLink.dataset.paymentId;
+            const patientId = editPaymentLink.dataset.patientId;
+            if (!paymentId || !patientId) return;
+            const url = `/patients/${encodeURIComponent(patientId)}/payments/${encodeURIComponent(paymentId)}/edit-modal`;
+            openFormModal(url, editPaymentLink.textContent.trim() || 'Edit Payment');
+            return;
+        }
+
+        const editPatientLink = e.target.closest('.edit-patient-btn');
+        if (editPatientLink) {
+            e.preventDefault();
+            const patientIdMatch = editPatientLink.href.match(/\/patients\/([^/]+)/);
+            const patientId = patientIdMatch ? patientIdMatch[1] : null;
+            if (!patientId) return;
+            const url = `/patients/${encodeURIComponent(patientId)}/edit/modal`;
+            openFormModal(url, editPatientLink.textContent.trim() || 'Edit Patient');
+            return;
+        }
+    });
+
+    const closeButtons = modal.querySelectorAll('.modal-close');
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', hideFormModal);
+    });
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            hideFormModal();
+        }
+    });
+}
+
+function hideFormModal() {
+    const modal = document.getElementById('formModal');
+    const bodyEl = document.getElementById('formModalBody');
+    if (!modal) return;
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+    if (bodyEl) {
+        bodyEl.innerHTML = '';
+    }
+}
+
+async function openReceiptForPrint(paymentId, patientId, options) {
+    hidePrintModal();
+    const receiptCard = await buildReceiptCard(paymentId, patientId, {
+        trimHeader: false,
+        includeTreatment: options?.includeTreatment !== false,
+        includeNotes: options?.includeNotes !== false,
+        language: options?.language || 'current'
+    });
+
+    if (!receiptCard) {
+        showErrorMessage('Unable to load receipt for printing.');
+        return;
+    }
+
+    const printHost = getPrintHost();
+    printHost.innerHTML = '';
+
+    const pageWrapper = document.createElement('div');
+    pageWrapper.className = 'receipt-page';
+    const lang = options?.language || 'current';
+    if (lang === 'ar') {
+        pageWrapper.setAttribute('dir', 'rtl');
+    } else if (lang === 'en') {
+        pageWrapper.setAttribute('dir', 'ltr');
+    } else {
+        // current_language: follow the app's current direction
+        const docDir = document.documentElement.getAttribute('dir') || 'ltr';
+        pageWrapper.setAttribute('dir', docDir);
+    }
+    pageWrapper.appendChild(receiptCard);
+    printHost.appendChild(pageWrapper);
+
+    setTimeout(function() {
+        window.print();
+    }, 100);
+}
+
+async function buildReceiptCard(paymentId, patientId, options = {}) {
+    const {
+        trimHeader = false,
+        includeTreatment = true,
+        includeNotes = true,
+        language = 'current'
+    } = options;
+
+    try {
+        let url = `/patients/${patientId}/payments/${paymentId}/receipt/view`;
+        if (language && language !== 'current') {
+            url += (url.includes('?') ? '&' : '?') + `lang=${encodeURIComponent(language)}`;
+        }
+        const response = await fetch(url, { method: 'GET' });
+        if (!response.ok) {
+            throw new Error('Failed to load receipt');
+        }
+        const htmlText = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlText, 'text/html');
+        let receiptCard = doc.querySelector('.receipt-card');
+
+        if (!receiptCard) {
+            console.error('Receipt card element not found in response');
+            return null;
+        }
+
+        const clone = receiptCard.cloneNode(true);
+
+        if (trimHeader) {
+            clone.querySelectorAll('.receipt-header').forEach(el => el.remove());
+            clone.querySelectorAll('.receipt-footer').forEach(el => el.remove());
+        }
+
+        if (!includeTreatment) {
+            clone.querySelectorAll('[data-section="treatment"]').forEach(el => el.remove());
+        }
+
+        if (!includeNotes) {
+            clone.querySelectorAll('[data-section="notes"]').forEach(el => el.remove());
+        }
+
+        return clone;
+    } catch (err) {
+        console.error('Error loading receipt view:', err);
+        return null;
+    }
+}
+
+function getPrintHost() {
+    let host = document.getElementById('printReceiptHost');
+    if (!host) {
+        host = document.createElement('div');
+        host.id = 'printReceiptHost';
+        host.setAttribute('aria-hidden', 'true');
+        const wrap = document.querySelector('.wrap');
+        if (wrap) {
+            wrap.appendChild(host);
+        } else {
+            document.body.appendChild(host);
+        }
+    }
+    return host;
+}
+
+window.addEventListener('afterprint', function() {
+    const host = document.getElementById('printReceiptHost');
+    if (host) {
+        host.innerHTML = '';
+    }
+});
 
 function gatherPrintOptions() {
     const lang = document.querySelector('input[name="receipt-lang"]:checked')?.value || 'current';
@@ -423,3 +628,20 @@ function showMobilePrintOptions(paymentId, patientId) {
 
 // Initialize mobile print on load
 document.addEventListener('DOMContentLoaded', initializeMobilePrint);
+
+// Close modal on outside click
+document.addEventListener('click', function(event) {
+    const modals = document.querySelectorAll('.modal');
+    modals.forEach(modal => {
+        if (event.target === modal) {
+            closeModal();
+        }
+    });
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeModal();
+    }
+});

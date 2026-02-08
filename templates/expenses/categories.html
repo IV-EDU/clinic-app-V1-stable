@@ -1,15 +1,15 @@
 {% extends 'expenses/base.html' %}
 
-{% block title %}Expense Categories{% endblock %}
+{% block title %}{{ tf('expense_categories', 'Expense Categories') }}{% endblock %}
 
 {% block expenses_content %}
 <div class="categories-container">
     <div class="page-header">
-        <h1>Expense Categories</h1>
-        <p>Organize your expense receipts by category for better tracking and reporting.</p>
+        <h1>{{ tf('expense_categories', 'Expense Categories') }}</h1>
+        <p>{{ tf('expense_categories_intro', 'Organize your expense receipts by category for better tracking and reporting.') }}</p>
         {% if current_user.has_permission('expenses:edit') %}
             <a href="{{ url_for('expenses.new_category') }}" class="btn primary">
-                <i class="fa fa-plus"></i> New Category
+                <i class="fa fa-plus"></i> {{ tf('new_category', 'New Category') }}
             </a>
         {% endif %}
     </div>
@@ -23,7 +23,7 @@
                     <h3>{{ category.name }}</h3>
                     {% if current_user.has_permission('expenses:edit') %}
                         <div class="category-actions">
-                            <a href="{{ url_for('expenses.view_category', category_id=category.id) }}" class="btn btn-sm secondary" title="View Details">
+                            <a href="{{ url_for('expenses.view_category', category_id=category.id) }}" class="btn btn-sm secondary" title="{{ tf('view_details', 'View Details') }}">
                                 <i class="fa fa-eye"></i>
                             </a>
                         </div>
@@ -37,11 +37,11 @@
                 <div class="category-stats">
                     <div class="stat-item">
                         <span class="stat-number">{{ category.receipt_count }}</span>
-                        <span class="stat-label">Receipts</span>
+                        <span class="stat-label">{{ tf('receipts', 'Receipts') }}</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-number">{{ "%.2f"|format(category.total_amount) }}</span>
-                        <span class="stat-label">Total Amount</span>
+                        <span class="stat-label">{{ tf('total_amount', 'Total Amount') }}</span>
                     </div>
                 </div>
             </div>
@@ -50,11 +50,11 @@
     {% else %}
         <div class="empty-state">
             <i class="fa fa-tags empty-icon"></i>
-            <h3>No Categories Yet</h3>
-            <p>Create your first expense category to start organizing receipts.</p>
+            <h3>{{ tf('no_categories_yet', 'No Categories Yet') }}</h3>
+            <p>{{ tf('create_first_category_hint', 'Create your first expense category to start organizing receipts.') }}</p>
             {% if current_user.has_permission('expenses:edit') %}
                 <a href="{{ url_for('expenses.new_category') }}" class="btn primary">
-                    <i class="fa fa-plus"></i> Create First Category
+                    <i class="fa fa-plus"></i> {{ tf('create_first_category', 'Create First Category') }}
                 </a>
             {% endif %}
         </div>
@@ -77,14 +77,14 @@
 
 .page-header h1 {
     margin: 0 0 8px 0;
-    color: #1f2937;
+    color: var(--ink, #1f2937);
     font-size: 2rem;
     font-weight: 600;
 }
 
 .page-header p {
     margin: 0 0 16px 0;
-    color: #6b7280;
+    color: var(--muted, #6b7280);
     font-size: 1.1rem;
 }
 
@@ -95,8 +95,8 @@
 }
 
 .category-card {
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--bg-surface, #ffffff);
+    border: 1px solid var(--border, #e5e7eb);
     border-radius: 12px;
     padding: 20px;
     transition: all 0.2s ease;
@@ -104,7 +104,7 @@
 }
 
 .category-card:hover {
-    border-color: #d1d5db;
+    border-color: var(--border-strong, #d1d5db);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
 }
@@ -125,7 +125,7 @@
 
 .category-header h3 {
     margin: 0;
-    color: #374151;
+    color: var(--ink, #374151);
     font-size: 1.25rem;
     font-weight: 600;
     flex: 1;
@@ -137,7 +137,7 @@
 }
 
 .category-description {
-    color: #6b7280;
+    color: var(--muted, #6b7280);
     margin-bottom: 20px;
     line-height: 1.5;
 }
@@ -151,29 +151,29 @@
 .stat-item {
     text-align: center;
     padding: 12px;
-    background: #f9fafb;
+    background: var(--bg-primary, #f9fafb);
     border-radius: 8px;
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border, #e5e7eb);
 }
 
 .stat-number {
     display: block;
     font-size: 1.5rem;
     font-weight: 700;
-    color: #374151;
+    color: var(--ink, #374151);
     margin-bottom: 4px;
 }
 
 .stat-label {
     font-size: 0.875rem;
-    color: #6b7280;
+    color: var(--muted, #6b7280);
     font-weight: 500;
 }
 
 .empty-state {
     text-align: center;
     padding: 60px 20px;
-    color: #6b7280;
+    color: var(--muted, #6b7280);
 }
 
 .empty-icon {
@@ -184,7 +184,7 @@
 
 .empty-state h3 {
     margin: 0 0 10px 0;
-    color: #374151;
+    color: var(--ink, #374151);
     font-size: 1.5rem;
 }
 

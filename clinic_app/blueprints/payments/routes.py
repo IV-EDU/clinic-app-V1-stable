@@ -8,6 +8,7 @@ from pathlib import Path
 from flask import Blueprint, flash, redirect, request, send_file, url_for, current_app, g, render_template
 
 from clinic_app.services.database import db
+from clinic_app.services.audit import write_event
 from clinic_app.services.i18n import T, get_lang
 from clinic_app.services.patients import migrate_patients_drop_unique_short_id
 from clinic_app.services.payments import (
@@ -250,6 +251,7 @@ def edit_payment_post(pid, pay_id):
 
     selected_doctor = doctor_lookup.get(doctor_id_raw, {"doctor_label": ANY_DOCTOR_LABEL})
     doctor_label = selected_doctor.get("doctor_label") or ANY_DOCTOR_LABEL
+    old_snapshot = dict(pay)
     cur.execute(
         """
         UPDATE payments
@@ -275,6 +277,42 @@ def edit_payment_post(pid, pay_id):
         ),
     )
     conn.commit()
+    try:
+        actor = getattr(g, "current_user", None)
+        actor_id = getattr(actor, "id", None)
+        write_event(
+            actor_id,
+            "payment_update",
+            entity="payment",
+            entity_id=pay_id,
+            meta={
+                "patient_id": pid,
+                "paid_at": paid_at,
+                "amount_cents": down_cents,
+                "method": method,
+                "doctor_id": doctor_id_raw,
+                "doctor_label": doctor_label,
+                "remaining_cents": rem_cents,
+                "total_amount_cents": total_cents,
+                "discount_cents": discount_cents,
+                "visit_type": "exam" if exam else ("followup" if follow else "none"),
+                "prev_paid_at": old_snapshot.get("paid_at") or "",
+                "prev_amount_cents": old_snapshot.get("amount_cents") or 0,
+                "prev_method": old_snapshot.get("method") or "",
+                "prev_doctor_id": old_snapshot.get("doctor_id") or "",
+                "prev_doctor_label": old_snapshot.get("doctor_label") or "",
+                "prev_remaining_cents": old_snapshot.get("remaining_cents") or 0,
+                "prev_total_amount_cents": old_snapshot.get("total_amount_cents") or 0,
+                "prev_discount_cents": old_snapshot.get("discount_cents") or 0,
+                "prev_visit_type": (
+                    "exam"
+                    if (old_snapshot.get("examination_flag") or 0) == 1
+                    else ("followup" if (old_snapshot.get("followup_flag") or 0) == 1 else "none")
+                ),
+            },
+        )
+    except Exception:
+        pass
     migrate_patients_drop_unique_short_id(conn)
     conn.close()
     flash(T("updated_payment_ok"), "ok")
@@ -349,8 +387,36 @@ def delete_payment(pid, pay_id):
     if not pay or not p or p["id"] != pid:
         conn.close()
         return "Payment not found", 404
+    snap = dict(pay)
     cur.execute("DELETE FROM payments WHERE id=?", (pay_id,))
     conn.commit()
+    try:
+        actor = getattr(g, "current_user", None)
+        actor_id = getattr(actor, "id", None)
+        write_event(
+            actor_id,
+            "payment_delete",
+            entity="payment",
+            entity_id=pay_id,
+            meta={
+                "patient_id": pid,
+                "paid_at": snap.get("paid_at") or "",
+                "amount_cents": snap.get("amount_cents") or 0,
+                "method": snap.get("method") or "",
+                "doctor_id": snap.get("doctor_id") or "",
+                "doctor_label": snap.get("doctor_label") or "",
+                "remaining_cents": snap.get("remaining_cents") or 0,
+                "total_amount_cents": snap.get("total_amount_cents") or 0,
+                "discount_cents": snap.get("discount_cents") or 0,
+                "visit_type": (
+                    "exam"
+                    if (snap.get("examination_flag") or 0) == 1
+                    else ("followup" if (snap.get("followup_flag") or 0) == 1 else "none")
+                ),
+            },
+        )
+    except Exception:
+        pass
     migrate_patients_drop_unique_short_id(conn)
     conn.close()
     flash(T("deleted_payment_ok"), "ok")

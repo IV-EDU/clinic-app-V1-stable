@@ -26,6 +26,8 @@ class SQLAlchemyEngine:
         uri = app.config["SQLALCHEMY_DATABASE_URI"]
         engine_options = app.config.get("SQLALCHEMY_ENGINE_OPTIONS", {})
         self._engine = create_engine(uri, future=True, **engine_options)
+        # Expose the engine on Flask's extensions dict so helpers like doctor_choices can access it.
+        app.extensions["db"] = self
 
         @event.listens_for(self._engine, "connect")
         def _set_pragmas(dbapi_connection, connection_record) -> None:  # type: ignore[override]

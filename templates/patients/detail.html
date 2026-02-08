@@ -4,8 +4,20 @@
   <div class="patient-summary-grid">
     <div class="summary-item">
       <div class="summary-label">{{ t('file_no') }}</div>
-      <div class="summary-value">{{ p['short_id'] }}</div>
+      <div class="summary-value">
+        <span class="page-chip">{{ p['short_id'] or '—' }}</span>
+      </div>
     </div>
+    {% if show_file_numbers %}
+    <div class="summary-item">
+      <div class="summary-label">{{ t('page_numbers') }}</div>
+      <div class="summary-value">
+        <span class="page-chip">
+          📄 <span class="page-chip-notebook">{{ primary_page_number or '—' }}</span>
+        </span>
+      </div>
+    </div>
+    {% endif %}
     <div class="summary-item">
       <div class="summary-label">{{ t('name') }}</div>
       <div class="summary-value">{{ p['full_name'] }}</div>
@@ -28,26 +40,248 @@
   <div class="patient-actions">
     <div class="actions-group">
       <a class="btn primary" href="{{ url_for('palmer_plus.diag_page', pid=p['id']) }}">{{ t('diagnosis') }}</a>
-      <a class="btn secondary" href="{{ url_for('patients.edit_patient', pid=p['id']) }}">{{ t('edit_patient') }}</a>
+      <a class="btn secondary edit-patient-btn" href="{{ url_for('patients.edit_patient', pid=p['id']) }}">{{ t('edit_patient') }}</a>
+      {% if current_user.is_authenticated and current_user.has_permission('patients:merge') %}
+      <button class="btn secondary" type="button" onclick="showMergePatientModal()">{{ t('merge_patient') }}</button>
+      {% endif %}
       <a class="btn danger" href="{{ url_for('patients.delete_patient_confirm', pid=p['id']) }}">{{ t('delete_patient') }}</a>
     </div>
   </div>
 </div>
 {% include 'payments/_list.html' %}
 
-<div class="modal" id="viewReceiptModal" style="display:none;">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">{{ t('receipt') }}</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="{{ t('cancel') }}">
-          <span aria-hidden="true">&times;</span>
-        </button>
+<div id="viewReceiptModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ t('view_receipt') }}</h3>
+      <button class="modal-close" onclick="hideViewReceiptModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="viewReceiptContent" class="view-receipt-content">
+        <!-- Content will be loaded here by JavaScript -->
       </div>
-      <div class="modal-body" style="padding:0;">
-        <div id="viewReceiptContent" class="view-receipt-content"></div>
-      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="hideViewReceiptModal()">{{ t('close') }}</button>
     </div>
   </div>
 </div>
+
+<div id="formModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title" id="formModalTitle"></h3>
+      <button class="modal-close" onclick="hideFormModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="formModalBody"></div>
+    </div>
+  </div>
+</div>
+
+{% if current_user.is_authenticated and current_user.has_permission('patients:merge') %}
+<div id="mergePatientModal" class="modal">
+  <div class="modal-content">
+    <form method="post" action="{{ url_for('patients.merge_patient', pid=p['id']) }}" class="admin-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="modal-header">
+        <h3 class="modal-title">{{ t('merge_patient') }}</h3>
+        <button class="modal-close" type="button" onclick="hideMergePatientModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label" for="merge-target-short-id">
+            {{ t('merge_target_short_id') }}
+          </label>
+          <input id="merge-target-short-id" name="target_short_id" class="form-input" autocomplete="off" required
+                 placeholder="{{ t('merge_target_placeholder') }}">
+          <div class="merge-suggestions-group">
+            <div id="merge-suggestions-same" class="merge-suggestions"></div>
+            <div id="merge-suggestions-search" class="merge-suggestions"></div>
+          </div>
+          <div id="merge-selected-preview" class="merge-selection-preview">
+            <div class="merge-preview-name" id="merge-preview-name"></div>
+            <div class="merge-preview-details">
+              <div class="merge-preview-detail">
+                <span class="icon">📁</span>
+                <span id="merge-preview-file"></span>
+              </div>
+              <div class="merge-preview-detail">
+                <span class="icon">📞</span>
+                <span id="merge-preview-phone"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-item">
+            <input type="checkbox" name="merge_diag_images" value="1">
+            <span>{{ t('merge_diag_images_label') }}</span>
+          </label>
+        </div>
+        <p class="u-text-muted">
+          {{ t('merge_patient_warning') }}
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn secondary" onclick="hideMergePatientModal()">{{ t('cancel') }}</button>
+        <button type="submit" class="btn primary">{{ t('merge_now') }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% block extra_js %}
+{{ super() if super is defined }}
+<script>
+function showMergePatientModal() {
+  var modal = document.getElementById('mergePatientModal');
+  if (modal) {
+    modal.classList.add('active');
+    var input = document.getElementById('merge-target-short-id');
+    if (input) { input.focus(); }
+  }
+}
+function hideMergePatientModal() {
+  var modal = document.getElementById('mergePatientModal');
+  if (modal) {
+    modal.classList.remove('active');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var input = document.getElementById('merge-target-short-id');
+  var boxSame = document.getElementById('merge-suggestions-same');
+  var boxSearch = document.getElementById('merge-suggestions-search');
+  var previewBox = document.getElementById('merge-selected-preview');
+  var previewName = document.getElementById('merge-preview-name');
+  var previewFile = document.getElementById('merge-preview-file');
+  var previewPhone = document.getElementById('merge-preview-phone');
+  if (!input || !boxSame || !boxSearch) return;
+
+  function setPreview(patient) {
+    if (!previewBox || !previewName || !previewFile || !previewPhone) return;
+    if (!patient) {
+      previewBox.classList.remove('visible');
+      previewName.textContent = '';
+      previewFile.textContent = '';
+      previewPhone.textContent = '';
+      return;
+    }
+    previewName.textContent = patient.full_name || '';
+    previewFile.textContent = patient.short_id || '—';
+    previewPhone.textContent = patient.phone || '—';
+    previewBox.classList.add('visible');
+  }
+
+  function clearBox(box) {
+    box.innerHTML = '';
+    box.style.display = 'none';
+  }
+
+  function clearAll() {
+    clearBox(boxSame);
+    clearBox(boxSearch);
+    setPreview(null);
+  }
+
+  function renderInto(box, items, heading) {
+    box.innerHTML = '';
+    if (!items || !items.length) {
+      box.style.display = 'none';
+      return;
+    }
+    if (heading) {
+      var h = document.createElement('div');
+      h.textContent = heading;
+      h.style.fontSize = '0.8rem';
+      h.style.fontWeight = '600';
+      h.style.margin = '4px 0';
+      box.appendChild(h);
+    }
+    items.forEach(function(p) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn secondary';
+      var label = (p.short_id || '—') + ' – ' + (p.full_name || '');
+      if (p.phone) {
+        label += ' (' + p.phone + ')';
+      }
+      btn.textContent = label;
+      btn.style.display = 'block';
+      btn.style.width = '100%';
+      btn.style.marginBottom = '4px';
+      btn.style.whiteSpace = 'nowrap';
+      btn.style.overflow = 'hidden';
+      btn.style.textOverflow = 'ellipsis';
+      btn.onclick = function() {
+        input.value = p.short_id || '';
+        clearAll();
+        setPreview(p);
+      };
+      box.appendChild(btn);
+    });
+    box.style.display = 'block';
+  }
+
+  // Initial suggestions passed from backend (same-name patients).
+  try {
+    var initial = {{ merge_suggestions|tojson|safe }};
+    renderInto(boxSame, initial, '{{ t("merge_suggested_same") }}');
+  } catch (e) {
+    clearAll();
+  }
+
+  var debounceTimer = null;
+  input.addEventListener('input', function() {
+    var q = (input.value || '').trim();
+    if (!q) {
+      clearBox(boxSearch);
+      setPreview(null);
+      return;
+    }
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+    debounceTimer = setTimeout(function() {
+      // Reuse the same patient autocomplete API used by the appointments page,
+      // so behaviour is identical to "Add appointment" search.
+      fetch('/api/patients/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' })
+        .then(function(res) { return res.ok ? res.json() : []; })
+        .then(function(data) {
+          var items = (data || []).map(function(p) {
+            return {
+              short_id: p.file_number || p.short_id || '',
+              full_name: p.name || p.full_name || '',
+              phone: p.phone_number || p.phone || ''
+            };
+          });
+          renderInto(boxSearch, items, '{{ t("merge_suggested_search") }}');
+
+          // If the user typed an exact file number that matches one of the
+          // results, automatically show the preview so they don't have to
+          // click again.
+          var norm = q.toLowerCase();
+          var exact = items.find(function(p) {
+            return (p.short_id || '').toLowerCase() === norm;
+          });
+          if (exact) {
+            setPreview(exact);
+          }
+        })
+        .catch(function() {
+          clearBox(boxSearch);
+        });
+    }, 250);
+  });
+
+  document.addEventListener('click', function(ev) {
+    if (!boxSame.contains(ev.target) && !boxSearch.contains(ev.target) && ev.target !== input) {
+      clearAll();
+    }
+  });
+});
+</script>
+{% endblock %}
 {% endblock %}

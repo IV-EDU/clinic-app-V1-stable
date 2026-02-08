@@ -24,13 +24,16 @@
 .receipt-header{
     display:flex;
     justify-content:space-between;
-    gap:16px;
+    gap:12px;
     border-bottom:1px solid var(--border,#e5e7eb);
     padding-bottom:16px;
     margin-bottom:16px;
 }
-.clinic-block{flex:2}
-.clinic-name{font-size:22px;font-weight:700;margin-bottom:6px;color:var(--ink,#111827)}
+.clinic-block{flex:1.6}
+.clinic-brand{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+.clinic-logo-wrapper{width:100%;max-width:none;min-height:0;display:flex;align-items:center;justify-content:flex-start;padding:0}
+.clinic-logo-img{max-width:100%;max-height:200px;height:auto;width:100%;object-fit:contain;filter:drop-shadow(0 3px 10px rgba(0,0,0,0.1));}
+.clinic-name{font-size:22px;font-weight:700;margin-bottom:0;color:var(--ink,#111827)}
 .clinic-meta{color:var(--muted,#6b7280);font-size:14px}
 .receipt-meta{
     flex:1;
@@ -38,6 +41,7 @@
     border:1px solid var(--border,#e5e7eb);
     border-radius:10px;
     padding:12px;
+    align-self:center;
 }
 .meta-line{
     display:flex;
@@ -61,7 +65,12 @@
     padding:12px;
     background:var(--bg,#f9fafb);
 }
-.block-title{font-weight:700;margin-bottom:8px;color:var(--ink,#111827)}
+.block-title{
+    font-weight:700;
+    margin-bottom:8px;
+    color:var(--ink,#111827);
+    text-align:center;
+}
 .kv-line{
     display:flex;
     justify-content:space-between;
@@ -71,7 +80,8 @@
     gap:10px;
 }
 .kv-line:last-child{border-bottom:none}
-.kv-line span{color:var(--muted,#6b7280)}
+.kv-line .kv-label{color:var(--muted,#6b7280)}
+.kv-line .kv-value{font-weight:600}
 .note-block{margin-bottom:12px}
 .note-text{
     background:var(--bg,#f9fafb);
@@ -140,7 +150,7 @@
 .close:hover{color:#495057}
 .modal-body{padding:24px}
 .view-receipt-content {
-    padding: 24px 18px;
+    padding: 16px 32px;
     max-height: calc(80vh - 120px);
     overflow-y: auto;
     overflow-x: hidden;
@@ -170,11 +180,11 @@
 .view-receipt-content .receipt-view-panel {
     width: 100%;
     max-width: 540px;
-    background: var(--card, #fff);
-    border-radius: 14px;
-    border: 1px solid rgba(15, 23, 42, 0.08);
-    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
-    padding: 20px 22px;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    padding: 0;
     box-sizing: border-box;
 }
 .receipt-view-summary {
@@ -196,9 +206,9 @@
     margin-bottom: 4px;
 }
 .receipt-view-summary-item .summary-value {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--ink, #111827);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--metric-color, var(--primary-color, #2563eb));
 }
 .receipt-view-group {
     margin-top: 16px;
@@ -220,11 +230,13 @@
 }
 .receipt-view-label {
     color: var(--muted, #6b7280);
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 15px;
 }
 .receipt-view-value {
     color: var(--ink, #111827);
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 15px;
     text-align: end;
     overflow-wrap: anywhere;
 }
@@ -236,6 +248,46 @@
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0;
+}
+
+/* Receipt patient header – similar to appointments view */
+.receipt-patient-header {
+    background: var(--bg, #f7f7f8);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    margin: 4px 0 14px;
+}
+.receipt-patient-name {
+    font-weight: 600;
+    color: var(--ink, #111827);
+    margin-bottom: 0.35rem;
+    font-size: 1.02rem;
+    text-align: center;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.receipt-patient-details {
+    display: flex;
+    justify-content: center;
+    gap: 1.25rem;
+    font-size: 0.9rem;
+    color: var(--muted, #6b7280);
+    flex-wrap: wrap;
+}
+.receipt-patient-details span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: ltr;
+    text-align: left;
+    unicode-bidi: plaintext;
 }
 
 .simple-body .hint{margin:0 0 16px 0;color:#6c757d}
@@ -290,10 +342,10 @@
     display: none;
 }
 
-.print-receipt-btn {
-    background-color: var(--primary-color, #2563eb);
-    border: 1px solid var(--primary-color, #2563eb);
-    color: white;
+.receipt-page .print-receipt-btn {
+    background-color: #059669;
+    border: 1px solid #047857;
+    color: #ffffff;
     padding: 8px 16px;
     border-radius: 6px;
     font-size: 14px;
@@ -305,20 +357,20 @@
     text-decoration: none;
 }
 
-.print-receipt-btn:hover {
-    background-color: #1e3a8a;
-    border-color: #1e3a8a;
-    color: white;
+.receipt-page .print-receipt-btn:hover {
+    background-color: #047857;
+    border-color: #065f46;
+    color: #ffffff;
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.3);
+    box-shadow: 0 2px 4px rgba(4, 120, 87, 0.25);
 }
 
-.print-receipt-btn:active {
+.receipt-page .print-receipt-btn:active {
     transform: translateY(0);
     box-shadow: 0 1px 2px rgba(0, 123, 255, 0.3);
 }
 
-.print-receipt-btn i {
+.receipt-page .print-receipt-btn i {
     font-size: 14px;
 }
 
@@ -780,20 +832,19 @@
 [dir="rtl"] .modal-header{flex-direction:row-reverse;}
 [dir="rtl"] .action-bar{flex-direction:row-reverse;}
 [dir="rtl"] .action-buttons{flex-direction:row-reverse;}
-[dir="rtl"] .receipt-header{flex-direction:row-reverse;text-align:right}
-[dir="rtl"] .meta-line{flex-direction:row-reverse}
-[dir="rtl"] .kv-line{flex-direction:row-reverse}
+.receipt-page[dir="rtl"] .receipt-header{flex-direction:row-reverse;text-align:right}
+.receipt-page[dir="rtl"] .meta-line{flex-direction:row-reverse}
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-    .print-receipt-btn {
+    .receipt-page .print-receipt-btn {
         border: 2px solid #000;
-        background: #fff;
-        color: #000;
+        background: #059669;
+        color: #fff;
     }
     
-    .print-receipt-btn:hover {
-        background: #000;
+    .receipt-page .print-receipt-btn:hover {
+        background: #047857;
         color: #fff;
     }
     

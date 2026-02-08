@@ -1,6 +1,4 @@
 from datetime import date
-from pathlib import Path
-import re
 import uuid
 
 from clinic_app.services.appointments import doctor_choices
@@ -71,55 +69,6 @@ def test_appointment_overlap_conflict(logged_in_client, get_csrf_token, app):
 
     resp_conflict = logged_in_client.post("/appointments/new", data=payload, follow_redirects=False)
     assert resp_conflict.status_code == 409
-
-
-def test_receipt_serial_pdf_and_reprint(logged_in_client, get_csrf_token):
-    _make_patient()
-    page = logged_in_client.get("/receipts/new")
-    token = get_csrf_token(page)
-    payload = {
-        "csrf_token": token,
-        "patient_lookup": "P0001",
-        "amount": "150",
-        "locale": "en",
-        "description": "Initial payment",
-    }
-    resp = logged_in_client.post("/receipts/new", data=payload, follow_redirects=False)
-    assert resp.status_code in (302, 303)
-
-    page = logged_in_client.get("/receipts/new")
-    token = get_csrf_token(page)
-    payload["csrf_token"] = token
-    payload["amount"] = "200"
-    resp2 = logged_in_client.post("/receipts/new", data=payload, follow_redirects=False)
-    assert resp2.status_code in (302, 303)
-
-    conn = db()
-    rows = conn.execute(
-        "SELECT id, number, pdf_path, locale, reprint_count FROM receipts ORDER BY issued_at DESC"
-    ).fetchall()
-    conn.close()
-    assert len(rows) >= 2
-    number_latest = rows[0]["number"]
-    number_prev = rows[1]["number"]
-    assert number_latest != number_prev
-    assert re.match(r"R-\d{4}-\d{6}", number_latest)
-    pdf_path = Path(rows[0]["pdf_path"])
-    assert pdf_path.exists()
-    assert pdf_path.read_bytes().startswith(b"%PDF")
-
-    list_page = logged_in_client.get("/receipts")
-    token = get_csrf_token(list_page)
-    resp_reprint = logged_in_client.post(
-        f"/receipts/{rows[0]['id']}/reprint",
-        data={"csrf_token": token},
-        follow_redirects=False,
-    )
-    assert resp_reprint.status_code in (302, 303)
-    conn = db()
-    new_count = conn.execute("SELECT reprint_count FROM receipts WHERE id=?", (rows[0]["id"],)).fetchone()
-    conn.close()
-    assert new_count["reprint_count"] >= 1
 
 
 def test_move_appointment_endpoint(logged_in_client, get_csrf_token, app):

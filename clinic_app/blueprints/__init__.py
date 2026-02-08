@@ -8,7 +8,6 @@ def register_blueprints(app) -> None:
     modules = [
         "clinic_app.blueprints.core",
         "clinic_app.blueprints.appointments.routes",
-        "clinic_app.blueprints.receipts.routes",
         "clinic_app.blueprints.admin_settings",
         "clinic_app.blueprints.images",
         "clinic_app.blueprints.patients.routes",

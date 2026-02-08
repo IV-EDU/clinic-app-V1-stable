@@ -1,11 +1,12 @@
 // Expense Management JavaScript
 
 document.addEventListener('DOMContentLoaded', function() {
-    initializeExpenseSearch();
-    wireTotals();
+    const L = window.EXPENSES_I18N || {};
+    initializeExpenseSearch(L);
+    wireTotals(L);
 });
 
-function wireTotals() {
+function wireTotals(L) {
     const totalInput = document.querySelector('input[name="total_amount"]');
     if (totalInput) {
         totalInput.addEventListener('input', () => {
@@ -27,13 +28,14 @@ function wireTotals() {
 function validateExpenseForm() {
     const form = document.getElementById('expenseForm');
     if (!form) return true;
+    const L = window.EXPENSES_I18N || {};
     
     let isValid = true;
 
     const totalAmountInput = document.querySelector('input[name="total_amount"]');
     const totalVal = parseFloat(totalAmountInput?.value) || 0;
     if (!totalVal || totalVal <= 0) {
-        showError('Please enter how much you paid.');
+        showError(L.enter_total || 'Please enter how much you paid.');
         isValid = false;
     }
     
@@ -61,14 +63,14 @@ function showError(message) {
 }
 
 // Search and filter functionality
-function initializeExpenseSearch() {
+function initializeExpenseSearch(L) {
     const searchForm = document.querySelector('.expense-search-form');
     
     if (searchForm) {
         searchForm.addEventListener('submit', function(e) {
             const submitBtn = this.querySelector('button[type="submit"]');
             if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Searching...';
+                submitBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> ' + (L.searching || 'Searching...');
                 submitBtn.disabled = true;
             }
         });

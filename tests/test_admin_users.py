@@ -70,6 +70,8 @@ def _create_extra_admin(username: str = "extra_admin") -> str:
 
 
 def test_admin_can_create_and_edit_user(logged_in_client, get_csrf_token):
+    # Ensure default roles (including Manager) exist.
+    logged_in_client.get("/admin/settings")
     page = logged_in_client.get("/admin/users/new")
     assert page.status_code == 200
     token = get_csrf_token(page)
@@ -93,6 +95,97 @@ def test_admin_can_create_and_edit_user(logged_in_client, get_csrf_token):
         row = conn.execute("SELECT id FROM users WHERE username='helper'").fetchone()
         assert row is not None
         user_id = row["id"]
+    finally:
+        conn.close()
+
+
+def test_can_assign_manager_role_without_legacy_role_error(logged_in_client, get_csrf_token):
+    # Ensure default roles (including Manager) exist.
+    logged_in_client.get("/admin/settings")
+
+    page = logged_in_client.get("/admin/users/new")
+    assert page.status_code == 200
+    token = get_csrf_token(page)
+    manager_role_id = _make_role_id("Manager")
+    resp = logged_in_client.post(
+        "/admin/users/new",
+        data={
+            "csrf_token": token,
+            "username": "manager_user",
+            "password": "any",
+            "full_name": "Manager User",
+            "roles": [str(manager_role_id)],
+            "is_active": "1",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+
+    conn = raw_db()
+    try:
+        row = conn.execute("SELECT id, role FROM users WHERE username='manager_user'").fetchone()
+        assert row is not None
+        # Legacy role should remain compatible with older CHECK constraints.
+        assert (row["role"] or "").lower() in ("assistant", "admin", "doctor")
+    finally:
+        conn.close()
+
+
+def test_can_update_user_to_manager_role_without_legacy_role_error(logged_in_client, get_csrf_token):
+    # Ensure default roles (including Manager) exist.
+    logged_in_client.get("/admin/settings")
+
+    # Create a normal assistant user first.
+    page = logged_in_client.get("/admin/users/new")
+    assert page.status_code == 200
+    token = get_csrf_token(page)
+    reception_role_id = _make_role_id("Reception")
+    create_resp = logged_in_client.post(
+        "/admin/users/new",
+        data={
+            "csrf_token": token,
+            "username": "merge_manager_user",
+            "password": "any",
+            "full_name": "Merge Manager User",
+            "roles": [str(reception_role_id)],
+            "is_active": "1",
+        },
+        follow_redirects=False,
+    )
+    assert create_resp.status_code in (302, 303)
+
+    conn = raw_db()
+    try:
+        row = conn.execute("SELECT id FROM users WHERE username='merge_manager_user'").fetchone()
+        assert row is not None
+        user_id = row["id"]
+    finally:
+        conn.close()
+
+    # Update the user to Manager.
+    edit_page = logged_in_client.get(f"/admin/users/{user_id}/edit")
+    assert edit_page.status_code == 200
+    token = get_csrf_token(edit_page)
+    manager_role_id = _make_role_id("Manager")
+    resp = logged_in_client.post(
+        f"/admin/users/{user_id}/edit",
+        data={
+            "csrf_token": token,
+            "username": "merge_manager_user",
+            "full_name": "Merge Manager User",
+            "roles": [str(manager_role_id)],
+            "is_active": "1",
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code in (302, 303)
+
+    conn = raw_db()
+    try:
+        row = conn.execute("SELECT role FROM users WHERE id=?", (user_id,)).fetchone()
+        assert row is not None
+        # Legacy role should remain compatible with older CHECK constraints.
+        assert (row["role"] or "").lower() in ("assistant", "admin", "doctor")
     finally:
         conn.close()
 

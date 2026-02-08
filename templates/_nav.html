@@ -2,59 +2,90 @@
 {% if not next_path %}
   {% set next_path = '/' %}
 {% endif %}
-<div class="header">
+{% set hide_app_nav = hide_app_nav or false %}
+<div class="header u-app-header">
   <div class="bar">
     <div class="start">
-      {% if current_user %}
+      {% if current_user and not hide_app_nav %}
       <div class="kebab" id="kebab">
         <button class="kebab-btn" onclick="toggleKebab(event, this)">⋮</button>
         <div class="kebab-menu">
-          {% if user_has_permission(current_user, 'reports:view') %}
-            <a class="secondary" href="{{ url_for('reports.collections') }}">{{ t('collections') }}</a>
-          {% endif %}
-          {% if user_has_permission(current_user, 'patients:edit') %}
-            <a class="secondary" href="{{ url_for('patients.export_patients_csv') }}">{{ t('export_patients') }}</a>
-          {% endif %}
-          {% if user_has_permission(current_user, 'payments:edit') %}
-            <a class="secondary" href="{{ url_for('payments.export_payments_csv') }}">{{ t('export_payments') }}</a>
-          {% endif %}
-          {% if user_has_permission(current_user, 'admin.user.manage') %}
-            <a class="secondary" href="{{ url_for('admin_settings.index') }}">Admin Settings</a>
+          {% if current_user and not hide_app_nav %}
+            {% if user_has_permission(current_user, 'reports:view') %}
+              <a class="secondary" href="{{ url_for('reports.collections') }}">{{ t('collections') }}</a>
+            {% endif %}
+            {% if user_has_permission(current_user, 'expenses:view') %}
+              <a class="secondary" href="{{ url_for('simple_expenses.index') }}">{{ t('expenses') }}</a>
+            {% endif %}
+            {% if user_has_permission(current_user, 'admin.user.manage') %}
+              <a class="secondary" href="{{ url_for('admin_settings.index') }}">{{ t('admin_settings') }}</a>
+            {% endif %}
           {% endif %}
         </div>
       </div>
       {% endif %}
-      {% if show_back %}
+      {% if show_back and not hide_app_nav %}
         <a class="btn secondary back-btn" href="{{ back_url(p) }}">← {{ t('back') }}</a>
       {% endif %}
-      <a class="btn secondary home-btn" href="{{ url_for('index') }}">{{ t('home') }}</a>
-      {% if current_user and user_has_permission(current_user, 'appointments:view') %}
-        <a class="btn secondary" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
-      {% endif %}
-      {% if current_user and user_has_permission(current_user, 'expenses:view') %}
-        <a class="btn secondary" href="/simple-expenses/">
-          <i class="fa fa-receipt"></i>
-          <span>Expenses</span>
-        </a>
+      {% if current_user and not hide_app_nav %}
+        <a class="btn secondary home-btn" href="{{ url_for('index') }}">{{ t('home') }}</a>
+        {% if user_has_permission(current_user, 'appointments:view') %}
+          <a class="btn secondary" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
+        {% endif %}
       {% endif %}
     </div>
-    <div class="center"><div class="title">{{ t('app_title') }}</div></div>
+    <div class="center">
+      {% if theme_logo_url %}
+        <div class="brand-wrap" dir="ltr">
+          <div class="brand-logo">
+            <img src="{{ theme_logo_url }}" alt="{{ t('app_title') }}" class="brand-logo-img" style="max-height: {{ 60 * (logo_scale or 100) / 100 }}px; max-width: {{ 150 * (logo_scale or 100) / 100 }}px;">
+          </div>
+          {% if clinic_name_enabled and clinic_name %}
+            <div class="brand-text" dir="ltr">
+              <div class="brand-name" style="{% if clinic_brand_color %}color: {{ clinic_brand_color }};{% endif %}">
+                {{ clinic_name }}
+              </div>
+              {% if clinic_tagline_enabled and clinic_tagline %}
+              <div class="brand-tagline" style="{% if clinic_brand_color %}color: {{ clinic_brand_color }};{% endif %}">
+                {{ clinic_tagline }}
+              </div>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      {% else %}
+        {% if clinic_name_enabled %}
+          <div class="brand-text" dir="ltr">
+            <div class="brand-name" style="{% if clinic_brand_color %}color: {{ clinic_brand_color }};{% endif %}">
+              {{ clinic_name if clinic_name else t('app_title') }}
+            </div>
+            {% if clinic_tagline_enabled and clinic_tagline %}
+              <div class="brand-tagline" style="{% if clinic_brand_color %}color: {{ clinic_brand_color }};{% endif %}">
+                {{ clinic_tagline }}
+              </div>
+            {% endif %}
+          </div>
+        {% else %}
+          <div class="title">{{ t('app_title') }}</div>
+        {% endif %}
+      {% endif %}
+    </div>
     <div class="end" style="justify-content:flex-end">
       <div class="lang-toggle" style="display:flex;gap:4px;align-items:center">
         <form method="post" action="{{ url_for('core.set_lang') }}" style="display:inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="lang" value="en">
           <input type="hidden" name="next" value="{{ next_path }}">
-          <button type="submit" class="secondary {{ 'active' if lang == 'en' else '' }}">English</button>
+          <button type="submit" class="secondary {{ 'active' if lang == 'en' else '' }}">{{ t('lang_en') }}</button>
         </form>
         <form method="post" action="{{ url_for('core.set_lang') }}" style="display:inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="lang" value="ar">
           <input type="hidden" name="next" value="{{ next_path }}">
-          <button type="submit" class="secondary {{ 'active' if lang == 'ar' else '' }}">العربية</button>
+          <button type="submit" class="secondary {{ 'active' if lang == 'ar' else '' }}">{{ t('lang_ar') }}</button>
         </form>
       </div>
-      {% if current_user %}
+      {% if current_user and not hide_app_nav %}
         {% set role_name = current_user.primary_role_name %}
         <div class="user-meta">{{ current_user.username }}{% if role_name %} ({{ role_name }}){% endif %}
           <form method="post" action="{{ url_for('auth.logout') }}" style="display:inline">
@@ -62,7 +93,7 @@
             <button type="submit" class="secondary">{{ t('logout') }}</button>
           </form>
         </div>
-      {% else %}
+      {% elif (not current_user) and (not hide_app_nav) %}
         <a class="secondary" href="{{ url_for('auth.login') }}">{{ t('login') }}</a>
       {% endif %}
     </div>

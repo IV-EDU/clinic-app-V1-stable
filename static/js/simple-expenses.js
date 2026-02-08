@@ -1,6 +1,7 @@
 // Simple, in-page helpers for the one-page expenses flow
 
 document.addEventListener("DOMContentLoaded", () => {
+  const I18N = window.SIMPLE_EXPENSES_I18N || {};
   const monthInput = document.getElementById("month");
   if (monthInput && monthInput.form) {
     monthInput.addEventListener("change", () => monthInput.form.submit());
@@ -27,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function setupModal() {
+  const I18N = window.SIMPLE_EXPENSES_I18N || {};
   const modal = document.getElementById("expenseModal");
   if (!modal) return;
 
@@ -50,7 +52,7 @@ function setupModal() {
       const lines = desc.split("\n").map((l) => l.trim()).filter((l) => l.length);
       if (lines.length === 0) {
         const li = document.createElement("li");
-        li.textContent = "No description provided.";
+        li.textContent = I18N.noDesc || "No description provided.";
         descEl.appendChild(li);
       } else {
         lines.forEach((line) => {

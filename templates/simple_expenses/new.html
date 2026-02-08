@@ -1,13 +1,20 @@
 {% extends 'simple_expenses/base.html' %}
 
-{% block title %}Add Expense{% endblock %}
+{% block title %}{{ tf('add_expense', 'Add Expense') }}{% endblock %}
 
 {% block simple_expenses_content %}
+  {% macro tf(key, default_text) -%}
+    {%- set val = t(key) if t else default_text -%}
+    {{ default_text if val == key else val }}
+  {%- endmacro %}
   <div class="expense-form-container">
     <!-- Clean Header -->
-    <div class="form-header">
-      <h2><i class="fa fa-plus-circle"></i> Add New Expense</h2>
-      <p>Quick and simple expense tracking</p>
+    <div class="page-header u-card">
+      <div>
+        <p class="eyebrow">{{ tf('add_expense', 'Add Expense') }}</p>
+        <h1 class="page-title"><i class="fa fa-plus-circle"></i> {{ tf('add_expense', 'Add Expense') }}</h1>
+        <p class="subtext">{{ tf('quick_expense_tracking', 'Quick and simple expense tracking') }}</p>
+      </div>
     </div>
 
     <div class="expense-form-card">
@@ -17,7 +24,7 @@
         <!-- Form Errors -->
         {% if form.errors %}
         <div class="alert alert-danger">
-          <strong>Please fix these errors:</strong>
+          <strong>{{ tf('please_fix_errors', 'Please fix these errors:') }}</strong>
           <ul>
             {% for field, errors in form.errors.items() %}
               <li>{{ field.replace('_', ' ').title() }}: {{ errors[0] }}</li>
@@ -31,14 +38,14 @@
         <div class="duplicate-warning">
           <div class="warning-header">
             <i class="fa fa-exclamation-triangle"></i>
-            <h4>Similar Expenses Found</h4>
+            <h4>{{ tf('similar_expenses_found', 'Similar Expenses Found') }}</h4>
           </div>
-          <p>We found expenses that might be duplicates. You can:</p>
+          <p>{{ tf('duplicates_hint', 'We found expenses that might be duplicates. You can:') }}</p>
           
           <div class="duplicate-options">
             <div class="option-card">
-              <h5><i class="fa fa-edit"></i> Merge with Existing</h5>
-              <p>Choose an existing expense to update instead of creating a new one:</p>
+              <h5><i class="fa fa-edit"></i> {{ tf('merge_existing', 'Merge with Existing') }}</h5>
+              <p>{{ tf('merge_existing_hint', 'Choose an existing expense to update instead of creating a new one:') }}</p>
               <div class="duplicate-list">
                 {% for duplicate in duplicates %}
                 <label class="duplicate-option">
@@ -54,15 +61,15 @@
                 {% endfor %}
               </div>
               <button type="button" class="btn btn-warning merge-duplicate-btn" onclick="mergeWithSelected()" disabled>
-                <i class="fa fa-compress"></i> Merge with Selected
+                <i class="fa fa-compress"></i> {{ tf('merge_with_selected', 'Merge with Selected') }}
               </button>
             </div>
             
             <div class="option-card">
-              <h5><i class="fa fa-plus"></i> Add as New Expense</h5>
-              <p>Keep this as a separate expense entry:</p>
+          <h5><i class="fa fa-plus"></i> {{ tf('add_as_new', 'Add as New Expense') }}</h5>
+              <p>{{ tf('add_new_hint', 'Keep this as a separate expense entry:') }}</p>
               <button type="button" class="btn btn-primary" onclick="confirmAddAnyway()">
-                <i class="fa fa-plus-circle"></i> Add Anyway
+                <i class="fa fa-plus-circle"></i> {{ tf('add_anyway', 'Add Anyway') }}
               </button>
             </div>
           </div>
@@ -74,7 +81,7 @@
           <div class="form-row">
             <div class="form-group">
               <label for="{{ form.receipt_date.id }}">
-                <i class="fa fa-calendar"></i> Date
+                <i class="fa fa-calendar"></i> {{ tf('date', 'Date') }}
               </label>
               {{ form.receipt_date(class="form-control") }}
               {% for error in form.receipt_date.errors %}
@@ -84,7 +91,7 @@
 
             <div class="form-group">
               <label for="{{ form.amount.id }}">
-                <i class="fa fa-money"></i> Amount (EGP)
+                <i class="fa fa-money"></i> {{ tf('amount', 'Amount') }} (EGP)
               </label>
               <div class="amount-input-wrapper">
                 {{ form.amount(class="form-control amount-input", placeholder="0.00", inputmode="decimal") }}
@@ -97,11 +104,11 @@
           </div>
 
           <div class="form-group">
-            <label for="{{ form.description.id }}">
-              <i class="fa fa-edit"></i> What did you buy?
-            </label>
-            {{ form.description(class="form-control", rows="3", placeholder="e.g., Dental supplies, Office materials...") }}
-            <div class="help-text">Be specific to help with future searches</div>
+              <label for="{{ form.description.id }}">
+                <i class="fa fa-edit"></i> {{ tf('what_did_you_buy', 'What did you buy?') }}
+              </label>
+            {{ form.description(class="form-control", rows="3", placeholder=tf('expenses_placeholder', 'e.g., Dental supplies, Office materials...')) }}
+            <div class="help-text">{{ tf('specific_help', 'Be specific to help with future searches') }}</div>
             {% for error in form.description.errors %}
               <div class="field-error">{{ error }}</div>
             {% endfor %}
@@ -111,10 +118,10 @@
         <!-- Clean Actions -->
         <div class="form-actions">
           <button type="submit" class="btn btn-primary submit-btn" id="submitBtn">
-            <i class="fa fa-save"></i> Save Expense
+            <i class="fa fa-save"></i> {{ tf('save_expense', 'Save Expense') }}
           </button>
           <a href="{{ url_for('simple_expenses.index') }}" class="btn btn-secondary">
-            <i class="fa fa-arrow-left"></i> Cancel
+            <i class="fa fa-arrow-left"></i> {{ tf('cancel', 'Cancel') }}
           </a>
         </div>
       </form>

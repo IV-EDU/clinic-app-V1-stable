@@ -27,14 +27,18 @@ def upgrade() -> None:
                          sa.Column('category_id', sa.String(), nullable=True))
             
             # Create foreign key constraint to expense_categories
-            op.create_foreign_key(
-                'fk_expense_receipts_category_id',
-                'expense_receipts',
-                'expense_categories',
-                ['category_id'],
-                ['id'],
-                ondelete='SET NULL'
-            )
+            try:
+                op.create_foreign_key(
+                    'fk_expense_receipts_category_id',
+                    'expense_receipts',
+                    'expense_categories',
+                    ['category_id'],
+                    ['id'],
+                    ondelete='SET NULL'
+                )
+            except NotImplementedError:
+                # SQLite cannot alter constraints in-place; skip FK but keep column for compatibility.
+                pass
             
             # Create index for better query performance
             op.create_index('idx_expense_receipts_category', 'expense_receipts', ['category_id'])

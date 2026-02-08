@@ -8,6 +8,7 @@ import pytest
 
 from clinic_app.services.database import db
 from clinic_app.services.payments import money
+from clinic_app.services.doctor_colors import ANY_DOCTOR_ID, ANY_DOCTOR_LABEL
 
 
 def _make_patient(full_name: str = "Test Patient", short_id: str = "P0001", phone: str = "0101010101"):
@@ -32,8 +33,9 @@ def _make_payment(patient_id: str, amount_cents: int = 15000, method: str = "cas
             """
             INSERT INTO payments(
                 id, patient_id, paid_at, amount_cents, method, note, treatment,
+                doctor_id, doctor_label,
                 remaining_cents, total_amount_cents, examination_flag, followup_flag, discount_cents
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)
             """,
             (
                 pay_id,
@@ -43,6 +45,8 @@ def _make_payment(patient_id: str, amount_cents: int = 15000, method: str = "cas
                 method,
                 note,
                 treatment,
+                ANY_DOCTOR_ID,
+                ANY_DOCTOR_LABEL,
                 0,
                 amount_cents,
             ),

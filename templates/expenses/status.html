@@ -1,19 +1,19 @@
 {% extends 'expenses/base.html' %}
 
-{% block title %}Update Receipt Status - {{ receipt.serial_number }}{% endblock %}
+{% block title %}{{ tf('update_receipt_status_title', 'Update Receipt Status') }} - {{ receipt.serial_number }}{% endblock %}
 
 {% block expenses_content %}
 <div class="status-update-container">
     <div class="page-header">
-        <h1>Update Receipt Status</h1>
+        <h1>{{ tf('update_receipt_status_title', 'Update Receipt Status') }}</h1>
         <div class="receipt-info">
-            <strong>Receipt #{{ receipt.serial_number }}</strong> • {{ receipt.receipt_date }} • {{ receipt.total_amount_fmt }} EGP
+            <strong>{{ tf('receipt_label', 'Receipt') }} #{{ receipt.serial_number }}</strong> • {{ receipt.receipt_date }} • {{ receipt.total_amount_fmt }} EGP
         </div>
     </div>
 
     <div class="status-card">
         <div class="card-header">
-            <h3>Current Status</h3>
+            <h3>{{ tf('current_status', 'Current Status') }}</h3>
             {% if receipt.receipt_status %}
                 <span class="status-chip {{ receipt.receipt_status }}">
                     <i class="fa fa-{{ 'clock' if receipt.receipt_status == 'pending' else 'check' if receipt.receipt_status == 'approved' else 'times' }}"></i>
@@ -22,7 +22,7 @@
             {% else %}
                 <span class="status-chip pending">
                     <i class="fa fa-clock"></i>
-                    Pending
+                    {{ tf('pending', 'Pending') }}
                 </span>
             {% endif %}
         </div>
@@ -33,7 +33,7 @@
                 
                 {% if form.errors %}
                 <div class="form-error alert alert-danger">
-                    Please check the fields below and try again.
+                    {{ tf('please_fix_errors', 'Please check the fields below and try again.') }}
                 </div>
                 {% endif %}
 
@@ -47,16 +47,16 @@
 
                 <div class="form-group">
                     {{ form.approval_notes.label(class="form-label") }}
-                    {{ form.approval_notes(class="form-control", rows="4", placeholder="Add approval notes, rejection reasons, or other comments...") }}
+                    {{ form.approval_notes(class="form-control", rows="4", placeholder=tf('approval_notes_placeholder', 'Add approval notes, rejection reasons, or other comments...')) }}
                     {% for error in form.approval_notes.errors %}
                         <div class="field-error">{{ error }}</div>
                     {% endfor %}
-                    <small class="help-text">Optional notes about the status change or approval process.</small>
+                    <small class="help-text">{{ tf('approval_notes_help', 'Optional notes about the status change or approval process.') }}</small>
                 </div>
 
                 <div class="form-actions">
-                    {{ form.submit(class="btn primary", value="Update Status") }}
-                    <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}" class="btn secondary">Cancel</a>
+                    {{ form.submit(class="btn primary", value=tf('update_status', 'Update Status')) }}
+                    <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}" class="btn secondary">{{ tf('cancel', 'Cancel') }}</a>
                 </div>
             </form>
         </div>
@@ -65,7 +65,7 @@
     <!-- Previous Status History (if available) -->
     {% if receipt.approval_date %}
     <div class="status-history">
-        <h4>Status History</h4>
+        <h4>{{ tf('status_history', 'Status History') }}</h4>
         <div class="history-item">
             <div class="history-header">
                 <span class="status-chip {{ receipt.receipt_status }}">
@@ -82,23 +82,23 @@
 
     <!-- Receipt Summary -->
     <div class="receipt-summary">
-        <h4>Receipt Details</h4>
+        <h4>{{ tf('receipt_details', 'Receipt Details') }}</h4>
         <div class="summary-grid">
             <div class="summary-item">
-                <label>Supplier:</label>
+                <label>{{ tf('supplier', 'Supplier') }}:</label>
                 <span>{{ receipt.supplier_name }}</span>
             </div>
             <div class="summary-item">
-                <label>Date:</label>
+                <label>{{ tf('date', 'Date') }}:</label>
                 <span>{{ receipt.receipt_date }}</span>
             </div>
             <div class="summary-item">
-                <label>Total Amount:</label>
+                <label>{{ tf('total_amount', 'Total Amount') }}:</label>
                 <span>{{ receipt.total_amount_fmt }} EGP</span>
             </div>
             {% if receipt.category_name %}
             <div class="summary-item">
-                <label>Category:</label>
+                <label>{{ tf('category', 'Category') }}:</label>
                 <span class="category-badge" style="background-color: {{ receipt.category_color or '#3498db' }}; color: white;">
                     {{ receipt.category_name }}
                 </span>
@@ -108,7 +108,7 @@
         
         {% if receipt.notes %}
         <div class="summary-notes">
-            <label>Notes:</label>
+            <label>{{ tf('notes', 'Notes') }}:</label>
             <p>{{ receipt.notes }}</p>
         </div>
         {% endif %}

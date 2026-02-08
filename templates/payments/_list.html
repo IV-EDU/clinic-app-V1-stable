@@ -1,7 +1,7 @@
-<div class="card">
-  <div class="payments-header" style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-    <strong class="payments-title" style="flex:1;text-align:center">{{ t('payments') }}</strong>
-    <a class="btn new-payment-btn" href="{{ url_for('patients.excel_entry_get', pid=p['id']) }}">{{ t('new_payment') }}</a>
+<div class="card payments-card">
+  <div class="payments-header">
+    <strong class="payments-title">{{ t('payments') }}</strong>
+    <a class="btn primary new-payment-btn" href="{{ url_for('patients.excel_entry_get', pid=p['id']) }}">{{ t('new_payment') }}</a>
   </div>
   {% if pays %}
     {% for pay in pays %}
@@ -10,36 +10,62 @@
       {% set bal_cents = 0 if bal_cents_raw < 0 else bal_cents_raw %}
       {% set bal_class_name = 'bal-0' if bal_cents==0 else 'bal-pos' %}
       {% set card_class = 'ok' if bal_cents==0 else 'due' %}
-      <div class="payment-item {{ card_class }}">
-        <div class="payment-summary">
-          <div class="payment-summary-left">
-            <button id="view-{{ pay['id'] }}" class="btn secondary view-toggle-btn" type="button" onclick="__payToggle('{{ pay['id']|e }}')" aria-expanded="false">{{ t('view') }}</button>
-            <span class="badge payment-date">{{ pay['paid_at'] }}</span>
+      <div class="card payment-card {{ card_class }}">
+        <div class="payment-card-header">
+          <div class="payment-amount">
+            <div class="payment-amount-value">{{ pay['amount_fmt'] }}</div>
+            <div class="payment-amount-label">{{ t('down_payment') }}</div>
           </div>
-          
-          <div class="financial-data" style="min-width:520px">
-            <div class="mini-grid">
-              <div class="th">{{ t('summary_total') }}</div>
-              <div class="th">{{ t('summary_discount') }}</div>
-              <div class="th">{{ t('summary_paid') }}</div>
-              <div class="th">{{ t('summary_remaining') }}</div>
-              <div class="tv">{{ pay['total_fmt'] }}</div>
-              <div class="tv">{{ pay['discount_fmt'] }}</div>
-              <div class="tv">{{ pay['amount_fmt'] }}</div>
-              <div class="tv"><div class="bal-box {{ bal_class_name }}">{{ '{:.2f}'.format((bal_cents or 0)/100) }}</div></div>
+          <div class="payment-card-meta">
+            <div class="payment-date">{{ pay['paid_at'] }}</div>
+            <div class="payment-method">{{ t('method') }}: {{ pay['method'] or '—' }}</div>
+            {% if pay.get('doctor_label') %}
+              {% set chip_color = pay.get('doctor_color') %}
+              <span class="payment-doctor-chip" {% if chip_color %}style="--chip-color: {{ chip_color }};"{% endif %}>
+                {{ pay.get('doctor_label') }}
+              </span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="payment-card-body">
+          <div class="payment-info-grid">
+            <div class="payment-field">
+              <div class="payment-label">{{ t('summary_total') }}</div>
+              <div class="payment-value">{{ pay['total_fmt'] }}</div>
+            </div>
+            <div class="payment-field">
+              <div class="payment-label">{{ t('summary_discount') }}</div>
+              <div class="payment-value">{{ pay['discount_fmt'] }}</div>
+            </div>
+            <div class="payment-field">
+              <div class="payment-label">{{ t('summary_remaining') }}</div>
+              <div class="payment-value"><div class="bal-box {{ bal_class_name }}">{{ '{:.2f}'.format((bal_cents or 0)/100) }}</div></div>
+            </div>
+            <div class="payment-field">
+              <div class="payment-label">{{ t('treatment_type') }}</div>
+              <div class="payment-value">{{ pay['treatment'] or '—' }}</div>
             </div>
           </div>
-          
-          <div class="payment-actions">
-            <select aria-label="{{ t('actions') }}"
-                    onchange="handlePaymentAction(this.value, '{{ p['id']|e }}', '{{ pay['id']|e }}'); this.value='';">
-              <option value="">{{ t('actions') }}</option>
-              <option value="edit">{{ t('edit_payment') }}</option>
-              <option value="delete">{{ t('delete_payment') }}</option>
-            </select>
-            
-            <!-- Print Receipt Button -->
-            <button class="btn btn-primary print-receipt-btn"
+          <div class="payment-note">
+            <div class="payment-label">{{ t('sheet_notes') }}</div>
+            <div class="payment-value">{{ pay['note'] or '—' }}</div>
+          </div>
+        </div>
+        <div class="payment-card-footer">
+          <div class="payment-actions payment-actions-main">
+            <a class="btn secondary edit-payment-btn"
+               href="{{ url_for('payments.edit_payment_get', pid=p['id'], pay_id=pay['id']) }}"
+               data-payment-id="{{ pay['id'] }}"
+               data-patient-id="{{ p['id'] }}">
+              {{ t('edit_payment') }}
+            </a>
+            <a class="btn secondary view-receipt-btn"
+               href="{{ url_for('payments.view_payment_receipt', pid=p['id'], pay_id=pay['id']) }}"
+               data-payment-id="{{ pay['id'] }}"
+               data-patient-id="{{ p['id'] }}">
+              {{ t('view') }}
+            </a>
+            <button class="btn print-receipt-btn"
                     data-payment-id="{{ pay['id'] }}"
                     data-patient-id="{{ p['id'] }}"
                     title="{{ t('print_receipt_title') }}"
@@ -47,33 +73,15 @@
               <i class="fa fa-print"></i> {{ t('print_receipt') }}
             </button>
           </div>
-        </div>
-        <div class="payment-details" id="details-{{ pay['id'] }}" style="display:none">
-          <div class="detail-line"><b>{{ t('method') }}</b>: <span class="val">{{ pay['method'] or '' }}</span></div>
-          <div class="detail-line"><b>{{ t('treatment_type') }}</b>: <span class="val">{{ pay['treatment'] or '' }}</span></div>
-          <div class="detail-line"><b>{{ t('sheet_notes') }}</b>: <span class="val">{{ pay['note'] or '' }}</span></div>
-          <div class="detail-line"><b>{{ t('summary_total') }}</b>: <span class="val">{{ pay['total_fmt'] }}</span></div>
-          <div class="detail-line"><b>{{ t('summary_discount') }}</b>: <span class="val">{{ pay['discount_fmt'] }}</span></div>
-          <div class="detail-line"><b>{{ t('down_payment') }}</b>: <span class="val">{{ pay['amount_fmt'] }}</span></div>
-          <div class="detail-line"><b>{{ t('remaining_amount') }}</b>: <span class="val">{{ '{:.2f}'.format(((pay['total_amount_cents'] or 0) - (pay['discount_cents'] or 0) - (pay['amount_cents'] or 0))/100 if ((pay['total_amount_cents'] or 0) - (pay['discount_cents'] or 0) - (pay['amount_cents'] or 0))>0 else 0) }}</span></div>
+          <div class="payment-actions payment-actions-danger">
+            <a class="btn danger" href="{{ url_for('payments.delete_payment_confirm', pid=p['id'], pay_id=pay['id']) }}">{{ t('delete_payment') }}</a>
+          </div>
         </div>
       </div>
     {% endfor %}
   {% else %}
-    <div class="no-payments" style="color:#6b7280;text-align:center">{{ t('no_rows') }}</div>
+    <div class="no-payments">{{ t('no_rows') }}</div>
   {% endif %}
 </div>
 
-<!-- Include Print Receipt Modal -->
 {% include 'patients/print_receipt_modal.html' %}
-
-<script>
-// Handle payment action dropdown
-function handlePaymentAction(action, patientId, paymentId) {
-    if (action === 'edit') {
-        window.location.href = '/patients/' + patientId + '/payments/' + paymentId + '/edit';
-    } else if (action === 'delete') {
-        window.location.href = '/patients/' + patientId + '/payments/' + paymentId + '/delete';
-    }
-}
-</script>

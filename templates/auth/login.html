@@ -1,26 +1,28 @@
 {% extends '_base.html' %}
 
 {% block content %}
-<div class="card" style="max-width:360px;margin:40px auto;">
-  <h1 class="card-title">{{ t('login') }}</h1>
-  {% if bootstrap_mode %}
-    <div class="alert" style="background:#eef6ff;border:1px solid #b3d8ff;padding:12px;border-radius:6px;margin-bottom:16px;">
-      No users exist yet. Enter a username and password to create the first admin account.
-    </div>
-  {% endif %}
-  <form method="post" novalidate>
-    {{ form.hidden_tag() }}
-    <div class="field">
-      {{ form.username.label(class_='label') }}
-      {{ form.username(class_='input', autocomplete='username') }}
-    </div>
-    <div class="field">
-      {{ form.password.label(class_='label') }}
-      {{ form.password(class_='input', autocomplete='current-password') }}
-    </div>
-    <div class="actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
-      {{ form.submit(class_='btn primary') }}
-    </div>
-  </form>
+<div class="auth-shell">
+  <div class="card login-card">
+    <h1 class="login-title">{{ t('login') }}</h1>
+    {% if bootstrap_mode %}
+      <div class="alert alert-info login-alert">
+        {{ t('login_bootstrap_hint') }}
+      </div>
+    {% endif %}
+    <form method="post" novalidate class="login-form">
+      {{ form.hidden_tag() }}
+      <div class="field">
+        {{ form.username.label(class_='label') }}
+        {{ form.username(class_='input', autocomplete='username') }}
+      </div>
+      <div class="field">
+        {{ form.password.label(class_='label') }}
+        {{ form.password(class_='input', autocomplete='current-password') }}
+      </div>
+      <div class="login-actions">
+        {{ form.submit(class_='btn primary full-width', value=t('login')) }}
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

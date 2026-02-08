@@ -127,4 +127,31 @@
     e.preventDefault();
     updateStatus(chip);
   });
+
+  // Auto-contrast for doctor chips (payments + appointments)
+  function applyDoctorChipContrast() {
+    var chips = document.querySelectorAll('.payment-doctor-chip, .doctor-chip');
+    chips.forEach(function(chip) {
+      var style = window.getComputedStyle(chip);
+      var bg = style.backgroundColor;
+      var m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/i.exec(bg);
+      if (!m) return;
+      var r = parseInt(m[1], 10) || 0;
+      var g = parseInt(m[2], 10) || 0;
+      var b = parseInt(m[3], 10) || 0;
+      var lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      chip.style.color = lum > 180 ? '#111827' : '#ffffff';
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyDoctorChipContrast);
+  } else {
+    applyDoctorChipContrast();
+  }
+
+  // Expose for pages that dynamically update doctor chips (e.g., appointments filters)
+  if (typeof window !== 'undefined') {
+    window.applyDoctorChipContrast = applyDoctorChipContrast;
+  }
 })();

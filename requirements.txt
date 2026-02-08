@@ -10,3 +10,4 @@ werkzeug==3.0.1
 python-dateutil==2.8.2
 arabic-reshaper==3.0.0
 python-bidi==0.4.2
+Pillow==10.3.0

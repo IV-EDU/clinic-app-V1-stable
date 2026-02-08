@@ -6,6 +6,7 @@ from datetime import date, timedelta
 from uuid import uuid4
 
 from flask import Blueprint, current_app, flash, g, redirect, request, url_for, jsonify, abort
+from flask_login import current_user
 from sqlalchemy import or_, text, select
 from sqlalchemy.orm import selectinload
 
@@ -21,7 +22,13 @@ from clinic_app.services.appointments import (
     delete_appointment,
     get_appointment_by_id,
 )
-from clinic_app.services.doctor_colors import get_doctor_colors, get_all_doctors_with_colors
+from clinic_app.services.doctor_colors import (
+    get_doctor_colors,
+    get_all_doctors_with_colors,
+    get_deleted_doctors,
+    ANY_DOCTOR_ID,
+    ANY_DOCTOR_LABEL,
+)
 from clinic_app.services.i18n import T
 from clinic_app.services.security import require_permission
 from clinic_app.services.ui import render_page
@@ -184,6 +191,69 @@ def appointments_entrypoint():
         raise
 
 
+@bp.route("/appointments/new", methods=["GET", "POST"], endpoint="new")
+@require_permission("appointments:edit")
+def new():
+    """Legacy-friendly appointment creation form for tests and quick entry."""
+    if request.method == "GET":
+        return render_page(
+            "appointments/new.html",
+            day=_selected_day(),
+            doctors=doctor_choices(),
+        )
+
+    form_data = request.form.to_dict(flat=True)
+    try:
+        create_appointment(form_data, actor_id=current_user.get_id() if current_user.is_authenticated else None)
+        return redirect(url_for("appointments.vanilla"))
+    except AppointmentOverlap:
+        return jsonify({"success": False, "error": "conflict"}), 409
+    except AppointmentError as exc:
+        flash(T(str(exc)), "err")
+        return redirect(url_for("appointments.new"))
+    except Exception as exc:
+        record_exception("appointments.new", exc)
+        abort(500)
+
+
+@bp.route("/appointments/move", methods=["POST"], endpoint="move")
+@require_permission("appointments:edit")
+def move():
+    """Move an appointment to a new time/doctor (JSON)."""
+    data = request.get_json(silent=True) or {}
+    ensure_csrf_token(data)
+
+    appt_id = data.get("appointment_id")
+    target_doctor = data.get("target_doctor")
+    target_time = data.get("target_time")
+    if not appt_id or not target_doctor or not target_time:
+        abort(400)
+
+    appt = get_appointment_by_id(appt_id)
+    if not appt:
+        abort(404)
+
+    form_data = {
+        "doctor_id": target_doctor,
+        "start_time": target_time,
+        "day": appt["starts_at"][:10],
+        "title": appt["title"],
+        "notes": appt.get("notes") or "",
+    }
+
+    try:
+        update_appointment(
+            appt_id,
+            form_data,
+            actor_id=current_user.get_id() if current_user.is_authenticated else None,
+        )
+    except AppointmentOverlap:
+        return jsonify({"success": False, "error": "conflict"}), 409
+
+    updated = get_appointment_by_id(appt_id)
+    return jsonify({"success": True, "appointment": updated}), 200
+
+
 
 
 @bp.route("/appointments/simple", methods=["GET"], endpoint="simple_view")
@@ -191,7 +261,6 @@ def appointments_entrypoint():
 def appointments_simple_view():
     """Simplified appointments view - single, clean interface."""
     try:
-        print(f"DEBUG: Simple view called with args: {dict(request.args)}")
         day = _selected_day()
         doctor = request.args.get("doctor") or "all"
         search = _search_query()
@@ -200,7 +269,6 @@ def appointments_simple_view():
             show_mode = "upcoming"
 
         doctor_id = doctor if doctor != "all" else None
-        print(f"DEBUG: day={day}, doctor={doctor}, doctor_id={doctor_id}, search={search}, show_mode={show_mode}")
 
         # Calculate navigation dates
         try:
@@ -217,36 +285,25 @@ def appointments_simple_view():
             today = day
 
         try:
-            print("DEBUG: Calling list_for_day")
             appts = list_for_day(day, doctor_id=doctor_id, search=search or None, show=show_mode)
-            print(f"DEBUG: list_for_day returned {len(appts)} appointments")
             status_counts: dict[str, int] = {}
             for appt in appts:
                 status_counts[appt["status"]] = status_counts.get(appt["status"], 0) + 1
         except AppointmentError as exc:
-            print(f"DEBUG: AppointmentError: {exc}")
             flash(T(str(exc)), "err")
             appts = []
         except Exception as exc:
             # Handle unexpected errors gracefully
-            print(f"DEBUG: Exception in list_for_day: {exc}")
-            import traceback
-            traceback.print_exc()
             current_app.logger.error(f"Error listing appointments for day {day}: {exc}")
             flash("An error occurred while loading appointments. Please try again.", "err")
             appts = []
 
         try:
             doctors_list = doctor_choices()
-            print(f"DEBUG: doctor_choices returned {len(doctors_list)} doctors")
         except Exception as exc:
-            print(f"DEBUG: Exception in doctor_choices: {exc}")
-            import traceback
-            traceback.print_exc()
             current_app.logger.error(f"Error getting doctor choices: {exc}")
             doctors_list = []
 
-        print("DEBUG: About to call render_page")
         return render_page(
             "appointments/simple_view.html",
             day=day,
@@ -262,9 +319,6 @@ def appointments_simple_view():
             end_day=None,  # Simple view shows single day
         )
     except Exception as exc:
-        print(f"DEBUG: Exception in simple_view: {exc}")
-        import traceback
-        traceback.print_exc()
         record_exception("appointments.simple_view", exc)
         raise
 @bp.route("/appointments/table", methods=["GET"], endpoint="table")
@@ -451,8 +505,14 @@ def appointments_vanilla():
                 end_dt = datetime.datetime.fromisoformat(start_date_filter) + datetime.timedelta(days=1)
             query = query.filter(AppointmentModel.start_time < end_dt)
 
+        deleted_ids = {d["doctor_id"] for d in get_deleted_doctors()}
+
         if doctor_id and doctor_id != "all":
-            query = query.filter(AppointmentModel.doctor_id == doctor_id)
+            if doctor_id == ANY_DOCTOR_ID:
+                ids = [ANY_DOCTOR_ID] + list(deleted_ids)
+                query = query.filter(AppointmentModel.doctor_id.in_(ids))
+            else:
+                query = query.filter(AppointmentModel.doctor_id == doctor_id)
 
         if search_term:
             like = f"%{search_term}%"
@@ -465,6 +525,12 @@ def appointments_vanilla():
             )
 
         filtered_appts = query.order_by(AppointmentModel.start_time.asc()).all()
+
+        # For deleted doctors, treat their schedules as "Any Doctor" in the UI
+        for appt in filtered_appts:
+            if appt.doctor_id in deleted_ids:
+                appt.doctor_id = ANY_DOCTOR_ID
+                appt.doctor_label = ANY_DOCTOR_LABEL
 
         grouped_appointments: dict[str, list[AppointmentModel]] = defaultdict(list)
         for appt in filtered_appts:

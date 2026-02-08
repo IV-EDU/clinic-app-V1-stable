@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import json
+import sys
 from pathlib import Path
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
 
 from flask import Flask, jsonify
 from flask_wtf.csrf import CSRFError
@@ -40,13 +42,40 @@ def _data_root(base_dir: Path, override: Path | None = None) -> Path:
     return root
 
 
+def _resource_root() -> Path:
+    """Root folder for bundled resources (templates/static)."""
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(getattr(sys, "_MEIPASS"))
+    return Path(__file__).resolve().parent.parent
+
+
+def _default_user_data_root() -> Path:
+    """Writable per-user data root for packaged builds (offline clinics)."""
+    if os.name == "nt":
+        base = os.getenv("LOCALAPPDATA")
+        if base:
+            return Path(base) / "ClinicApp"
+        return Path.home() / "AppData" / "Local" / "ClinicApp"
+    base = os.getenv("XDG_DATA_HOME")
+    if base:
+        return Path(base) / "ClinicApp"
+    return Path.home() / ".local" / "share" / "ClinicApp"
+
+
 def create_app() -> Flask:
-    base_dir = Path(__file__).resolve().parent.parent
-    template_folder = base_dir / "templates"
-    static_folder = base_dir / "static"
+    resource_root = _resource_root()
+    template_folder = resource_root / "templates"
+    static_folder = resource_root / "static"
     db_override = os.getenv("CLINIC_DB_PATH")
-    override_root = Path(db_override).parent if db_override else None
-    data_root = _data_root(base_dir, override_root)
+    if db_override:
+        override_root = Path(db_override).parent
+    elif getattr(sys, "frozen", False):
+        # Portable mode: keep `data/` next to the executable so clinics can back it up easily.
+        # IMPORTANT: this requires installing/unzipping to a writable folder (default in user profile).
+        override_root = Path(sys.executable).resolve().parent / "data"
+    else:
+        override_root = None
+    data_root = _data_root(resource_root, override_root)
 
     app = Flask(
         __name__,
@@ -58,10 +87,72 @@ def create_app() -> Flask:
     if not secret_key:
         secret_key = os.urandom(32)
 
+    def _apply_pending_db_restore(data_root_path: Path, main_db: Path) -> None:
+        """Apply a requested restore before opening the main database."""
+        marker_path = data_root_path / "restore_pending.json"
+        if not marker_path.exists():
+            return
+        try:
+            marker = json.loads(marker_path.read_text(encoding="utf-8"))
+        except Exception:
+            return
+
+        backup_name = (marker.get("backup_name") or "").strip()
+        if not backup_name or "/" in backup_name or "\\" in backup_name:
+            return
+
+        backup_path = data_root_path / "backups" / backup_name
+        if not backup_path.exists():
+            return
+
+        import sqlite3
+
+        # Safety backup of current DB before overwriting.
+        try:
+            ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+            safety_path = data_root_path / "backups" / f"app-before-restore-{ts}.db"
+            src = sqlite3.connect(str(main_db))
+            try:
+                dst = sqlite3.connect(str(safety_path))
+                try:
+                    src.backup(dst)
+                finally:
+                    dst.close()
+            finally:
+                src.close()
+        except Exception:
+            # If safety backup fails, do not proceed.
+            return
+
+        # Restore requested backup into app.db.
+        try:
+            src = sqlite3.connect(str(backup_path))
+            try:
+                dst = sqlite3.connect(str(main_db))
+                try:
+                    src.backup(dst)
+                finally:
+                    dst.close()
+            finally:
+                src.close()
+        except Exception:
+            return
+
+        # Clear marker on success.
+        try:
+            marker_path.unlink()
+        except Exception:
+            pass
+
     if db_override:
         db_path = Path(db_override)
     else:
         db_path = data_root / "app.db"
+        # Apply pending restore only for the main DB (never for preview DBs).
+        try:
+            _apply_pending_db_restore(data_root, db_path)
+        except Exception:
+            pass
 
     default_locale = os.getenv("CLINIC_DEFAULT_LOCALE", "en").lower()
     if default_locale not in SUPPORTED_LOCALES:
@@ -94,14 +185,17 @@ def create_app() -> Flask:
         APPOINTMENT_DOCTORS=doctor_list,
         RECEIPT_SERIAL_PREFIX=os.getenv("RECEIPT_SERIAL_PREFIX", "R"),
         PDF_FONT_PATH=os.getenv(
-            "PDF_FONT_PATH", str(base_dir / "static" / "fonts" / "DejaVuSans.ttf")
+            "PDF_FONT_PATH", str(resource_root / "static" / "fonts" / "DejaVuSans.ttf")
         ),
-        # Optional Arabic font defaults (Cairo). Safe to remove or override.
+        # Arabic font defaults (offline): use DejaVu Sans (bundled).
         PDF_FONT_PATH_AR=os.getenv(
-            "PDF_FONT_PATH_AR", str(base_dir / "static" / "fonts" / "Cairo-Regular.ttf")
+            "PDF_FONT_PATH_AR", str(resource_root / "static" / "fonts" / "DejaVuSans.ttf")
         ),
         PDF_FONT_PATH_AR_BOLD=os.getenv(
-            "PDF_FONT_PATH_AR_BOLD", str(base_dir / "static" / "fonts" / "Cairo-Bold.ttf")
+            "PDF_FONT_PATH_AR_BOLD",
+            str(
+                (resource_root / "static" / "fonts" / "DejaVuSans.ttf")
+            ),
         ),
         PDF_DEFAULT_ARABIC=os.getenv("PDF_DEFAULT_ARABIC", "cairo"),  # cairo|dejavu
     )

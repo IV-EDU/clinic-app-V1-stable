@@ -1,13 +1,13 @@
 {% extends 'expenses/base.html' %}
 
-{% block title %}Receipt Details - {{ receipt.serial_number }}{% endblock %}
+{% block title %}{{ tf('expense_receipt_details_title', 'Receipt Details') }} - {{ receipt.serial_number }}{% endblock %}
 
 {% block expenses_content %}
 <div class="receipt-detail-container">
     <!-- Receipt Header with Status -->
     <div class="receipt-header">
         <div class="receipt-title">
-            <h1>Expense Receipt #{{ receipt.serial_number }}</h1>
+            <h1>{{ tf('expense_receipt_label', 'Expense Receipt') }} #{{ receipt.serial_number }}</h1>
             <div class="receipt-meta">
                 <span class="receipt-date">{{ receipt.receipt_date }}</span>
                 <span class="receipt-amount">{{ receipt.total_amount_fmt }} EGP</span>
@@ -16,14 +16,14 @@
         <div class="receipt-actions">
             {% if current_user.has_permission('expenses:edit') %}
                 <a href="{{ url_for('expenses.edit_receipt', expense_id=receipt.id) }}" class="btn primary">
-                    <i class="fa fa-edit"></i> Edit
+                    <i class="fa fa-edit"></i> {{ tf('edit', 'Edit') }}
                 </a>
                 <a href="{{ url_for('expenses.update_receipt_status_route', expense_id=receipt.id) }}" class="btn secondary">
-                    <i class="fa fa-check-circle"></i> Update Status
+                    <i class="fa fa-check-circle"></i> {{ tf('update_status', 'Update Status') }}
                 </a>
             {% endif %}
             <a href="{{ url_for('expenses.view_receipt_files', expense_id=receipt.id) }}" class="btn secondary">
-                <i class="fa fa-paperclip"></i> Files ({{ receipt.files|length if receipt.files else 0 }})
+                <i class="fa fa-paperclip"></i> {{ tf('files', 'Files') }} ({{ receipt.files|length if receipt.files else 0 }})
             </a>
         </div>
     </div>
@@ -37,15 +37,15 @@
             </div>
             {% if receipt.approval_date %}
                 <span class="approval-info">
-                    Approved on {{ receipt.approval_date }}
+                    {{ tf('approved_on', 'Approved on') }} {{ receipt.approval_date }}
                     {% if receipt.approved_by %}
-                        by {{ receipt.approved_by }}
+                        {{ tf('by_user', 'by') }} {{ receipt.approved_by }}
                     {% endif %}
                 </span>
             {% endif %}
             {% if receipt.approval_notes %}
                 <div class="approval-notes">
-                    <strong>Approval Notes:</strong> {{ receipt.approval_notes }}
+                    <strong>{{ tf('approval_notes', 'Approval Notes') }}:</strong> {{ receipt.approval_notes }}
                 </div>
             {% endif %}
         </div>
@@ -54,46 +54,46 @@
     <!-- Receipt Information Grid -->
     <div class="receipt-info-grid">
         <div class="info-group">
-            <h4>Supplier Information</h4>
+            <h4>{{ tf('supplier_information', 'Supplier Information') }}</h4>
             <div class="info-item">
-                <label>Name:</label>
+                <label>{{ tf('name', 'Name') }}:</label>
                 <span>{{ receipt.supplier_name }}</span>
             </div>
             {% if receipt.supplier_phone %}
                 <div class="info-item">
-                    <label>Phone:</label>
+                    <label>{{ tf('phone', 'Phone') }}:</label>
                     <span>{{ receipt.supplier_phone }}</span>
                 </div>
             {% endif %}
             {% if receipt.supplier_email %}
                 <div class="info-item">
-                    <label>Email:</label>
+                    <label>{{ tf('email', 'Email') }}:</label>
                     <span>{{ receipt.supplier_email }}</span>
                 </div>
             {% endif %}
         </div>
 
         <div class="info-group">
-            <h4>Financial Details</h4>
+            <h4>{{ tf('financial_details', 'Financial Details') }}</h4>
             <div class="info-item">
-                <label>Subtotal:</label>
+                <label>{{ tf('subtotal', 'Subtotal') }}:</label>
                 <span>{{ receipt.total_amount_fmt }} EGP</span>
             </div>
             <div class="info-item">
-                <label>Tax Amount:</label>
+                <label>{{ tf('tax_amount', 'Tax Amount') }}:</label>
                 <span>{{ receipt.tax_amount_fmt }} EGP</span>
             </div>
             <div class="info-item total">
-                <label>Total Amount:</label>
+                <label>{{ tf('total_amount', 'Total Amount') }}:</label>
                 <span>{{ receipt.total_amount_fmt }} EGP</span>
             </div>
         </div>
 
         {% if receipt.category_name %}
         <div class="info-group">
-            <h4>Category</h4>
+            <h4>{{ tf('category', 'Category') }}</h4>
             <div class="info-item">
-                <label>Category:</label>
+                <label>{{ tf('category', 'Category') }}:</label>
                 <span class="category-badge" style="background-color: {{ receipt.category_color or '#3498db' }}; color: white;">
                     {{ receipt.category_name }}
                 </span>
@@ -105,16 +105,16 @@
     <!-- Receipt Items -->
     {% if receipt.items %}
     <div class="items-section">
-        <h4>Receipt Items</h4>
+        <h4>{{ tf('receipt_items', 'Receipt Items') }}</h4>
         <div class="items-table">
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Item Description</th>
-                        <th>Quantity</th>
-                        <th>Unit Price</th>
-                        <th>Total Price</th>
-                        <th>Notes</th>
+                        <th>{{ tf('item_description', 'Item Description') }}</th>
+                        <th>{{ tf('quantity', 'Quantity') }}</th>
+                        <th>{{ tf('unit_price', 'Unit Price') }}</th>
+                        <th>{{ tf('total_price', 'Total Price') }}</th>
+                        <th>{{ tf('notes', 'Notes') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -136,10 +136,10 @@
     <!-- Receipt Files Section -->
     <div class="files-section">
         <div class="section-header">
-            <h4>Receipt Files</h4>
+            <h4>{{ tf('receipt_files_title', 'Receipt Files') }}</h4>
             {% if current_user.has_permission('expenses:edit') %}
                 <button type="button" class="btn btn-sm primary" onclick="showFileUpload()">
-                    <i class="fa fa-plus"></i> Add File
+                    <i class="fa fa-plus"></i> {{ tf('add_file', 'Add File') }}
                 </button>
             {% endif %}
         </div>
@@ -162,10 +162,10 @@
                         <div class="file-size">{{ (file.file_size / 1024)|round(1) }} KB</div>
                     </div>
                     <div class="file-actions">
-                        <a href="{{ file.file_url }}" target="_blank" class="btn btn-sm secondary" title="View">
+                        <a href="{{ file.file_url }}" target="_blank" class="btn btn-sm secondary" title="{{ tf('view', 'View') }}">
                             <i class="fa fa-eye"></i>
                         </a>
-                        <a href="{{ file.file_url }}" download="{{ file.original_filename }}" class="btn btn-sm secondary" title="Download">
+                        <a href="{{ file.file_url }}" download="{{ file.original_filename }}" class="btn btn-sm secondary" title="{{ tf('download', 'Download') }}">
                             <i class="fa fa-download"></i>
                         </a>
                     </div>
@@ -175,10 +175,10 @@
         {% else %}
             <div class="empty-files">
                 <i class="fa fa-paperclip empty-icon"></i>
-                <p>No files attached to this receipt</p>
+                <p>{{ tf('no_files_attached', 'No Files Attached') }}</p>
                 {% if current_user.has_permission('expenses:edit') %}
                     <button type="button" class="btn primary" onclick="showFileUpload()">
-                        <i class="fa fa-plus"></i> Attach Files
+                        <i class="fa fa-plus"></i> {{ tf('attach_files', 'Attach Files') }}
                     </button>
                 {% endif %}
             </div>
@@ -188,7 +188,7 @@
     <!-- Notes Section -->
     {% if receipt.notes %}
     <div class="notes-section">
-        <h4>Notes</h4>
+        <h4>{{ tf('notes', 'Notes') }}</h4>
         <div class="notes-content">{{ receipt.notes }}</div>
     </div>
     {% endif %}
@@ -197,9 +197,9 @@
     <div class="file-upload-section" id="fileUploadSection" style="display: none;">
         <div class="file-upload-container">
             <div class="section-header">
-                <h4>Upload Receipt Files</h4>
+                <h4>{{ tf('upload_receipt_files', 'Upload Receipt Files') }}</h4>
                 <button type="button" class="btn btn-sm danger" onclick="hideFileUpload()">
-                    <i class="fa fa-times"></i> Cancel
+                    <i class="fa fa-times"></i> {{ tf('cancel', 'Cancel') }}
                 </button>
             </div>
             <div id="expense-file-upload" data-receipt-id="{{ receipt.id }}"></div>
@@ -211,7 +211,7 @@
 <div class="file-preview-modal" id="filePreviewModal">
     <div class="file-preview-content">
         <div class="file-preview-header">
-            <h3 class="file-preview-title">File Preview</h3>
+            <h3 class="file-preview-title">{{ tf('file_preview', 'File Preview') }}</h3>
             <button class="file-preview-close" onclick="closeFilePreview()">&times;</button>
         </div>
         <div class="file-preview-body">

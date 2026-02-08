@@ -25,6 +25,7 @@ MANIFEST
 # Virtual environments
 .venv/
 .venv-wsl/
+.venv3/
 venv/
 ENV/
 env/
@@ -54,6 +55,7 @@ data/logs/
 *.temp
 .cache/
 .tmp/
+.pytest_cache/
 
 # OS
 .DS_Store
@@ -76,3 +78,6 @@ Thumbs.db
 .env.production
 *.key
 secrets*.json
+
+# Private clinic files (never ship)
+/Current Clinic Excel/

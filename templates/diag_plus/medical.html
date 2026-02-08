@@ -1,32 +1,38 @@
 <!doctype html>
-<html lang="en" dir="auto">
+<html lang="{{ g.get('lang', 'en') }}" dir="{{ 'rtl' if g.get('lang') == 'ar' else 'ltr' }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Medical (Lite)</title>
+<title>{{ t('medical_page_title') }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme-system.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='diag_plus/style.css') }}">
+{% if theme_css %}<style>{{ theme_css|safe }}</style>{% endif %}
 <style>#autosave_badge.saving{background:#fff}#autosave_badge.saved{background:#dcfce7}#autosave_badge.failed{background:#fee2e2}</style>
 </head>
 <body>
+{% macro tf(key, default_text) -%}
+  {%- set val = t(key) if t else default_text -%}
+  {{ default_text if val == key else val }}
+{%- endmacro %}
 <div class="wrap">
   <div class="head">
     <div class="hgroup">
-      <a class="btn secondary" href="{{ url_for('palmer_plus.diag_page', pid=pid) }}">← Diagnosis</a>
-      <strong>Medical (Lite)</strong> <span id="autosave_badge" style="font-size:12px;margin-left:8px;padding:2px 8px;border:1px solid var(--border);border-radius:999px;">Idle</span>
+      <a class="btn secondary" href="{{ url_for('palmer_plus.diag_page', pid=pid) }}">← {{ t('diagnosis') }}</a>
+      <strong>{{ t('medical_page_title') }}</strong> <span id="autosave_badge" class="badge-pill">{{ t('idle') }}</span>
     </div>
     <div class="hgroup">
-      <a class="btn" onclick="saveAll()">Save</a>
+      <a class="btn primary" onclick="saveAll()">{{ t('save') }}</a>
     </div>
   </div>
 
 <div class="card patient-card">
   <div class="patient-avatar">{{ (patient.full_name or patient.short_id or 'P')[0] if patient else 'P' }}</div>
   <div class="patient-meta">
-    <div class="patient-name">{{ patient.full_name if patient else 'Patient' }}</div>
+    <div class="patient-name">{{ patient.full_name if patient else tf('patient_fallback_name', 'Patient') }}</div>
     <div class="patient-sub">
-      <span>ID: {{ patient.short_id if patient else pid }}</span>
+      <span>{{ tf('patient_id_label', 'ID') }}: {{ patient.short_id if patient else pid }}</span>
       {% if patient and patient.phone %}<span>• {{ patient.phone }}</span>{% endif %}
-      {% if patient and patient.created_at %}<span>• since {{ patient.created_at[:10] }}</span>{% endif %}
+      {% if patient and patient.created_at %}<span>• {{ tf('patient_since', 'since') }} {{ patient.created_at[:10] }}</span>{% endif %}
     </div>
     {% if patient and patient.notes %}
     <div class="patient-notes">{{ patient.notes }}</div>
@@ -38,35 +44,40 @@
 
   <div class="card">
     <div class="row">
-      <label><input type="checkbox" id="allergies_flag" {% if data.allergies_flag %}checked{% endif %}> Allergies Present</label>
-      <input type="text" id="allergies" value="{{ data.allergies }}" placeholder="List allergies">
+      <label><input type="checkbox" id="allergies_flag" {% if data.allergies_flag %}checked{% endif %}> {{ t('allergies_present') }}</label>
+      <input type="text" id="allergies" value="{{ data.allergies }}" placeholder="{{ t('list_allergies') }}">
     </div>
 
     <div class="row">
-      <label>Risk flags</label>
-      <label><input type="checkbox" id="anticoag" {% if flags.anticoag %}checked{% endif %}> Anticoagulants</label>
-      <label><input type="checkbox" id="prophy" {% if flags.prophy %}checked{% endif %}> Prophylaxis</label>
-      <label><input type="checkbox" id="dm_uncontrolled" {% if flags.dm_uncontrolled %}checked{% endif %}> Uncontrolled DM</label>
-      <label><input type="checkbox" id="pregnancy" {% if flags.pregnancy %}checked{% endif %}> Pregnancy</label>
-      <label><input type="checkbox" id="smoking_vaping" {% if flags.smoking_vaping %}checked{% endif %}> Smoking/Vaping</label>
-      <label><input type="checkbox" id="bisphosphonates_denosumab" {% if flags.bisphosphonates_denosumab %}checked{% endif %}> Bisphosphonates/Denosumab</label>
-      <label><input type="checkbox" id="bleeding_disorder" {% if flags.bleeding_disorder %}checked{% endif %}> Bleeding disorder</label>
-      <label><input type="checkbox" id="immunosuppression" {% if flags.immunosuppression %}checked{% endif %}> Immunosuppression/Chemo</label>
-      <label><input type="checkbox" id="prosthetic_valve" {% if flags.prosthetic_valve %}checked{% endif %}> Prosthetic heart valve</label>
-      <label><input type="checkbox" id="pacemaker_icd" {% if flags.pacemaker_icd %}checked{% endif %}> Pacemaker/ICD</label>
-      <label><input type="checkbox" id="latex_allergy" {% if flags.latex_allergy %}checked{% endif %}> Latex allergy</label>
+      <label class="light">{{ t('risk_flags') }}</label>
+      <label><input type="checkbox" id="anticoag" {% if flags.anticoag %}checked{% endif %}> {{ t('anticoagulants') }}</label>
+      <label><input type="checkbox" id="prophy" {% if flags.prophy %}checked{% endif %}> {{ t('prophylaxis') }}</label>
+      <label><input type="checkbox" id="dm_uncontrolled" {% if flags.dm_uncontrolled %}checked{% endif %}> {{ t('uncontrolled_dm') }}</label>
+      <label><input type="checkbox" id="pregnancy" {% if flags.pregnancy %}checked{% endif %}> {{ t('pregnancy_flag') }}</label>
+      <label><input type="checkbox" id="smoking_vaping" {% if flags.smoking_vaping %}checked{% endif %}> {{ t('smoking_vaping') }}</label>
+      <label><input type="checkbox" id="bisphosphonates_denosumab" {% if flags.bisphosphonates_denosumab %}checked{% endif %}> {{ t('bisphosphonates_denosumab') }}</label>
+      <label><input type="checkbox" id="bleeding_disorder" {% if flags.bleeding_disorder %}checked{% endif %}> {{ t('bleeding_disorder') }}</label>
+      <label><input type="checkbox" id="immunosuppression" {% if flags.immunosuppression %}checked{% endif %}> {{ t('immunosuppression_chemo') }}</label>
+      <label><input type="checkbox" id="prosthetic_valve" {% if flags.prosthetic_valve %}checked{% endif %}> {{ t('prosthetic_valve') }}</label>
+      <label><input type="checkbox" id="pacemaker_icd" {% if flags.pacemaker_icd %}checked{% endif %}> {{ t('pacemaker_icd') }}</label>
+      <label><input type="checkbox" id="latex_allergy" {% if flags.latex_allergy %}checked{% endif %}> {{ t('latex_allergy') }}</label>
     </div>
 
     <div class="row">
-      <label>Medical notes</label>
-      <textarea id="medical_notes" placeholder="Anything the dentist needs to see quickly">{{ data.medical_notes }}</textarea>
+      <label>{{ tf('medical_notes_label', 'Medical notes') }}</label>
+      <textarea id="medical_notes" placeholder="{{ t('medical_notes_placeholder') }}">{{ data.medical_notes }}</textarea>
     </div>
-    <div class="small">Last updated: {{ data.updated_at }}</div>
+    <div class="small">{{ tf('last_updated', 'Last updated') }}: {{ data.updated_at }}</div>
   </div>
 </div>
 
 <script>
 const CSRF_TOKEN = "{{ csrf_token() }}";
+const L = {
+  saved: "{{ tf('saved', 'Saved') }}",
+  failed: "{{ tf('operation_failed', 'Failed') }}",
+  saving: "{{ tf('saving', 'Saving...') }}"
+};
 function debounce(fn, ms){ let t; return function(){ clearTimeout(t); const ctx=this, args=arguments; t=setTimeout(()=>fn.apply(ctx,args), ms); }; }
 
 async function saveAll(){
@@ -86,7 +97,7 @@ async function saveAll(){
     body: JSON.stringify(payload)
   });
   const j = await res.json();
-  if(j.ok){ alert("Saved"); } else { alert("Failed"); }
+  if(j.ok){ alert(L.saved); } else { alert(L.failed); }
 }
 
 (function wireAutoSave600(){
@@ -122,9 +133,9 @@ function debounce(fn, ms){ let t; return function(){ clearTimeout(t); const ctx=
   function setBadge(state){
     var b = document.getElementById('autosave_badge');
     if(!b) return;
-    if(state==='saving'){ b.textContent='Saving…'; b.classList.remove('saved','failed'); b.classList.add('saving'); }
-    else if(state==='saved'){ b.textContent='Saved'; b.classList.remove('saving','failed'); b.classList.add('saved'); }
-    else if(state==='failed'){ b.textContent='Failed'; b.classList.remove('saving','saved'); b.classList.add('failed'); }
+    if(state==='saving'){ b.textContent=L.saving; b.classList.remove('saved','failed'); b.classList.add('saving'); }
+    else if(state==='saved'){ b.textContent=L.saved; b.classList.remove('saving','failed'); b.classList.add('saved'); }
+    else if(state==='failed'){ b.textContent=L.failed; b.classList.remove('saving','saved'); b.classList.add('failed'); }
   }
   // wait until saveAll is defined
   var tries = 0;

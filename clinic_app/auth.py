@@ -43,14 +43,6 @@ def requires(permission_code: str, *, no_store: bool = True) -> Callable[[Callab
         def wrapped(*args: Any, **kwargs: Any):
             if no_store:
                 g.nostore = True
-            print(f"DEBUG: Checking permission '{permission_code}' for user {current_user.username if current_user.is_authenticated else 'None'}")
-            print(f"DEBUG: User authenticated: {current_user.is_authenticated}")
-            if current_user.is_authenticated:
-                has_perm = current_user.has_permission(permission_code)
-                print(f"DEBUG: User has permission '{permission_code}': {has_perm}")
-                if not has_perm:
-                    print(f"DEBUG: User roles: {[r.name for r in current_user.roles]}")
-                    print(f"DEBUG: User permissions: {set().union(*[r.permissions for r in current_user.roles])}")
             if not current_user.is_authenticated or not current_user.has_permission(permission_code):
                 audit_denied(permission_code, reason="forbidden")
                 abort(403)

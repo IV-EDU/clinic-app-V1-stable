@@ -1,12 +1,12 @@
 {% extends 'expenses/base.html' %}
 
-{% block title %}Receipt Files - {{ receipt.serial_number }}{% endblock %}
+{% block title %}{{ tf('receipt_files_title', 'Receipt Files') }} - {{ receipt.serial_number }}{% endblock %}
 
 {% block expenses_content %}
 <div class="receipt-files-container">
     <div class="page-header">
         <div class="receipt-info">
-            <h1>Files for Receipt #{{ receipt.serial_number }}</h1>
+            <h1>{{ tf('files_for_receipt', 'Files for Receipt') }} #{{ receipt.serial_number }}</h1>
             <div class="receipt-meta">
                 <span>{{ receipt.receipt_date }}</span>
                 <span>{{ receipt.supplier_name }}</span>
@@ -15,11 +15,11 @@
         </div>
         <div class="header-actions">
             <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}" class="btn secondary">
-                <i class="fa fa-arrow-left"></i> Back to Receipt
+                <i class="fa fa-arrow-left"></i> {{ tf('back_to_receipt', 'Back to Receipt') }}
             </a>
             {% if current_user.has_permission('expenses:edit') %}
                 <button type="button" class="btn primary" onclick="showFileUpload()">
-                    <i class="fa fa-plus"></i> Add Files
+                    <i class="fa fa-plus"></i> {{ tf('add_files', 'Add Files') }}
                 </button>
             {% endif %}
         </div>
@@ -27,7 +27,7 @@
 
     {% if files %}
         <div class="files-section">
-            <h2>Attached Files ({{ files|length }})</h2>
+            <h2>{{ tf('attached_files', 'Attached Files') }} ({{ files|length }})</h2>
             <div class="files-grid">
                 {% for file in files %}
                 <div class="file-card">
@@ -37,12 +37,12 @@
                         {% elif file.file_type == 'pdf' %}
                             <div class="pdf-preview">
                                 <i class="fa fa-file-pdf text-danger file-icon"></i>
-                                <span class="file-label">PDF Document</span>
+                                <span class="file-label">{{ tf('pdf_document', 'PDF Document') }}</span>
                             </div>
                         {% else %}
                             <div class="file-preview">
                                 <i class="fa fa-file text-secondary file-icon"></i>
-                                <span class="file-label">{{ file.file_type.upper() }} File</span>
+                                <span class="file-label">{{ file.file_type.upper() }} {{ tf('file_label', 'File') }}</span>
                             </div>
                         {% endif %}
                     </div>
@@ -56,14 +56,14 @@
                     </div>
                     
                     <div class="file-actions">
-                        <a href="{{ file.file_url }}" target="_blank" class="btn btn-sm secondary" title="View">
+                        <a href="{{ file.file_url }}" target="_blank" class="btn btn-sm secondary" title="{{ tf('view', 'View') }}">
                             <i class="fa fa-eye"></i>
                         </a>
-                        <a href="{{ file.file_url }}" download="{{ file.original_filename }}" class="btn btn-sm secondary" title="Download">
+                        <a href="{{ file.file_url }}" download="{{ file.original_filename }}" class="btn btn-sm secondary" title="{{ tf('download', 'Download') }}">
                             <i class="fa fa-download"></i>
                         </a>
                         {% if current_user.has_permission('expenses:edit') %}
-                            <button type="button" class="btn btn-sm danger" onclick="deleteFile('{{ file.id }}', '{{ file.original_filename }}')" title="Delete">
+                            <button type="button" class="btn btn-sm danger" onclick="deleteFile('{{ file.id }}', '{{ file.original_filename }}')" title="{{ tf('delete', 'Delete') }}">
                                 <i class="fa fa-trash"></i>
                             </button>
                         {% endif %}
@@ -75,11 +75,11 @@
     {% else %}
         <div class="empty-state">
             <i class="fa fa-paperclip empty-icon"></i>
-            <h3>No Files Attached</h3>
-            <p>Upload receipt files to keep digital copies of your expense receipts.</p>
+            <h3>{{ tf('no_files_attached', 'No Files Attached') }}</h3>
+            <p>{{ tf('upload_receipt_files_hint', 'Upload receipt files to keep digital copies of your expense receipts.') }}</p>
             {% if current_user.has_permission('expenses:edit') %}
                 <button type="button" class="btn primary" onclick="showFileUpload()">
-                    <i class="fa fa-plus"></i> Upload First File
+                    <i class="fa fa-plus"></i> {{ tf('upload_first_file', 'Upload First File') }}
                 </button>
             {% endif %}
         </div>
@@ -88,9 +88,9 @@
     <!-- File Upload Section (Hidden by default) -->
     <div class="file-upload-section" id="fileUploadSection" style="display: none;">
         <div class="upload-header">
-            <h3>Upload Receipt Files</h3>
+            <h3>{{ tf('upload_receipt_files', 'Upload Receipt Files') }}</h3>
             <button type="button" class="btn btn-sm danger" onclick="hideFileUpload()">
-                <i class="fa fa-times"></i> Cancel
+                <i class="fa fa-times"></i> {{ tf('cancel', 'Cancel') }}
             </button>
         </div>
         <div id="expense-file-upload" data-receipt-id="{{ receipt.id }}"></div>
@@ -101,7 +101,7 @@
 <div class="image-preview-modal" id="imagePreviewModal" onclick="closeImagePreview()">
     <div class="image-preview-content" onclick="event.stopPropagation()">
         <div class="image-preview-header">
-            <h4 id="imagePreviewTitle">Image Preview</h4>
+            <h4 id="imagePreviewTitle">{{ tf('image_preview', 'Image Preview') }}</h4>
             <button class="image-preview-close" onclick="closeImagePreview()">&times;</button>
         </div>
         <div class="image-preview-body">
@@ -114,6 +114,12 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/expense-file-upload.css') }}">
 
 <script>
+const L = {
+    upload_failed: "{{ tf('upload_failed', 'Upload failed') }}",
+    delete_confirm: "{{ tf('delete_file_confirm', 'Delete this file?') }}",
+    delete_failed: "{{ tf('delete_failed', 'Delete failed') }}",
+    delete_unknown: "{{ tf('delete_failed_unknown', 'Failed to delete file') }}"
+};
 function showFileUpload() {
     const section = document.getElementById('fileUploadSection');
     section.style.display = 'block';
@@ -129,7 +135,7 @@ function showFileUpload() {
                 window.location.reload();
             },
             onError: function(error) {
-                alert('Upload failed: ' + error.message);
+                alert((L.upload_failed || 'Upload failed') + ': ' + error.message);
             }
         });
     }
@@ -156,7 +162,7 @@ function closeImagePreview() {
 }
 
 function deleteFile(fileId, filename) {
-    if (confirm(`Are you sure you want to delete "${filename}"?`)) {
+    if (confirm((L.delete_confirm || 'Delete this file?').replace('{name}', filename))) {
         fetch(`/api/expenses/files/${window.currentReceiptId}`, {
             method: 'DELETE',
             headers: {
@@ -177,12 +183,12 @@ function deleteFile(fileId, filename) {
                     window.location.reload();
                 }
             } else {
-                alert('Failed to delete file: ' + (data.error || 'Unknown error'));
+                alert((L.delete_failed || 'Failed to delete file') + ': ' + (data.error || ''));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to delete file');
+            alert(L.delete_unknown || 'Failed to delete file');
         });
     }
 }

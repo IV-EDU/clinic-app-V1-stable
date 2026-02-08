@@ -10,7 +10,13 @@ from typing import Sequence
 from flask import current_app
 
 from clinic_app.services.database import db
-from clinic_app.services.doctor_colors import get_doctor_colors
+from clinic_app.services.doctor_colors import (
+    get_doctor_colors,
+    get_deleted_doctors,
+    ANY_DOCTOR_ID,
+    ANY_DOCTOR_LABEL,
+    DEFAULT_COLOR,
+)
 
 
 ISO_FMT = "%Y-%m-%dT%H:%M:%S"
@@ -65,11 +71,35 @@ def _slugify(label: str) -> str:
     return slug or "doctor"
 
 
-def doctor_choices() -> list[tuple[str, str]]:
-    doctors = current_app.config.get("APPOINTMENT_DOCTORS", [])  # type: ignore[attr-defined]
-    if not doctors:
-        doctors = ["On Call"]
-    return [(_slugify(name), name) for name in doctors]
+def doctor_choices(*, include_inactive: bool = False, include_status: bool = False) -> list[tuple]:
+    """
+    Return (id, label, is_active) for doctors stored in doctor_colors.
+    """
+    from clinic_app.services.doctor_colors import _load_colors, _ensure_table, ANY_DOCTOR_ID, ANY_DOCTOR_LABEL, DEFAULT_COLOR
+
+    conn = current_app.extensions["db"].raw_connection()  # type: ignore
+    try:
+        _ensure_table(conn)
+        colors = _load_colors(conn)
+        result: list[tuple] = []
+        # Ensure Any Doctor is first
+        if include_status:
+            result.append((ANY_DOCTOR_ID, ANY_DOCTOR_LABEL, 1))
+        else:
+            result.append((ANY_DOCTOR_ID, ANY_DOCTOR_LABEL))
+        for doc_id, info in colors.items():
+            if info.get("is_purged", 0):
+                continue
+            active_flag = info.get("is_active", 1)
+            if not include_inactive and active_flag == 0:
+                continue
+            if doc_id == ANY_DOCTOR_ID:
+                continue
+            label = info.get("label") or doc_id
+            result.append((doc_id, label, active_flag) if include_status else (doc_id, label))
+        return result
+    finally:
+        conn.close()
 
 
 def get_appointment_time_status(starts_at: str, ends_at: str) -> str:
@@ -222,7 +252,11 @@ def create_appointment(form_data: dict[str, str], *, actor_id: str | None) -> st
 
     day = form_data.get("day") or datetime.now(timezone.utc).strftime("%Y-%m-%d")
     start_time = form_data.get("start_time") or "09:00"
-    duration = _slot_minutes()
+    try:
+        duration = int(form_data.get("duration_minutes", "") or _slot_minutes())
+    except (TypeError, ValueError):
+        duration = _slot_minutes()
+    duration = max(duration, 1)
     doctor_id = form_data.get("doctor_id") or doctor_choices()[0][0]
     doctor_label = next((label for slug, label in doctor_choices() if slug == doctor_id), doctor_id)
     title = (form_data.get("title") or "").strip()
@@ -395,6 +429,9 @@ def list_for_day(
         # First, clean up any invalid records
         _cleanup_invalid_appointments(conn)
 
+        # Doctors that are deleted (but not purged); their schedules are treated as "Any Doctor"
+        deleted_ids = {d["doctor_id"] for d in get_deleted_doctors()}
+
         params: list[str] = [start_iso]
         sql = """
             SELECT *
@@ -405,8 +442,14 @@ def list_for_day(
             sql += " AND starts_at <= ?"
             params.append(end_iso)
         if doctor_id:
-            sql += " AND doctor_id = ?"
-            params.append(doctor_id)
+            if doctor_id == ANY_DOCTOR_ID:
+                ids = [ANY_DOCTOR_ID] + [d for d in deleted_ids]
+                placeholders = ",".join("?" for _ in ids)
+                sql += f" AND doctor_id IN ({placeholders})"
+                params.extend(ids)
+            else:
+                sql += " AND doctor_id = ?"
+                params.append(doctor_id)
         sql += " ORDER BY starts_at ASC"
         rows = conn.execute(sql, params).fetchall()
         patient_short_ids: dict[str, str | None] = {}
@@ -439,7 +482,16 @@ def list_for_day(
                 end = datetime.strptime(ends_at, ISO_FMT)
                 duration = int((end - start).total_seconds() // 60)
 
-                doctor_color = doctor_colors.get(row["doctor_id"])
+                doctor_id_value = row["doctor_id"]
+                is_deleted = doctor_id_value in deleted_ids
+                display_doctor_id = ANY_DOCTOR_ID if is_deleted else doctor_id_value
+                display_doctor_label = (
+                    ANY_DOCTOR_LABEL
+                    if is_deleted
+                    else (row["doctor_label"] or row["doctor_id"])
+                )
+
+                doctor_color = doctor_colors.get(display_doctor_id, DEFAULT_COLOR)
 
                 # Get time-based status
                 time_status = get_appointment_time_status(starts_at, ends_at)
@@ -452,8 +504,8 @@ def list_for_day(
                         "patient_name": row["patient_name"] or "—",
                         "patient_phone": row["patient_phone"],
                         "patient_short_id": patient_short_ids.get(row["patient_id"]),
-                        "doctor_id": row["doctor_id"],
-                        "doctor_label": row["doctor_label"] or row["doctor_id"],
+                        "doctor_id": display_doctor_id,
+                        "doctor_label": display_doctor_label,
                         "title": row["title"] or "Untitled Appointment",
                         "notes": row["notes"],
                         "starts_at": starts_at,
@@ -591,9 +643,17 @@ def get_appointment_by_id(appt_id: str) -> dict[str, str] | None:
                 patient_short_id = short_row["short_id"]
 
         doctor_colors = get_doctor_colors()
+        deleted_ids = {d["doctor_id"] for d in get_deleted_doctors()}
         # Get time-based status
         time_status = get_appointment_time_status(row["starts_at"], row["ends_at"])
-        doctor_color = doctor_colors.get(row["doctor_id"])
+
+        doctor_id_value = row["doctor_id"]
+        is_deleted = doctor_id_value in deleted_ids
+        display_doctor_id = ANY_DOCTOR_ID if is_deleted else doctor_id_value
+        display_doctor_label = (
+            ANY_DOCTOR_LABEL if is_deleted else row["doctor_label"]
+        )
+        doctor_color = doctor_colors.get(display_doctor_id, DEFAULT_COLOR)
         
         start = datetime.strptime(row["starts_at"], ISO_FMT)
         end = datetime.strptime(row["ends_at"], ISO_FMT)
@@ -605,8 +665,8 @@ def get_appointment_by_id(appt_id: str) -> dict[str, str] | None:
             "patient_phone": row["patient_phone"],
             "patient_id": row["patient_id"],
             "patient_short_id": patient_short_id,
-            "doctor_id": row["doctor_id"],
-            "doctor_label": row["doctor_label"],
+            "doctor_id": display_doctor_id,
+            "doctor_label": display_doctor_label,
             "title": row["title"],
             "notes": row["notes"],
             "starts_at": row["starts_at"],

@@ -14,6 +14,7 @@ from clinic_app.extensions import limiter, db
 from clinic_app.forms.auth import LoginForm
 from clinic_app.models_rbac import Role, User
 from clinic_app.services.security import record_login, record_logout
+from clinic_app.services.ui import render_page
 
 
 bp = Blueprint("auth", __name__, url_prefix="/auth")
@@ -138,7 +139,13 @@ def login():
     if request.method == "POST" and not form.validate_on_submit():
         current_app.logger.debug(f"[login] Form validation failed. Errors: {form.errors}")
 
-    return render_template("auth/login.html", form=form, next_url=next_url, bootstrap_mode=bootstrap_mode)
+    return render_page(
+        "auth/login.html",
+        form=form,
+        next_url=next_url,
+        bootstrap_mode=bootstrap_mode,
+        hide_app_nav=True,
+    )
 
 
 @bp.route("/logout", methods=["POST"])

@@ -22,6 +22,9 @@ def _theme_css() -> str:
         accent = vars.get("accent_color")
         base_font = vars.get("base_font_size")
         text_color = vars.get("text_color")
+        btn_text_color = vars.get("btn_text_color")
+        page_bg_tint = vars.get("page_bg_tint")
+        card_bg_tint = vars.get("card_bg_tint")
         if primary:
             overrides.append(f"--primary-color: {primary};")
         if accent:
@@ -36,6 +39,68 @@ def _theme_css() -> str:
         if text_color:
             overrides.append(f"--ink: {text_color};")
             overrides.append(f"--text-primary: {text_color};")
+
+        def _parse_hex_color(val):
+            try:
+                s = str(val or "").strip()
+                if not s.startswith("#"):
+                    return None
+                h = s[1:]
+                if len(h) == 3:
+                    h = "".join(c * 2 for c in h)
+                if len(h) != 6:
+                    return None
+                r = int(h[0:2], 16)
+                g = int(h[2:4], 16)
+                b = int(h[4:6], 16)
+                return r, g, b
+            except Exception:
+                return None
+
+        def _auto_btn_for(primary_val):
+            rgb = _parse_hex_color(primary_val)
+            if not rgb:
+                return None
+            r, g, b = rgb
+            lum = 0.299 * r + 0.587 * g + 0.114 * b
+            return "#111827" if lum > 180 else "#ffffff"
+
+        def _too_close(c1, c2) -> bool:
+            rgb1 = _parse_hex_color(c1)
+            rgb2 = _parse_hex_color(c2)
+            if not rgb1 or not rgb2:
+                return False
+            l1 = 0.299 * rgb1[0] + 0.587 * rgb1[1] + 0.114 * rgb1[2]
+            l2 = 0.299 * rgb2[0] + 0.587 * rgb2[1] + 0.114 * rgb2[2]
+            return abs(l1 - l2) < 80
+
+        def _lighten_for_bg(val, mix: float = 0.85):
+            rgb = _parse_hex_color(val)
+            if not rgb:
+                return None
+            r, g, b = rgb
+            def _mix(c: int) -> int:
+                return int(min(255, c + (255 - c) * mix))
+            lr, lg, lb = _mix(r), _mix(g), _mix(b)
+            return f"#{lr:02x}{lg:02x}{lb:02x}"
+
+        if primary:
+            auto_btn = _auto_btn_for(primary)
+            chosen_btn = None
+            if btn_text_color:
+                if auto_btn and _too_close(btn_text_color, primary):
+                    chosen_btn = auto_btn
+                else:
+                    chosen_btn = btn_text_color
+            elif auto_btn:
+                chosen_btn = auto_btn
+            if chosen_btn:
+                overrides.append(f"--btn-text-on-primary: {chosen_btn};")
+        if page_bg_tint:
+            safe_bg = _lighten_for_bg(page_bg_tint) or page_bg_tint
+            overrides.append(
+                f"--page-bg: linear-gradient(90deg, {safe_bg} 0%, #fdfdfd 52%, {safe_bg} 100%);"
+            )
         if overrides:
             parts.append(":root { " + " ".join(overrides) + " }")
     return "\n".join(parts)

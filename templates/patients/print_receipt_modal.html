@@ -11,14 +11,14 @@
             </div>
             
             <div class="modal-body simple-body">
-                <p class="hint">{{ t('preview_receipt') }} → PDF in a new tab (use browser print). {{ t('download_pdf') }} → save the file.</p>
-                
+                <p class="hint">{{ t('print_receipt_hint') if t('print_receipt_hint') != 'print_receipt_hint' else 'For a cleaner receipt, turn off “Headers and footers” in your browser’s print settings.' }}</p>
+
                 <div class="option-block">
                     <label class="form-label">{{ t('language') }}</label>
                     <div class="radio-row">
                         <label class="radio-chip">
                             <input type="radio" name="receipt-lang" value="current" checked>
-                            <span>{{ t('current_language') or 'Current' }}</span>
+                            <span>{{ t('current_language') or 'Current language' }}</span>
                         </label>
                         <label class="radio-chip">
                             <input type="radio" name="receipt-lang" value="en">
@@ -42,26 +42,13 @@
                             <input type="checkbox" id="include-notes" checked>
                             <span>{{ t('include_notes') }}</span>
                         </label>
-                        <label class="checkbox-chip">
-                            <input type="checkbox" id="include-qr" checked>
-                            <span>{{ t('include_qr') }}</span>
-                        </label>
-                        <label class="checkbox-chip">
-                            <input type="checkbox" id="watermark">
-                            <span>{{ t('add_watermark') }}</span>
-                        </label>
                     </div>
                 </div>
 
                 <div class="print-actions">
-                <button type="button" class="btn secondary" id="previewReceiptBtn">
-                    <i class="fa fa-eye"></i>
-                    {{ t('preview_receipt') }}
-                </button>
-                    
-                    <button type="button" class="btn primary" id="downloadReceiptBtn">
-                        <i class="fa fa-download"></i>
-                        {{ t('download_pdf') }}
+                    <button type="button" class="btn primary" id="confirmPrintReceiptBtn">
+                        <i class="fa fa-print"></i>
+                        {{ t('print_receipt') }}
                     </button>
                 </div>
             </div>

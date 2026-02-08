@@ -1,15 +1,15 @@
 {% extends 'expenses/base.html' %}
 
-{% block title %}New Expense Receipt{% endblock %}
+{% block title %}{{ tf('expenses_new_receipt', 'New Expense Receipt') }}{% endblock %}
 
 {% block expenses_content %}
 <div class="expense-shell">
   <div class="summary-card">
     <div class="summary-content">
       <div>
-        <p class="eyebrow">New expense</p>
-        <h3>Log materials spending</h3>
-        <p class="mini-help">Date, total paid, and a short description. No suppliers or extras.</p>
+        <p class="eyebrow">{{ tf('new_expense', 'New expense') }}</p>
+        <h3>{{ tf('log_materials_spending', 'Log materials spending') }}</h3>
+        <p class="mini-help">{{ tf('new_expense_hint', 'Date, total paid, and a short description. No suppliers or extras.') }}</p>
       </div>
       <div class="summary-amount" id="totalAmountDisplay">0.00 EGP</div>
     </div>
@@ -22,7 +22,7 @@
 
         {% if form.errors %}
         <div class="form-error alert alert-danger">
-          Please check the fields below and try again.
+          {{ tf('please_fix_errors', 'Please check the fields below and try again.') }}
         </div>
         {% endif %}
 
@@ -41,7 +41,7 @@
           <div class="form-group">
             {{ form.total_amount.label(class="form-label") }}
             {{ form.total_amount(class="form-control total-input", placeholder="0.00", inputmode="decimal") }}
-            <small class="help-text">How much you paid for these materials.</small>
+            <small class="help-text">{{ tf('paid_hint', 'How much you paid for these materials.') }}</small>
             {% for error in form.total_amount.errors %}
               <div class="field-error">{{ error }}</div>
             {% endfor %}
@@ -50,15 +50,15 @@
 
         <div class="form-section">
           {{ form.notes.label(class="form-label") }}
-          {{ form.notes(class="form-control", rows="4", placeholder="List everything you bought...") }}
+          {{ form.notes(class="form-control", rows="4", placeholder=tf('list_everything', 'List everything you bought...')) }}
           {% for error in form.notes.errors %}
             <div class="field-error">{{ error }}</div>
           {% endfor %}
         </div>
 
         <div class="form-actions">
-          {{ form.submit(class="btn primary", value="Save Expense") }}
-          <a href="{{ url_for('expenses.index') }}" class="btn secondary">Cancel</a>
+          {{ form.submit(class="btn primary", value=tf('save_expense', 'Save Expense')) }}
+          <a href="{{ url_for('expenses.index') }}" class="btn secondary">{{ tf('cancel', 'Cancel') }}</a>
         </div>
       </form>
     </div>

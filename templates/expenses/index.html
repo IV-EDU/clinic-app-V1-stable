@@ -1,13 +1,13 @@
 {% extends 'expenses/base.html' %}
 
-{% block title %}Expense Receipts{% endblock %}
+{% block title %}{{ tf('expenses_receipts_title', 'Expense Receipts') }}{% endblock %}
 
 {% block expenses_content %}
-<div class="summary-card">
-  <div class="summary-content">
-    <div>
-      <p class="eyebrow">This month</p>
-      <h3>Materials spending</h3>
+  <div class="summary-card">
+    <div class="summary-content">
+      <div>
+      <p class="eyebrow">{{ tf('expenses_this_month', 'This month') }}</p>
+      <h3>{{ tf('expenses_materials_spending', 'Materials spending') }}</h3>
     </div>
     <div class="summary-amount">
       {{ month_total }} EGP
@@ -18,28 +18,28 @@
 <!-- Search and Filter Form -->
 <div class="card">
   <div class="card-header">
-    <h3>Search & Filter</h3>
+    <h3>{{ tf('search_filter', 'Search & Filter') }}</h3>
   </div>
   <div class="card-body">
     <form method="GET" class="expense-search-form">
       <div class="form-row">
         <div class="form-group">
-          <label for="start_date">Start Date:</label>
+          <label for="start_date">{{ tf('start_date', 'Start Date') }}:</label>
           <input type="date" name="start_date" id="start_date" class="form-control" 
                  value="{{ current_filters.start_date or '' }}">
         </div>
         <div class="form-group">
-          <label for="end_date">End Date:</label>
+          <label for="end_date">{{ tf('end_date', 'End Date') }}:</label>
           <input type="date" name="end_date" id="end_date" class="form-control"
                 value="{{ current_filters.end_date or '' }}">
         </div>
         <div class="form-group">
-          <label for="search_query">Search:</label>
+          <label for="search_query">{{ tf('search', 'Search') }}:</label>
           <input type="text" name="search_query" id="search_query" class="form-control"
-                 placeholder="Search description..." value="{{ current_filters.search_query or '' }}">
+                 placeholder="{{ tf('search_description', 'Search description...') }}" value="{{ current_filters.search_query or '' }}">
         </div>
         <div class="form-group">
-          <label for="category_id">Category:</label>
+          <label for="category_id">{{ tf('category', 'Category') }}:</label>
           <select name="category_id" id="category_id" class="form-control">
             {% for option in search_form.category_id.choices %}
               <option value="{{ option[0] }}" {% if search_form.category_id.data == option[0] %}selected{% endif %}>{{ option[1] }}</option>
@@ -50,7 +50,7 @@
       
       <div class="form-row">
         <div class="form-group">
-          <label for="receipt_status">Status:</label>
+          <label for="receipt_status">{{ tf('status', 'Status') }}:</label>
           <select name="receipt_status" id="receipt_status" class="form-control">
             {% for option in search_form.receipt_status.choices %}
               <option value="{{ option[0] }}" {% if search_form.receipt_status.data == option[0] %}selected{% endif %}>{{ option[1] }}</option>
@@ -58,26 +58,26 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="min_amount">Min Amount (EGP):</label>
+          <label for="min_amount">{{ tf('min_amount', 'Min Amount') }} (EGP):</label>
           {{ search_form.min_amount(class="form-control", placeholder="0.00") }}
         </div>
         <div class="form-group">
-          <label for="max_amount">Max Amount (EGP):</label>
+          <label for="max_amount">{{ tf('max_amount', 'Max Amount') }} (EGP):</label>
           {{ search_form.max_amount(class="form-control", placeholder="1000.00") }}
         </div>
       </div>
       
       <div class="form-actions">
-        <button type="submit" class="btn primary">Search</button>
-        <a href="{{ url_for('expenses.index') }}" class="btn secondary">Clear Filters</a>
+        <button type="submit" class="btn primary">{{ tf('search', 'Search') }}</button>
+        <a href="{{ url_for('expenses.index') }}" class="btn secondary">{{ tf('clear_filters', 'Clear Filters') }}</a>
         
         <!-- Export buttons -->
         <div class="export-actions">
-          <a href="{{ url_for('expenses.export_csv', **request.args) }}" class="btn secondary" title="Export as CSV">
-            <i class="fa fa-download"></i> Export CSV
+          <a href="{{ url_for('expenses.export_csv', **request.args) }}" class="btn secondary" title="{{ tf('export_csv', 'Export as CSV') }}">
+            <i class="fa fa-download"></i> {{ tf('export_csv', 'Export CSV') }}
           </a>
-          <a href="{{ url_for('expenses.export_pdf', **request.args) }}" class="btn secondary" title="Export as PDF">
-            <i class="fa fa-file-pdf"></i> Export PDF
+          <a href="{{ url_for('expenses.export_pdf', **request.args) }}" class="btn secondary" title="{{ tf('export_pdf', 'Export as PDF') }}">
+            <i class="fa fa-file-pdf"></i> {{ tf('export_pdf', 'Export PDF') }}
           </a>
         </div>
       </div>
@@ -88,10 +88,10 @@
 <!-- Expense Receipts List -->
 <div class="card">
   <div class="card-header">
-    <h3>Expense Receipts</h3>
+    <h3>{{ tf('expenses_receipts', 'Expense Receipts') }}</h3>
     {% if current_user.has_permission('expenses:edit') %}
       <a href="{{ url_for('expenses.new_receipt') }}" class="btn primary">
-        <i class="fa fa-plus"></i> New Receipt
+        <i class="fa fa-plus"></i> {{ tf('new_receipt', 'New Receipt') }}
       </a>
     {% endif %}
   </div>
@@ -101,13 +101,13 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Description</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>Total</th>
-              <th>Files</th>
-              <th>Actions</th>
+              <th scope="col">{{ tf('date', 'Date') }}</th>
+              <th scope="col">{{ tf('description', 'Description') }}</th>
+              <th scope="col">{{ tf('category', 'Category') }}</th>
+              <th scope="col">{{ tf('status', 'Status') }}</th>
+              <th scope="col">{{ tf('total', 'Total') }}</th>
+              <th scope="col">{{ tf('files', 'Files') }}</th>
+              <th scope="col">{{ tf('actions', 'Actions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -115,7 +115,7 @@
             <tr>
               <td>{{ receipt.receipt_date }}</td>
               <td class="description-cell">
-                <div class="desc-title">{{ receipt.notes or 'Materials purchase' }}</div>
+                <div class="desc-title">{{ receipt.notes or tf('materials_purchase', 'Materials purchase') }}</div>
                 <div class="desc-sub">#{{ receipt.serial_number }}</div>
                 {% if receipt.supplier_name %}
                   <div class="desc-sup">{{ receipt.supplier_name }}</div>
@@ -127,7 +127,7 @@
                     {{ receipt.category_name }}
                   </span>
                 {% else %}
-                  <span class="category-chip uncategorized">Uncategorized</span>
+                  <span class="category-chip uncategorized">{{ tf('uncategorized', 'Uncategorized') }}</span>
                 {% endif %}
               </td>
               <td>
@@ -138,7 +138,7 @@
                   </span>
                 {% else %}
                   <span class="status-chip pending">
-                    <i class="fa fa-clock"></i> Pending
+                    <i class="fa fa-clock"></i> {{ tf('pending', 'Pending') }}
                   </span>
                 {% endif %}
               </td>
@@ -160,22 +160,22 @@
               <td class="actions-cell">
                 <div class="action-buttons">
                   <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}"
-                     class="btn btn-sm secondary" title="View Details">
+                     class="btn btn-sm secondary" title="{{ tf('view_details', 'View Details') }}">
                     <i class="fa fa-eye"></i>
                   </a>
                   {% if current_user.has_permission('expenses:edit') %}
                     <a href="{{ url_for('expenses.edit_receipt', expense_id=receipt.id) }}"
-                       class="btn btn-sm secondary" title="Edit">
+                       class="btn btn-sm secondary" title="{{ tf('edit', 'Edit') }}">
                       <i class="fa fa-edit"></i>
                     </a>
                     {% if current_user.has_permission('expenses:edit') %}
                       <a href="{{ url_for('expenses.update_receipt_status_route', expense_id=receipt.id) }}"
-                         class="btn btn-sm secondary" title="Update Status">
+                         class="btn btn-sm secondary" title="{{ tf('update_status', 'Update Status') }}">
                         <i class="fa fa-check"></i>
                       </a>
                     {% endif %}
                     <a href="{{ url_for('expenses.delete_receipt_confirm', expense_id=receipt.id) }}"
-                       class="btn btn-sm danger" title="Delete">
+                       class="btn btn-sm danger" title="{{ tf('delete', 'Delete') }}">
                       <i class="fa fa-trash"></i>
                     </a>
                   {% endif %}
@@ -189,11 +189,11 @@
     {% else %}
       <div class="empty-state">
         <i class="fa fa-receipt empty-icon"></i>
-        <h3>No Expense Receipts Found</h3>
-        <p>Create your first expense receipt to get started.</p>
+        <h3>{{ tf('no_expense_receipts', 'No Expense Receipts Found') }}</h3>
+        <p>{{ tf('create_first_expense_receipt', 'Create your first expense receipt to get started.') }}</p>
         {% if current_user.has_permission('expenses:edit') %}
           <a href="{{ url_for('expenses.new_receipt') }}" class="btn primary">
-            <i class="fa fa-plus"></i> Create First Receipt
+            <i class="fa fa-plus"></i> {{ tf('create_first_receipt', 'Create First Receipt') }}
           </a>
         {% endif %}
       </div>

@@ -1,13 +1,13 @@
 :root{ --bg:var(--bg-primary,#f8fafc); --card:var(--bg-surface,#fff); --ink:var(--text-primary,#111827); --muted:var(--text-muted,#6b7280); --border:var(--border-strong,#e2e8f0); --mid:var(--primary-color,#0ea5e9); --accent:var(--accent-color,var(--mid)); --danger:#ef4444; --font-ar:var(--font-arabic,'Tajawal','Noto Sans Arabic','Segoe UI',Arial,sans-serif); --font-lat:var(--font-latin,'Segoe UI',Arial,sans-serif); }
 *{box-sizing:border-box}
-body{margin:0;font-family:var(--font-lat);background:var(--bg);color:var(--ink)}
+body{margin:0;font-family:var(--font-lat);background:var(--page-bg, var(--bg));color:var(--ink)}
 html[lang="ar"] body{font-family:var(--font-ar)}
 .wrap{max-width:1100px;margin:16px auto;padding:0 12px}
-.head{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.head{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px;padding:12px 14px;border-radius:16px;background:linear-gradient(90deg,color-mix(in srgb,var(--primary-color,#0ea5e9) 14%,#f3f4ff) 0%,#fdfdfd 52%,color-mix(in srgb,var(--primary-color,#0ea5e9) 14%,#f3f4ff) 100%);box-shadow:0 10px 24px rgba(15,23,42,0.06)}
 .hgroup{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .card{background:linear-gradient(180deg,#ffffff, #f8fafc);border:1px solid #cbd5e1;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:14px;cursor:default}
 .card[data-name]{cursor:pointer}
-.btn{display:inline-block;background:var(--primary-color,var(--mid));color:#fff;border:1px solid var(--primary-color,var(--mid));padding:8px 12px;border-radius:10px;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background-color .2s ease,border-color .2s ease,color .2s ease;font-family:inherit}
+.btn{display:inline-block;background:var(--primary-color,var(--mid));color:var(--btn-text-on-primary,#fff);border:1px solid var(--primary-color,var(--mid));padding:8px 12px;border-radius:10px;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background-color .2s ease,border-color .2s ease,color .2s ease;font-family:inherit}
 .btn.secondary{background:#fff;color:var(--ink,#111827);border-color:var(--border,#d1d5db)}
 .btn.danger{background:var(--danger);border-color:#dc2626;color:#000;font-weight:700}
 .btn:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{
@@ -32,7 +32,7 @@ html[lang="ar"] body{font-family:var(--font-ar)}
 .arch.adult{grid-template-columns:repeat(8, 46px) 12px repeat(8, 46px)}
 .arch.child{grid-template-columns:repeat(5, 46px) 12px repeat(5, 46px)}
 .midline{width:2px;height:64px;background:#94a3b8;border-radius:2px;margin:0 auto; margin-bottom:2px}
-.splitline{height:2px;background:#94a3b8;margin:6px 0 14px 0}
+.splitline{height:2px;background:#94a3b8;margin:12px 0}
 
 .quadbar{display:grid;grid-template-columns:1fr 1fr;max-width: calc(16*46px + 120px);margin:0 auto 6px auto;color:#6b7280}
 .quadbar > div:nth-child(1){text-align:left;padding-left:6px}

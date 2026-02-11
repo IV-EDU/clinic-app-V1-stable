@@ -1,3 +1,50 @@
 {
-    "chatgpt.runCodexInWindowsSubsystemForLinux": true
+    // ── Workspace Indexing & Search ──────────────────────────────
+    // Hide noisy folders from the Explorer sidebar
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "build/": true,
+        "Current Clinic Excel/": true,
+        ".venv/": true,
+        ".venv-wsl/": true
+    },
+
+    // Exclude from workspace search (affects Copilot & AI indexing)
+    "search.exclude": {
+        "build/": true,
+        "**/__pycache__": true,
+        "**/*.pyc": true,
+        "data/": true,
+        "Current Clinic Excel/": true,
+        ".venv/": true,
+        ".venv-wsl/": true,
+        "migrations/versions/": true,
+        "node_modules/": true,
+        "static/fonts/*.ttf": true,
+        "static/diag_plus/": true
+    },
+
+    // Stop file watcher from monitoring heavy directories (performance)
+    "files.watcherExclude": {
+        "**/__pycache__/**": true,
+        "**/build/**": true,
+        "**/data/**": true,
+        "**/.venv/**": true,
+        "**/.venv-wsl/**": true,
+        "**/node_modules/**": true
+    },
+
+    // ── Python ──────────────────────────────────────────────────
+    "python.analysis.extraPaths": ["${workspaceFolder}"],
+
+    // ── Editor Defaults ─────────────────────────────────────────
+    "files.trimTrailingWhitespace": true,
+    "editor.formatOnSave": false,
+    "[python]": {
+        "editor.tabSize": 4
+    },
+    "[html]": {
+        "editor.tabSize": 2
+    }
 }

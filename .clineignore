@@ -13,11 +13,23 @@ coverage/
 *.tsbuildinfo
 .env
 .env.*
-# optional big stuff
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.venv-wsl/
+.pytest_cache/
+# Data (real patient data — never index)
 data/
+# Large / noisy assets
+static/fonts/
+Current Clinic Excel/
+# Other
 datasets/
 *.ipynb
 *.parquet
 .next/
 .nuxt/
 .vite/
+migrations/versions/

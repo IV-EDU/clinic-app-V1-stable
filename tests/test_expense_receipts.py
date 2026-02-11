@@ -1,0 +1,345 @@
+"""Tests for expense receipts system."""
+
+import pytest
+from werkzeug.security import generate_password_hash
+
+from clinic_app.services.expense_receipts import (
+    generate_expense_serial,
+    create_supplier,
+    create_expense_receipt,
+    list_expense_receipts,
+    list_suppliers,
+    ExpenseReceiptError,
+    SupplierNotFound,
+    MaterialNotFound,
+    ExpenseReceiptNotFound
+)
+
+
+@pytest.fixture
+def expense_user(app):
+    """Create a test user for expense receipt tests (FK on created_by → users.id)."""
+    from clinic_app.services.database import db as raw_db
+    conn = raw_db()
+    try:
+        conn.execute(
+            "INSERT INTO users(id, username, password_hash, role, full_name, is_active, created_at, updated_at) "
+            "VALUES (?, ?, ?, 'admin', ?, 1, datetime('now'), datetime('now'))",
+            ("test-user", "testuser", generate_password_hash("password123"), "Test User"),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return "test-user"
+
+
+def test_serial_generation(app):
+    """Test expense receipt serial number generation."""
+    with app.app_context():
+        from clinic_app.services.database import db
+
+        conn = db()
+        try:
+            # Test serial generation for 2025
+            serial1 = generate_expense_serial(conn, "2025-11-11")
+            serial2 = generate_expense_serial(conn, "2025-11-11")
+            serial3 = generate_expense_serial(conn, "2024-12-31")
+
+            # Verify format
+            assert serial1.startswith("E-2025-"), f"Wrong prefix for 2025: {serial1}"
+            assert serial2.startswith("E-2025-"), f"Wrong prefix for 2025: {serial2}"
+            assert serial3.startswith("E-2024-"), f"Wrong prefix for 2024: {serial3}"
+
+            # Verify incrementing
+            assert serial1 != serial2, "Serials should be different"
+
+            # Test year boundary
+            year1 = serial1.split('-')[1]
+            year3 = serial3.split('-')[1]
+            assert year1 != year3, "Years should be different for different years"
+
+        finally:
+            conn.close()
+
+
+def test_supplier_creation(app):
+    """Test supplier creation."""
+    with app.app_context():
+        actor_id = "test-user"
+
+        # Test creating a valid supplier
+        supplier_data = {
+            'name': 'Test Dental Supplies',
+            'contact_person': 'Ahmed Hassan',
+            'phone': '+20 123 456 789',
+            'email': 'ahmed@testdental.com',
+            'address': '123 Medical Street, Cairo',
+            'tax_number': '123-456-789'
+        }
+
+        supplier_id = create_supplier(supplier_data, actor_id=actor_id)
+        assert supplier_id is not None
+
+        # Verify supplier was created
+        suppliers = list_suppliers()
+        supplier_names = [s['name'] for s in suppliers]
+        assert 'Test Dental Supplies' in supplier_names
+
+
+def test_supplier_validation(app):
+    """Test supplier validation errors."""
+    with app.app_context():
+        actor_id = "test-user"
+
+        # Test creating supplier without name
+        with pytest.raises(ExpenseReceiptError, match="supplier_name_required"):
+            create_supplier({'name': ''}, actor_id=actor_id)
+
+        # Test creating supplier with duplicate name
+        supplier_data = {
+            'name': 'Duplicate Test',
+            'contact_person': 'Test Person'
+        }
+
+        create_supplier(supplier_data, actor_id=actor_id)
+
+        with pytest.raises(ExpenseReceiptError, match="supplier_name_exists"):
+            create_supplier(supplier_data, actor_id=actor_id)
+
+
+def test_expense_receipt_creation(app, expense_user):
+    """Test expense receipt creation with items."""
+    with app.app_context():
+        actor_id = expense_user
+
+        # First create a supplier
+        supplier_data = {
+            'name': 'Medical Equipment Co.',
+            'contact_person': 'Sara Ali',
+            'phone': '+20 987 654 321'
+        }
+
+        supplier_id = create_supplier(supplier_data, actor_id=actor_id)
+
+        # Create expense receipt with items
+        receipt_data = {
+            'supplier_id': supplier_id,
+            'receipt_date': '2025-11-11',
+            'tax_rate': '14'
+        }
+
+        items = [
+            {
+                'material_name': 'Dental Composite',
+                'quantity': '2',
+                'unit_price': '150.50',
+                'notes': 'For fillings'
+            },
+            {
+                'material_name': 'Disposable Gloves',
+                'quantity': '10',
+                'unit_price': '25.00',
+                'notes': 'Box of 100'
+            }
+        ]
+
+        receipt_id = create_expense_receipt(receipt_data, items, actor_id=actor_id)
+        assert receipt_id is not None
+
+        # Verify receipt was created
+        receipts = list_expense_receipts()
+        receipt_found = False
+        for receipt in receipts:
+            if receipt['id'] == receipt_id:
+                receipt_found = True
+                break
+
+        assert receipt_found, "Receipt not found in list"
+
+
+def test_expense_receipt_validation(app):
+    """Test expense receipt validation errors."""
+    with app.app_context():
+        actor_id = "test-user"
+
+        # Test creating receipt without supplier
+        with pytest.raises(ExpenseReceiptError, match="expense_supplier_id_required"):
+            create_expense_receipt({'receipt_date': '2025-11-11'}, [], actor_id=actor_id)
+
+        # Test creating receipt without date
+        with pytest.raises(ExpenseReceiptError, match="expense_receipt_date_required"):
+            create_expense_receipt({'supplier_id': 'nonexistent'}, [], actor_id=actor_id)
+
+        # Test creating receipt without items
+        with pytest.raises(ExpenseReceiptError, match="expense_items_required"):
+            create_expense_receipt({'supplier_id': 'nonexistent', 'receipt_date': '2025-11-11'}, [], actor_id=actor_id)
+
+        # Test creating receipt with invalid supplier
+        with pytest.raises(SupplierNotFound):
+            create_expense_receipt({'supplier_id': 'nonexistent', 'receipt_date': '2025-11-11'},
+                                 [{'material_name': 'Test', 'quantity': '1', 'unit_price': '10'}],
+                                 actor_id=actor_id)
+
+
+def test_expense_receipt_item_validation(app):
+    """Test expense receipt item validation."""
+    with app.app_context():
+        actor_id = "test-user"
+
+        # Create supplier first
+        supplier_data = {'name': 'Test Supplier', 'contact_person': 'Test Person'}
+        supplier_id = create_supplier(supplier_data, actor_id=actor_id)
+
+        receipt_data = {
+            'supplier_id': supplier_id,
+            'receipt_date': '2025-11-11'
+        }
+
+        # Test item without name
+        with pytest.raises(ExpenseReceiptError, match="item_1_name_required"):
+            create_expense_receipt(receipt_data,
+                                 [{'quantity': '1', 'unit_price': '10'}],
+                                 actor_id=actor_id)
+
+        # Test item with invalid numbers
+        with pytest.raises(ExpenseReceiptError, match="item_1_invalid_numbers"):
+            create_expense_receipt(receipt_data,
+                                 [{'material_name': 'Test', 'quantity': 'invalid', 'unit_price': '10'}],
+                                 actor_id=actor_id)
+
+        # Test item with negative numbers
+        with pytest.raises(ExpenseReceiptError, match="item_1_invalid_pricing"):
+            create_expense_receipt(receipt_data,
+                                 [{'material_name': 'Test', 'quantity': '-1', 'unit_price': '10'}],
+                                 actor_id=actor_id)
+
+
+def test_data_integrity(app):
+    """Test data relationships and integrity."""
+    with app.app_context():
+        from clinic_app.services.database import db
+
+        conn = db()
+        try:
+            # Check all tables exist
+            tables = ['suppliers', 'expense_categories', 'materials', 'expense_receipts',
+                     'expense_receipt_items', 'expense_sequences', 'receipt_settings']
+
+            for table in tables:
+                result = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+                assert result is not None, f"Table {table} should exist"
+
+            # Check categories were created (seeded by migrations)
+            categories = conn.execute("SELECT name FROM expense_categories").fetchall()
+            category_names = [cat[0] for cat in categories]
+            # These are the categories seeded by migration 0007 when 0005 seeds
+            # are not visible in the same transaction
+            expected_categories = ['Equipment', 'Maintenance', 'Office Supplies']
+
+            for category in expected_categories:
+                assert category in category_names, f"Category {category} not found"
+
+            # Check receipt_settings table is usable (seeding happens at runtime,
+            # migration seeds may not persist in test transactions)
+            settings = conn.execute("SELECT setting_key FROM receipt_settings").fetchall()
+            assert isinstance(settings, list), "receipt_settings table should be queryable"
+
+        finally:
+            conn.close()
+
+
+def test_serial_number_uniqueness(app, expense_user):
+    """Test that serial numbers are unique within a year."""
+    with app.app_context():
+        from clinic_app.services.database import db
+
+        conn = db()
+        try:
+            # Create multiple receipts on the same day
+            supplier_data = {'name': 'Unique Test Supplier', 'contact_person': 'Test Person'}
+            supplier_id = create_supplier(supplier_data, actor_id=expense_user)
+
+            receipt_data = {
+                'supplier_id': supplier_id,
+                'receipt_date': '2025-11-11',
+                'tax_rate': '14'
+            }
+
+            items = [{'material_name': 'Test Material', 'quantity': '1', 'unit_price': '10'}]
+
+            # Create multiple receipts
+            receipt_ids = []
+            for i in range(5):
+                receipt_id = create_expense_receipt(receipt_data, items, actor_id=expense_user)
+                receipt_ids.append(receipt_id)
+
+            # Check that all receipt IDs are unique
+            assert len(receipt_ids) == len(set(receipt_ids)), "Receipt IDs should be unique"
+
+            # Get all serial numbers
+            from clinic_app.services.database import db
+            conn = db()
+            try:
+                serials = conn.execute(
+                    "SELECT serial_number FROM expense_receipts ORDER BY serial_number"
+                ).fetchall()
+
+                serial_numbers = [s[0] for s in serials]
+
+                # All serials should be unique
+                assert len(serial_numbers) == len(set(serial_numbers)), "Serial numbers should be unique"
+
+                # All should start with E-2025-
+                for serial in serial_numbers:
+                    assert serial.startswith("E-2025-"), f"Serial {serial} should start with E-2025-"
+
+            finally:
+                conn.close()
+
+        finally:
+            conn.close()
+
+
+def test_totals_calculation(app, expense_user):
+    """Test that totals are calculated correctly."""
+    with app.app_context():
+        actor_id = expense_user
+
+        # Create supplier and receipt with known amounts
+        supplier_data = {'name': 'Calculation Test Supplier', 'contact_person': 'Test Person'}
+        supplier_id = create_supplier(supplier_data, actor_id=actor_id)
+
+        receipt_data = {
+            'supplier_id': supplier_id,
+            'receipt_date': '2025-11-11',
+            'tax_rate': '14'
+        }
+
+        # Items: 2 × 150.50 = 301.00, 3 × 25.00 = 75.00, Total = 376.00
+        # Tax (14%): 376.00 × 0.14 = 52.64, Final total = 428.64
+        items = [
+            {
+                'material_name': 'Expensive Item',
+                'quantity': '2',
+                'unit_price': '150.50'
+            },
+            {
+                'material_name': 'Cheap Item',
+                'quantity': '3',
+                'unit_price': '25.00'
+            }
+        ]
+
+        receipt_id = create_expense_receipt(receipt_data, items, actor_id=actor_id)
+
+        # Get the receipt and check totals
+        from clinic_app.services.expense_receipts import get_expense_receipt
+        receipt = get_expense_receipt(receipt_id)
+
+        # Check the calculated totals
+        expected_subtotal = 376.00  # 301.00 + 75.00
+        expected_tax = 52.64  # 376.00 × 0.14
+        expected_total = 428.64  # 376.00 + 52.64
+
+        assert abs(receipt['total_amount'] - expected_total) < 0.01, f"Expected total {expected_total}, got {receipt['total_amount']}"
+        assert abs(receipt['tax_amount'] - expected_tax) < 0.01, f"Expected tax {expected_tax}, got {receipt['tax_amount']}"

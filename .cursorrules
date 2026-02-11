@@ -1,0 +1,50 @@
+# Cursor Rules – Clinic-App-Local
+
+# Auto-read by Cursor AI. For full rules see AGENTS.md.
+
+## About
+Dental clinic management system (Flask + SQLite, Windows).
+The user is **not a programmer** — use simple language, small safe changes.
+
+## Safety — NEVER modify or delete
+- `data/` — real patient data
+- `migrations/` — DB version history
+- `.venv/`, `.venv-wsl/` — Python environments
+- `.git/` — version control
+
+## Key Conventions
+- Plan first (2–5 bullets), then implement. One feature at a time.
+- Reuse helpers in `clinic_app/services/`. Follow existing code style.
+- Runtime deps → `requirements.txt`. Dev deps → `requirements.dev.txt`.
+- Run tests via `Run-Tests.bat` after backend changes.
+- Start app via `Start-Clinic.bat` (port 8080).
+
+## Appointments Page — Important
+Template: `templates/appointments/vanilla.html`. Keep these script tag IDs unchanged:
+- `#appointments-data`, `#patients-data`, `#doctors-data`
+
+## Auto-Update Rule (mandatory)
+When you add, move, or remove any route, template, service, CSS, or JS file:
+1. Update `docs/INDEX.md` — add/remove the file in the matching section.
+2. Update `AGENTS.md` §4 (Quick Project Index) if a blueprint or service is added/removed.
+3. Update `README.md` if the change affects user-visible features.
+4. Update `LAST_PLAN.md` if your work completes or advances a phase/bullet.
+
+## Reference Docs (read before working)
+- `AGENTS.md` — full agent behavior rules (14 sections)
+- `plan_Agents.md` — how to design plans
+- `LAST_PLAN.md` — V1 product roadmap (phases 0-6 done, 7 in progress)
+- `docs/INDEX.md` — complete code-to-feature map (17 sections)
+
+## Project Layout
+```
+clinic_app/             ← Main Python package
+  blueprints/           ← Feature modules
+  services/             ← Shared business logic (24 files)
+  forms/                ← WTForms
+  models.py, models_rbac.py
+templates/              ← Jinja2 HTML pages
+static/css/ static/js/  ← Frontend assets
+tests/                  ← pytest suite (~32 files)
+data/                   ← DO NOT TOUCH
+```

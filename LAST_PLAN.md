@@ -9,56 +9,56 @@
 - Arabic/RTL must remain first-class everywhere.
 - Build on what exists: current CSS variables, admin, PDF services, and batch scripts.
 
-## Phase 0 – Data Root & Housekeeping
-- Confirm all runtime storage (DB, backups, exports, uploads) lives under `data/`.
-- Audit code for writes to `clinic_app/data/`; treat that path as legacy/fixtures only and avoid new writes there.
-- Ensure any new helpers read/write via `app.config["DATA_ROOT"]` and `static/uploads/` only.
+## Phase 0 – Data Root & Housekeeping ✅ DONE
+- ~~Confirm all runtime storage (DB, backups, exports, uploads) lives under `data/`.~~
+- ~~Audit code for writes to `clinic_app/data/`; treat that path as legacy/fixtures only and avoid new writes there.~~
+- ~~Ensure any new helpers read/write via `app.config["DATA_ROOT"]` and `static/uploads/` only.~~
+- *Evidence: `_data_root()` in `__init__.py` uses `data/` exclusively; all runtime paths created under `data/`.*
 
-## Phase 1 – Theme & UI Foundation (no DB change)
-- Add `static/css/theme-system.css` that extends existing variables (`--ink`, `--muted`, `--border`, `--bg`, `--card`) with a minimal set: `--primary-color`, `--accent-color`, `--bg-primary`, `--text-primary`, etc.
-- Include `theme-system.css` in `_base.html` after `app.css`.
-- Define a small unified component set (buttons/cards/form controls/chips) using these variables.
-- Convert a few key screens first: navigation, login, appointments, simple expenses. Keep RTL/Arabic intact.
+## Phase 1 – Theme & UI Foundation (no DB change) ✅ DONE
+- ~~Add `static/css/theme-system.css` that extends existing variables.~~
+- ~~Include `theme-system.css` in `_base.html` after `app.css`.~~
+- ~~Define a small unified component set using these variables.~~
+- ~~Convert key screens: navigation, login, appointments, simple expenses. Keep RTL/Arabic intact.~~
+- *Evidence: `static/css/theme-system.css` exists and is loaded in `_base.html`.*
 
-## Phase 2 – Persistent Theme Settings (small DB addition)
-- Add a single `theme_settings` table (under the main SQLite DB in `data/`), storing `id`, `key`, `value`, `category`, `updated_at`.
-- Implement `clinic_app/services/theme_settings.py` using the existing DB helper style (no new ORM). Functions: `get_setting`, `set_setting`, `get_theme_variables`.
-- Load theme variables per request and inject as a small `<style>` or `data-theme="custom"` override.
-- Alembic migration: one migration for this table, with a clear rollback (drop only this table).
+## Phase 2 – Persistent Theme Settings (small DB addition) ✅ DONE
+- ~~Add a single `theme_settings` table.~~
+- ~~Implement `clinic_app/services/theme_settings.py`.~~
+- ~~Load theme variables per request and inject as override.~~
+- ~~Alembic migration for this table.~~
+- *Evidence: `theme_settings.py` exists with `get_setting`, `set_setting`, and SQL table.*
 
-## Phase 3 – Admin Theme & Arabic Settings Tab
-- Add a Theme tab in admin settings with:
-  - Primary color, accent/secondary color.
-  - Base font-size slider (for readability).
-  - Arabic defaults: default language toggle; optional “larger Arabic text” toggle that bumps Arabic font-size/line-height via variables.
-- Backend POST route to validate and store via `theme_settings` service.
+## Phase 3 – Admin Theme & Arabic Settings Tab ✅ DONE
+- ~~Add a Theme tab in admin settings (color, font-size, Arabic toggles).~~
+- ~~Backend POST route to validate and store via `theme_settings` service.~~
+- *Evidence: Admin settings blueprint + template exist at `admin_settings.py` and `templates/admin/settings/index.html`.*
 
-## Phase 4 – Clinic Branding Assets (logos/backgrounds)
-- Simple local uploads to `static/uploads/…` (e.g., `uploads/logos/clinic.png`, `uploads/backgrounds/login.jpg`).
-- Minimal `asset_manager.py`:
-  - `save_logo(file_storage) -> relative_path`
-  - `get_logo_url(kind)`
-  - Basic type/size validation (Pillow optional if comfortable).
-- Use logo in `_nav.html` and PDF headers; keep backgrounds optional.
+## Phase 4 – Clinic Branding Assets (logos/backgrounds) ✅ DONE
+- ~~Simple local uploads for clinic logos.~~
+- ~~Use logo in `_nav.html` and PDF headers.~~
+- *Evidence: `data/theme/` has `logo-current.jpeg`, `logo-current.png`, `pdf-logo-current.png`, plus `logos/` and `pdf_logos/` subdirectories.*
 
-## Phase 5 – Arabic/RTL Polish Across the App
-- Review core templates (auth, home, patients, appointments, payments, receipts, expenses/simple expenses) for:
-  - All user-facing strings wrapped with `t(...)` and translated.
-  - Proper `dir`/`lang` handling and RTL alignment in nav, forms, tables/lists.
-  - Arabic font sizing/weights for readability (Tajawal/Noto already in `app.css`).
-- Tests: extend existing i18n tests; manual checks in Arabic and English for main flows.
+## Phase 5 – Arabic/RTL Polish Across the App ~90% DONE
+- ~~All core templates have `t(...)` wrapping and Arabic translations.~~
+- ~~`dir`/`lang` handling and RTL alignment in nav, forms, tables/lists.~~
+- ~~Arabic fonts (Cairo) bundled in `static/fonts/`.~~
+- *Evidence: `i18n.py` has 2000+ lines with full `en`/`ar` dictionary; `T()` is globally registered in Jinja; RTL toggling in `_base.html`.*
+- **Remaining:** Ongoing string completeness — new features/labels need Arabic entries added to `i18n.py`.
 
-## Phase 6 – PDF Styling Integration
-- Apply theme colors and uploaded logo in existing PDF services (receipts/payments).
-- Keep it minimal: no separate `pdf_templates` table yet; just color + logo + optional watermark toggle.
-- Add/extend smoke tests for PDFs where feasible.
+## Phase 6 – PDF Styling Integration ✅ DONE
+- ~~Apply theme colors and uploaded logo in existing PDF services.~~
+- ~~Arabic reshaping for PDF output.~~
+- *Evidence: `pdf_enhanced.py` references `data/theme/` for logos; `fpdf2`, `arabic-reshaper`, `python-bidi` in requirements.txt.*
 
-## Phase 7 – Final Polish & Packaging to .exe
-- UI polish: ensure unified styles across major screens; consistent flash messages, buttons, headings.
-- Documentation: update `README.md` with how to change theme colors, upload logos, switch default language.
-- Packaging (Windows):
-  - Plan a small PyInstaller wrapper that starts the Flask app (uses existing venv) and optionally opens the browser.
-  - Add a simple `PACKAGING.md` with the command to build/run the `.exe` wrapper.
+## Phase 7 – Final Polish & Packaging to .exe ~70% DONE
+- ~~PyInstaller spec file exists (`clinic_app.spec`).~~
+- ~~Build scripts exist: `Build-Clinic.bat`, `Make-Clinic-Release.bat`, `Make-Clinic-Release-Zip.bat`, `Make-Clinic-Zip.bat`.~~
+- ~~Frozen-mode detection in `__init__.py`.~~
+- **Remaining:**
+  - Create `PACKAGING.md` documenting the build/run process.
+  - Update `README.md` with theme/logo/language change instructions.
+  - Final UI consistency pass across all major screens.
 
 ## Out of Scope / Future Ideas
 - CDN/S3, Redis, Prometheus/Grafana/Jaeger, AI/metrics dashboards, Playwright visual regression: keep as future/optional after core delivery.
@@ -68,3 +68,14 @@
 - No new paths outside `data/` and `static/uploads/`.
 - Arabic and English manual verification on key pages each phase.
 - Migrations are small and reversible; avoid touching existing tables beyond the new `theme_settings`.
+
+---
+
+## Remaining V1 Items
+- **Phase 5:** Add Arabic translations for any new strings introduced after initial i18n pass.
+- **Phase 7:** Create `PACKAGING.md`, update `README.md` with theme/logo/language docs, final UI consistency pass.
+
+---
+
+## V2 Ideas (future, not started)
+*Placeholder — add ideas here as they come up. Do not start V2 work until V1 remaining items are closed.*

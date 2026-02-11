@@ -1,0 +1,70 @@
+{% extends 'expenses/base.html' %}
+
+{% block title %}{{ tf('new_material', 'New Material') }}{% endblock %}
+
+{% block expenses_content %}
+<div class="card">
+  <div class="card-header">
+    <h3>{{ tf('create_new_material', 'Create New Material') }}</h3>
+  </div>
+  <div class="card-body">
+    <form method="POST" class="material-form">
+      {{ form.hidden_tag() }}
+      
+      <div class="form-row">
+        <div class="form-group">
+          {{ form.name.label(class="form-label") }}
+          {{ form.name(class="form-control", placeholder=tf('enter_material_name', 'Enter material name')) }}
+          {% for error in form.name.errors %}
+            <div class="field-error">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="form-group">
+          {{ form.category_name.label(class="form-label") }}
+          {{ form.category_name(class="form-control", placeholder=tf('material_category', 'Material category')) }}
+          {% for error in form.category_name.errors %}
+            <div class="field-error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          {{ form.unit.label(class="form-label") }}
+          {{ form.unit(class="form-control", placeholder=tf('unit_placeholder', 'e.g., kg, pcs, boxes')) }}
+          {% for error in form.unit.errors %}
+            <div class="field-error">{{ error }}</div>
+          {% endfor %}
+        </div>
+        <div class="form-group">
+          {{ form.price_per_unit.label(class="form-label") }}
+          {{ form.price_per_unit(class="form-control", placeholder="0.00") }}
+          {% for error in form.price_per_unit.errors %}
+            <div class="field-error">{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        {{ form.description.label(class="form-label") }}
+        {{ form.description(class="form-control", rows="3", placeholder=tf('material_description', 'Material description')) }}
+        {% for error in form.description.errors %}
+          <div class="field-error">{{ error }}</div>
+        {% endfor %}
+      </div>
+
+      <div class="form-group">
+        <div class="checkbox-group">
+          {{ form.is_active() }}
+          {{ form.is_active.label(class="checkbox-label") }}
+        </div>
+      </div>
+
+      <div class="form-actions">
+        {{ form.submit(class="btn primary", value=tf('save', 'Save')) }}
+        <a href="{{ url_for('expenses.materials') }}" class="btn secondary">{{ tf('cancel', 'Cancel') }}</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

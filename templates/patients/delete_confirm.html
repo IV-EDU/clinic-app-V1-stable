@@ -1,0 +1,14 @@
+{% extends '_base.html' %}
+{% block content %}
+<div class="card">
+  <h3 style="text-align:center">{{ t('delete_title') }}</h3>
+  <div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:8px;border-radius:8px;margin:8px 0;text-align:center">{{ t('delete_warn') }}</div>
+  <p style="text-align:center"><strong>{{ t('name') }}:</strong> {{ p['full_name'] }}</p>
+  <p style="text-align:center"><strong>{{ t('file_no') }}:</strong> {{ p['short_id'] }}</p>
+  <form method="post" action="{{ url_for('patients.delete_patient', pid=p['id']) }}" style="display:flex;gap:8px;justify-content:center;margin-top:12px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=p['id']) }}">{{ t('delete_cancel') }}</a>
+    <button class="btn danger">{{ t('delete_yes') }}</button>
+  </form>
+</div>
+{% endblock %}

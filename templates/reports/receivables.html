@@ -1,0 +1,88 @@
+{% extends '_base.html' %}
+{% block content %}
+<div class="card reports-header-card">
+  <div class="reports-header-main">
+    <div>
+      <p class="eyebrow">{{ t('reports') }}</p>
+      <h1 class="reports-title">{{ t('receivables') }}</h1>
+    </div>
+    <div class="reports-header-right">
+      <div class="reports-view-switch">
+        <a class="btn secondary" href="{{ url_for('reports.collections', tab='daily') }}">{{ t('collections') }}</a>
+        <a class="btn secondary" href="{{ url_for('reports.collections_doctors', tab='daily') }}">{{ t('collections_by_doctor') }}</a>
+        <a class="btn secondary active" href="{{ url_for('reports.receivables') }}">{{ t('receivables') }}</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card reports-summary-card">
+  <div class="reports-summary-grid">
+    <div class="summary-box">
+      <div class="box-label">{{ t('receivables_total') }}</div>
+      <div class="box-value">{{ total_owed_fmt }} EGP</div>
+    </div>
+    <div class="summary-box">
+      <div class="box-label">{{ t('receivables_patients') }}</div>
+      <div class="box-value">{{ patients_count }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card reports-table-card">
+  {% if receivables %}
+    <table class="reports-table">
+      <thead>
+        <tr>
+          <th>{{ t('file_number') }}</th>
+          <th>{{ t('name') }}</th>
+          <th>{{ t('phone') }}</th>
+          <th class="numeric">{{ t('overall_balance') }}</th>
+          <th class="actions"></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for row in receivables %}
+        <tr>
+          <td class="c">{{ row.short_id or '—' }}</td>
+          <td class="c">{{ row.full_name or '—' }}</td>
+          <td class="c">{{ row.phone or '—' }}</td>
+          <td class="c numeric">{{ row.balance_fmt }}</td>
+          <td class="c actions">
+            <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=row.id) }}" target="_blank" rel="noopener">{{ t('view') }}</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="pagination-row">
+      <div class="pagination-info">
+        {{ t('page') }} {{ page }}{% if total_pages %} / {{ total_pages }}{% endif %}
+      </div>
+      <div class="pagination-controls">
+        {% if has_prev %}
+          <a class="btn secondary" href="{{ url_for('reports.receivables', page=page-1) }}">{{ t('prev') }}</a>
+        {% else %}
+          <button class="btn secondary" disabled>{{ t('prev') }}</button>
+        {% endif %}
+
+        {% for pnum in range(1, total_pages + 1) %}
+          {% if pnum == page %}
+            <span class="btn primary">{{ pnum }}</span>
+          {% else %}
+            <a class="btn secondary" href="{{ url_for('reports.receivables', page=pnum) }}">{{ pnum }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if has_next %}
+          <a class="btn primary" href="{{ url_for('reports.receivables', page=page+1) }}">{{ t('next') }}</a>
+        {% else %}
+          <button class="btn secondary" disabled>{{ t('next') }}</button>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}
+    <div class="reports-empty">{{ t('no_rows') }}</div>
+  {% endif %}
+</div>
+{% endblock %}

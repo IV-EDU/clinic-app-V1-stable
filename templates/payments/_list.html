@@ -1,0 +1,1396 @@
+{# Treatments List with Payments - Complete System #}
+
+{# Quick Stats Bar #}
+{% set active_count = treatments | selectattr('status', 'equalto', 'active') | list | length %}
+{% set complete_count = treatments | selectattr('status', 'equalto', 'complete') | list | length %}
+{% set visit_count = treatments | selectattr('status', 'equalto', 'visit') | list | length %}
+{% set total_due = treatments | sum(attribute='remaining_cents') %}
+{% set can_edit_payments = current_user.is_authenticated and current_user.has_permission('payments:edit') %}
+{% set can_delete_payments = current_user.is_authenticated and current_user.has_permission('payments:delete') %}
+
+<div class="treatments-container">
+  {# Header with Stats #}
+  <div class="treatments-header-section">
+    <div class="treatments-title-area">
+      <h3 class="treatments-main-title">
+        {{ t('treatments') }}
+        <span class="stat-badge count">{{ treatments|length }}</span>
+      </h3>
+      <div class="treatments-stats">
+        <span class="stat-badge active">{{ active_count }} {{ t('active') }}</span>
+        <span class="stat-badge complete">{{ complete_count }} {{ t('complete') }}</span>
+        {% if visit_count > 0 %}
+          <span class="stat-badge visit">{{ visit_count }} {{ t('visits') }}</span>
+        {% endif %}
+        <span class="stat-badge due">{{ t('total_due') }}: {{ '{:.2f}'.format(total_due / 100) }}</span>
+      </div>
+    </div>
+    <div class="treatments-actions-area">
+      <select id="doctorFilter" class="doctor-filter" onchange="filterByDoctor(this.value)">
+        <option value="">{{ t('all_doctors') }}</option>
+        {% for doctor in doctor_options %}
+          {% if doctor.doctor_id != '_any_' %}
+            <option value="{{ doctor.doctor_id }}">{{ doctor.doctor_label }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+      {% if can_edit_payments %}
+      <button class="btn primary" onclick="showAddTreatmentModal()">
+        <i class="fa fa-plus"></i> {{ t('add_treatment') }}
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Treatments List #}
+  {% if treatments %}
+    <div class="treatments-list">
+      {% for treatment in treatments %}
+        {% set progress_pct = (treatment.total_paid_cents / treatment.total_due_cents * 100) if treatment.total_due_cents > 0 else 100 %}
+        {% set progress_pct = progress_pct | int %}
+        
+        <div
+          class="treatment-card status-{{ treatment.status }}"
+          data-doctor-id="{{ treatment.display_doctor_id or '' }}"
+          data-payment-doctor-ids="{{ treatment.filter_doctor_ids_csv or '' }}"
+        >
+          {# Treatment Header #}
+          <div class="treatment-header" onclick="toggleTreatment('{{ treatment.id }}')">
+            <div class="treatment-toggle">
+              <i class="fa fa-chevron-right" id="toggle-icon-{{ treatment.id }}"></i>
+            </div>
+            
+            <div class="treatment-info">
+              <div class="treatment-name">{{ treatment.treatment or 'Untitled Treatment' }}</div>
+              <div class="treatment-meta">
+                <span class="meta-item"><i class="fa fa-calendar"></i> {{ treatment.paid_at }}</span>
+                <span class="meta-item visit-type-chip">{{ t('visit_type') }}: {{ t(treatment.visit_type_key or 'vt_none') }}</span>
+                {% if treatment.doctor_label %}
+                  <span class="doctor-chip" style="background: {{ treatment.doctor_color or '#6b7280' }}">
+                    {{ treatment.doctor_label }}
+                  </span>
+                {% endif %}
+                <span class="status-badge {{ treatment.status }}">
+                  {% if treatment.status == 'complete' %}
+                    <i class="fa fa-check-circle"></i> {{ t('complete') }}
+                  {% elif treatment.status == 'visit' %}
+                    <i class="fa fa-clipboard"></i> {{ t('visit_only') }}
+                  {% else %}
+                    <i class="fa fa-clock"></i> {{ t('active') }}
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+            
+            <div class="treatment-financial">
+              <div class="financial-summary">
+                <div class="fin-row">
+                  <span class="fin-label">{{ t('total') }}:</span>
+                  <span class="fin-value">{{ treatment.total_amount_fmt }}</span>
+                </div>
+                <div class="fin-row">
+                  <span class="fin-label">{{ t('paid') }}:</span>
+                  <span class="fin-value paid">{{ treatment.total_paid_fmt }}</span>
+                </div>
+                {% if treatment.remaining_cents > 0 %}
+                  <div class="fin-row">
+                    <span class="fin-label">{{ t('due') }}:</span>
+                    <span class="fin-value due">{{ treatment.remaining_fmt }}</span>
+                  </div>
+                {% endif %}
+              </div>
+              
+              {# Progress Bar #}
+              {% if treatment.status != 'visit' %}
+                <div class="progress-bar-container">
+                  <div class="progress-bar" style="width: {{ progress_pct }}%"></div>
+                  <span class="progress-text">{{ progress_pct }}%</span>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+          
+          {# Treatment Body (Expandable) #}
+          <div class="treatment-body" id="treatment-body-{{ treatment.id }}" style="display: none;">
+            
+            {# Treatment Actions #}
+            <div class="section-actions">
+              <button
+                type="button"
+                class="btn btn-sm secondary"
+                onclick="showViewTreatmentModal('{{ treatment.id }}')"
+              >
+                <i class="fa fa-eye"></i> {{ t('view') }}
+              </button>
+              {% if can_edit_payments %}
+              <button
+                type="button"
+                class="btn btn-sm btn-edit edit-treatment-btn"
+                data-treatment-id="{{ treatment.id }}"
+                data-patient-id="{{ p.id }}"
+                title="{{ t('edit_treatment') }}"
+              >
+                <i class="fa fa-edit"></i> {{ t('edit_treatment') }}
+              </button>
+              {% endif %}
+              {% if can_delete_payments %}
+              <button
+                type="button"
+                class="btn btn-sm btn-delete delete-treatment-btn"
+                data-treatment-id="{{ treatment.id }}"
+                data-treatment-name="{{ treatment.treatment or 'Untitled Treatment' }}"
+              >
+                <i class="fa fa-trash"></i> {{ t('delete') }}
+              </button>
+              {% endif %}
+              <button type="button" class="btn btn-sm btn-print" onclick="printTreatmentSummary('{{ treatment.id }}')">
+                <i class="fa fa-print"></i> {{ t('print_summary') }}
+              </button>
+            </div>
+            
+            {# Treatment Details #}
+            {% if treatment.discount_cents > 0 or treatment.note %}
+              <div class="details-section">
+                {% if treatment.discount_cents > 0 %}
+                  <div class="detail-row">
+                    <span class="detail-label">{{ t('discount') }}:</span>
+                    <span class="detail-value">{{ treatment.discount_fmt }}</span>
+                  </div>
+                {% endif %}
+                {% if treatment.note %}
+                  <div class="detail-row">
+                    <span class="detail-label">{{ t('notes') }}:</span>
+                    <span class="detail-value">{{ treatment.note }}</span>
+                  </div>
+                {% endif %}
+              </div>
+            {% endif %}
+            
+            {# Payments List #}
+            <div class="payments-section">
+              <h4 class="payments-heading">{{ t('payments') }}</h4>
+              
+              <div class="payments-list">
+                {# Initial Payment (from treatment creation) #}
+                {% if treatment.amount_cents > 0 %}
+                  <div class="payment-row initial">
+                    <div class="payment-info">
+                      <span class="payment-date">{{ treatment.paid_at }}</span>
+                      <span class="payment-amount">{{ treatment.amount_fmt }}</span>
+                      <span class="payment-method">{{ t((treatment.method or 'cash')|lower) }}</span>
+                      {% if treatment.doctor_label %}
+                        <span class="payment-doctor-chip" style="--chip-color: {{ treatment.doctor_color or '#6b7280' }};">
+                          {{ treatment.doctor_label }}
+                        </span>
+                      {% endif %}
+                      <span class="payment-badge">{{ t('initial') }}</span>
+                    </div>
+                    <div class="payment-actions">
+                      <button
+                        type="button"
+                        class="btn-icon view-receipt-btn"
+                        data-payment-id="{{ treatment.id }}"
+                        data-patient-id="{{ p.id }}"
+                        title="{{ t('view_receipt') }}"
+                      >
+                        <i class="fa fa-eye"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-icon print-receipt-btn"
+                        data-payment-id="{{ treatment.id }}"
+                        data-patient-id="{{ p.id }}"
+                        title="{{ t('print_receipt_title') }}"
+                        aria-label="{{ t('print_receipt') }}"
+                      >
+                        <i class="fa fa-print"></i>
+                      </button>
+                      {% if can_edit_payments %}
+                      <button
+                        type="button"
+                        class="btn-icon edit-payment-btn"
+                        data-payment-id="{{ treatment.id }}"
+                        data-patient-id="{{ p.id }}"
+                        title="{{ t('edit_payment_title') }}"
+                      >
+                        <i class="fa fa-edit"></i>
+                      </button>
+                      {% endif %}
+                      {% if can_delete_payments %}
+                      <button
+                        type="button"
+                        class="btn-icon btn-delete"
+                        onclick="showRemoveInitialPaymentModal('{{ treatment.id }}', '{{ treatment.amount_fmt }}')"
+                        title="{{ t('remove_initial_payment') }}"
+                      >
+                        <i class="fa fa-trash"></i>
+                      </button>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endif %}
+                
+                {# Child Payments #}
+                {% for payment in treatment.payments %}
+                  <div class="payment-row">
+                    <div class="payment-info">
+                      <span class="payment-date">{{ payment.paid_at }}</span>
+                      <span class="payment-amount">{{ payment.amount_fmt }}</span>
+                      <span class="payment-method">{{ t((payment.method or 'cash')|lower) }}</span>
+                      {% if payment.doctor_label %}
+                        <span class="payment-doctor-chip" style="--chip-color: {{ payment.doctor_color or '#6b7280' }};">
+                          {{ payment.doctor_label }}
+                        </span>
+                      {% endif %}
+                    </div>
+                    <div class="payment-actions">
+                      <button
+                        type="button"
+                        class="btn-icon view-receipt-btn"
+                        data-payment-id="{{ payment.id }}"
+                        data-patient-id="{{ p.id }}"
+                        title="{{ t('view_receipt') }}"
+                      >
+                        <i class="fa fa-eye"></i>
+                      </button>
+                      <button
+                        type="button"
+                        class="btn-icon print-receipt-btn"
+                        data-payment-id="{{ payment.id }}"
+                        data-patient-id="{{ p.id }}"
+                        title="{{ t('print_receipt_title') }}"
+                        aria-label="{{ t('print_receipt') }}"
+                      >
+                        <i class="fa fa-print"></i>
+                      </button>
+                      {% if can_edit_payments %}
+                      <button
+                        type="button"
+                        class="btn-icon edit-payment-btn"
+                        data-payment-id="{{ payment.id }}"
+                        data-patient-id="{{ p.id }}"
+                        title="{{ t('edit_payment_title') }}"
+                      >
+                        <i class="fa fa-edit"></i>
+                      </button>
+                      {% endif %}
+                      {% if can_delete_payments %}
+                      <button type="button" class="btn-icon btn-delete" onclick="showDeletePaymentModal('{{ payment.id }}', '{{ payment.amount_fmt }}')" title="{{ t('delete_payment') }}">
+                        <i class="fa fa-trash"></i>
+                      </button>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+              
+              {# Add Payment Button #}
+              {% if treatment.status != 'complete' and can_edit_payments %}
+                <div class="add-payment-wrapper">
+                  <button class="btn secondary" onclick='event.stopPropagation(); showAddPaymentModal({{ treatment.id|tojson }}, {{ (treatment.doctor_id or "")|tojson }})'>
+                    <i class="fa fa-plus"></i> {{ t('add_payment') }}
+                  </button>
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <i class="fa fa-inbox"></i>
+      <p>{{ t('no_treatments_yet') }}</p>
+      {% if can_edit_payments %}
+      <button class="btn primary" onclick="showAddTreatmentModal()">
+        <i class="fa fa-plus"></i> {{ t('add_first_treatment') }}
+      </button>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+{# ==================== MODALS ==================== #}
+
+{# Add Treatment Modal #}
+<div id="addTreatmentModal" class="modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ t('add_treatment') }}</h5>
+        <button type="button" class="close" onclick="hideAddTreatmentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addTreatmentForm" method="post" action="{{ url_for('payments.create_treatment', pid=p.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          
+          <div class="form-group">
+            <label class="form-label">{{ t('treatment_type') }} *</label>
+            <input type="text" name="treatment_type" class="form-control" required placeholder="e.g., Endodontic Treatment">
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" name="is_consultation_visit" value="1" id="addTreatmentIsConsultation">
+              {{ t('this_is_consultation_visit') }}
+            </label>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group half">
+              <label class="form-label">{{ t('total_amount') }} *</label>
+              <input type="number" name="total_amount" id="treatmentTotal" class="form-control" required min="0" step="0.01">
+            </div>
+            <div class="form-group half">
+              <label class="form-label">{{ t('discount') }}</label>
+              <input type="number" name="discount" class="form-control" min="0" step="0.01" value="0">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group half">
+              <label class="form-label">{{ t('first_payment') }}</label>
+              <input type="number" name="down_payment" id="treatmentDownPayment" class="form-control" min="0" step="0.01" value="0">
+            </div>
+            <div class="form-group half">
+              <label class="form-label">{{ t('date') }}</label>
+              <input type="date" name="paid_at" class="form-control" value="{{ today }}">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group half">
+              <label class="form-label">{{ t('visit_type') }}</label>
+              <select name="visit_type" class="form-control">
+                <option value="none">{{ t('vt_none') }}</option>
+                <option value="exam">{{ t('vt_exam') }}</option>
+                <option value="followup">{{ t('vt_follow') }}</option>
+              </select>
+            </div>
+            <div class="form-group half">
+              <label class="form-label">{{ t('method') }}</label>
+              <select name="method" class="form-control">
+                <option value="cash">{{ t('cash') }}</option>
+                <option value="card">{{ t('card') }}</option>
+                <option value="transfer">{{ t('transfer') }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group half">
+              <label class="form-label">{{ t('doctor') }} *</label>
+              <select name="doctor_id" class="form-control" required>
+                <option value="">-- {{ t('select') }} --</option>
+                {% for doctor in doctor_options %}
+                  <option value="{{ doctor.doctor_id }}">{{ doctor.doctor_label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">{{ t('notes') }}</label>
+            <textarea name="notes" class="form-control" rows="2"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn secondary" onclick="hideAddTreatmentModal()">{{ t('cancel') }}</button>
+        <button type="submit" class="btn primary" form="addTreatmentForm">{{ t('save') }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Add Payment Modal #}
+<div id="addPaymentModal" class="modal">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ t('add_payment') }}</h5>
+        <button type="button" class="close" onclick="hideAddPaymentModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addPaymentForm" method="post" action="">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="treatment_id" id="addPaymentTreatmentId">
+          
+          <div class="form-row">
+            <div class="form-group half">
+              <label class="form-label">{{ t('amount') }} *</label>
+              <input type="number" name="amount" class="form-control" required min="1" step="0.01">
+            </div>
+            <div class="form-group half">
+              <label class="form-label">{{ t('date') }}</label>
+              <input type="date" name="paid_at" class="form-control" value="{{ today }}">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group half">
+              <label class="form-label">{{ t('method') }}</label>
+              <select name="method" class="form-control">
+                <option value="cash">{{ t('cash') }}</option>
+                <option value="card">{{ t('card') }}</option>
+                <option value="transfer">{{ t('transfer') }}</option>
+              </select>
+            </div>
+            <div class="form-group half">
+              <label class="form-label">{{ t('doctor') }} *</label>
+              <select name="doctor_id" id="addPaymentDoctorId" class="form-control" required>
+                <option value="">-- {{ t('select') }} --</option>
+                {% for doctor in doctor_options %}
+                  <option value="{{ doctor.doctor_id }}">{{ doctor.doctor_label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">{{ t('notes') }}</label>
+            <textarea name="note" class="form-control" rows="2"></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn secondary" onclick="hideAddPaymentModal()">{{ t('cancel') }}</button>
+        <button type="submit" class="btn primary" form="addPaymentForm">{{ t('save') }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Delete Treatment Modal #}
+<div id="deleteTreatmentModal" class="modal">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form id="deleteTreatmentForm" method="post" action="">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ t('delete_treatment') }}</h5>
+          <button type="button" class="close" onclick="hideDeleteTreatmentModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>{{ t('delete_treatment_confirm') }}</p>
+          <p class="text-danger" id="deleteTreatmentName"></p>
+          <p class="text-muted" id="deleteTreatmentWarning"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn secondary" onclick="hideDeleteTreatmentModal()">{{ t('cancel') }}</button>
+          <button type="submit" class="btn danger">{{ t('delete') }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Delete Payment Modal #}
+<div id="deletePaymentModal" class="modal">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form id="deletePaymentForm" method="post" action="">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ t('delete_payment') }}</h5>
+          <button type="button" class="close" onclick="hideDeletePaymentModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>{{ t('delete_payment_confirm') }}</p>
+          <p class="text-danger" id="deletePaymentAmount"></p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn secondary" onclick="hideDeletePaymentModal()">{{ t('cancel') }}</button>
+          <button type="submit" class="btn danger">{{ t('delete') }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Remove Initial Payment Modal #}
+<div id="removeInitialPaymentModal" class="modal">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <form id="removeInitialPaymentForm" method="post" action="">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title">{{ t('remove_initial_payment') }}</h5>
+          <button type="button" class="close" onclick="hideRemoveInitialPaymentModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>{{ t('remove_initial_payment_confirm') }}</p>
+          <p class="text-danger" id="removeInitialPaymentAmount"></p>
+          <p class="text-muted">{{ t('remove_initial_payment_warning') }}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn secondary" onclick="hideRemoveInitialPaymentModal()">{{ t('cancel') }}</button>
+          <button type="submit" class="btn danger">{{ t('delete') }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Toast Notification Container #}
+<div id="toastContainer" class="toast-container"></div>
+
+<style>
+/* ==================== CONTAINER & HEADER ==================== */
+.treatments-container {
+  margin-top: 1.5rem;
+}
+
+.treatments-header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.treatments-title-area {
+  flex: 1;
+}
+
+.treatments-main-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.5rem 0;
+}
+
+.treatments-stats {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.stat-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.stat-badge.count {
+  background: #eef2ff;
+  color: #1e3a8a;
+  border: 1px solid #c7d2fe;
+}
+
+.stat-badge.active {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.stat-badge.complete {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.stat-badge.visit {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.stat-badge.due {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.treatments-actions-area {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.doctor-filter {
+  padding: 0.5rem 1rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: white;
+  font-size: 0.875rem;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+/* ==================== TREATMENT CARD ==================== */
+.treatment-card {
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: box-shadow 0.2s;
+}
+
+.treatment-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.treatment-card.status-complete {
+  border-left: 5px solid #10b981;
+}
+
+.treatment-card.status-active {
+  border-left: 5px solid #f59e0b;
+}
+
+.treatment-card.status-visit {
+  border-left: 5px solid #3b82f6;
+}
+
+.treatment-header {
+  display: flex;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  background: white;
+  transition: background 0.2s;
+}
+
+.treatment-header:hover {
+  background: #f8fafc;
+}
+
+.treatment-toggle {
+  margin-right: 1rem;
+  color: #64748b;
+  font-size: 1rem;
+  transition: transform 0.2s;
+}
+
+.treatment-toggle i.expanded {
+  transform: rotate(90deg);
+}
+
+.treatment-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.treatment-name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.375rem;
+}
+
+.treatment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.meta-item {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.visit-type-chip {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.doctor-chip {
+  color: white;
+  padding: 0.25rem 0.625rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge {
+  padding: 0.25rem 0.625rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge.complete {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-badge.active {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-badge.visit {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.treatment-financial {
+  text-align: right;
+  min-width: 180px;
+}
+
+.financial-summary {
+  margin-bottom: 0.5rem;
+}
+
+.fin-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.fin-label {
+  color: #64748b;
+}
+
+.fin-value {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.fin-value.paid {
+  color: #059669;
+}
+
+.fin-value.due {
+  color: #dc2626;
+}
+
+/* Progress Bar */
+.progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #e2e8f0;
+  border-radius: 10px;
+  height: 20px;
+  padding: 2px;
+  position: relative;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+  border-radius: 8px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  position: absolute;
+  right: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+/* ==================== TREATMENT BODY ==================== */
+.treatment-body {
+  border-top: 1px solid #e2e8f0;
+  padding: 1.25rem;
+  background: #f8fafc;
+}
+
+.section-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.btn-edit {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-edit:hover {
+  background: #2563eb;
+}
+
+.btn-delete {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-delete:hover {
+  background: #dc2626;
+}
+
+.btn-print {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-print:hover {
+  background: #4b5563;
+}
+
+/* Details Section */
+.details-section {
+  background: white;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.detail-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.375rem;
+  font-size: 0.875rem;
+}
+
+.detail-label {
+  color: #64748b;
+  min-width: 100px;
+}
+
+.detail-value {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* Payments Section */
+.payments-section {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.payments-heading {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.75rem 0;
+}
+
+.payments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.payment-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f1f5f9;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  border: 1px solid #e2e8f0;
+}
+
+.payment-row.initial {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.payment-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.payment-date {
+  color: #64748b;
+  min-width: 90px;
+}
+
+.payment-amount {
+  font-weight: 700;
+  color: #1e293b;
+  min-width: 80px;
+}
+
+.payment-method {
+  color: #64748b;
+  text-transform: capitalize;
+}
+
+.payment-badge {
+  background: #059669;
+  color: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.payment-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #e2e8f0;
+  color: #475569;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: #cbd5e1;
+  color: #1e293b;
+}
+
+.btn-icon.btn-delete:hover {
+  background: #fecaca;
+  color: #dc2626;
+}
+
+.add-payment-wrapper {
+  display: flex;
+  justify-content: center;
+  padding-top: 1rem;
+  margin-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 2px dashed #cbd5e1;
+}
+
+.empty-state i {
+  font-size: 4rem;
+  color: #cbd5e1;
+  margin-bottom: 1rem;
+}
+
+.empty-state p {
+  color: #64748b;
+  font-size: 1.125rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Hidden class for filtering */
+.treatment-card.hidden {
+  display: none;
+}
+</style>
+
+<script>
+// ==================== TREATMENT TOGGLE ====================
+const __treatmentsPatientId = {{ p.id|tojson }};
+const __treatmentsUiStateKey = `treatments_ui_state:${__treatmentsPatientId}`;
+const __treatmentsRestoreOnceKey = `treatments_ui_restore_once:${__treatmentsPatientId}`;
+
+function __loadTreatmentsUiState() {
+  try {
+    const raw = localStorage.getItem(__treatmentsUiStateKey);
+    return raw ? (JSON.parse(raw) || {}) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function __saveTreatmentsUiState(patch) {
+  const curr = __loadTreatmentsUiState();
+  const next = Object.assign({}, curr, patch || {});
+  try {
+    localStorage.setItem(__treatmentsUiStateKey, JSON.stringify(next));
+  } catch (e) {
+    // ignore
+  }
+  return next;
+}
+
+function __markTreatmentsRestoreOnce() {
+  try {
+    sessionStorage.setItem(__treatmentsRestoreOnceKey, '1');
+  } catch (e) {
+    // ignore
+  }
+}
+
+function __consumeTreatmentsRestoreOnce() {
+  try {
+    const shouldRestore = sessionStorage.getItem(__treatmentsRestoreOnceKey) === '1';
+    sessionStorage.removeItem(__treatmentsRestoreOnceKey);
+    return shouldRestore;
+  } catch (e) {
+    return false;
+  }
+}
+
+function __getOpenTreatmentIds() {
+  const st = __loadTreatmentsUiState();
+  const ids = Array.isArray(st.openTreatmentIds) ? st.openTreatmentIds : [];
+  return new Set(ids.filter(Boolean));
+}
+
+function setTreatmentExpanded(treatmentId, expanded, updateState = true) {
+  const body = document.getElementById('treatment-body-' + treatmentId);
+  const icon = document.getElementById('toggle-icon-' + treatmentId);
+  if (!body || !icon) return;
+
+  body.style.display = expanded ? 'block' : 'none';
+  if (expanded) {
+    icon.classList.add('expanded');
+  } else {
+    icon.classList.remove('expanded');
+  }
+
+  if (!updateState) return;
+  const open = __getOpenTreatmentIds();
+  if (expanded) open.add(String(treatmentId));
+  else open.delete(String(treatmentId));
+  __saveTreatmentsUiState({ openTreatmentIds: Array.from(open) });
+}
+
+function toggleTreatment(treatmentId) {
+  const body = document.getElementById('treatment-body-' + treatmentId);
+  if (!body) return;
+  const isCollapsed = body.style.display === 'none' || body.style.display === '';
+  setTreatmentExpanded(treatmentId, isCollapsed, true);
+}
+
+// ==================== DOCTOR FILTER ====================
+function filterByDoctor(doctorId) {
+  __saveTreatmentsUiState({ doctorFilterValue: doctorId || '' });
+  const treatments = document.querySelectorAll('.treatment-card');
+  
+  treatments.forEach(treatment => {
+    const parentDoctorId = (treatment.dataset.doctorId || '').trim();
+    const paymentDoctorIds = (treatment.dataset.paymentDoctorIds || '')
+      .split(',')
+      .map(function(value) { return value.trim(); })
+      .filter(Boolean);
+    const matchesParent = doctorId && parentDoctorId === doctorId;
+    const matchesPayment = doctorId && paymentDoctorIds.includes(doctorId);
+
+    if (!doctorId || matchesParent || matchesPayment) {
+      treatment.classList.remove('hidden');
+    } else {
+      treatment.classList.add('hidden');
+    }
+  });
+}
+
+// ==================== ADD TREATMENT MODAL ====================
+function showAddTreatmentModal() {
+  document.getElementById('addTreatmentModal').classList.add('active');
+}
+
+function hideAddTreatmentModal() {
+  document.getElementById('addTreatmentModal').classList.remove('active');
+}
+
+function submitAddTreatment() {
+  const form = document.getElementById('addTreatmentForm');
+  if (form) form.requestSubmit();
+}
+
+// ==================== CONSULTATION VISIT (TREATMENT) ====================
+const __consultationVisitName = {{ t('consultation_visit_name')|tojson }};
+
+window.initConsultationTreatmentForm = function(formEl) {
+  if (!formEl) return;
+  const checkbox = formEl.querySelector('input[name="is_consultation_visit"]');
+  if (!checkbox) return;
+
+  const nameInput = formEl.querySelector('input[name="treatment_type"]');
+  const totalInput = formEl.querySelector('input[name="total_amount"]');
+  const discountInput = formEl.querySelector('input[name="discount"]');
+  const downInput = formEl.querySelector('input[name="down_payment"]');
+  const visitTypeSelect = formEl.querySelector('select[name="visit_type"]');
+
+  function stash(el) {
+    if (!el) return;
+    if (el.dataset.prevValue === undefined) {
+      el.dataset.prevValue = el.value;
+    }
+  }
+
+  function restore(el, fallback) {
+    if (!el) return;
+    const prev = el.dataset.prevValue;
+    if (prev !== undefined) {
+      el.value = prev;
+      delete el.dataset.prevValue;
+    } else if (fallback !== undefined) {
+      el.value = fallback;
+    }
+  }
+
+  function apply() {
+    const on = checkbox.checked;
+    if (on) {
+      if (nameInput) {
+        stash(nameInput);
+        nameInput.value = __consultationVisitName;
+        nameInput.readOnly = true;
+      }
+      [totalInput, discountInput, downInput].forEach(function(input) {
+        if (!input) return;
+        stash(input);
+        input.value = '0';
+        input.readOnly = true;
+      });
+      if (visitTypeSelect) {
+        stash(visitTypeSelect);
+        visitTypeSelect.value = 'none';
+        visitTypeSelect.disabled = true;
+      }
+    } else {
+      if (nameInput) {
+        nameInput.readOnly = false;
+        restore(nameInput);
+      }
+      [totalInput, discountInput, downInput].forEach(function(input) {
+        if (!input) return;
+        input.readOnly = false;
+        restore(input);
+      });
+      if (visitTypeSelect) {
+        visitTypeSelect.disabled = false;
+        restore(visitTypeSelect);
+      }
+    }
+  }
+
+  checkbox.addEventListener('change', apply);
+  apply();
+};
+
+// ==================== ADD PAYMENT MODAL ====================
+function showAddPaymentModal(treatmentId, doctorId) {
+  document.getElementById('addPaymentTreatmentId').value = treatmentId;
+  document.getElementById('addPaymentForm').action = '/patients/{{ p.id }}/treatments/' + treatmentId + '/payment';
+  const doctorSelect = document.getElementById('addPaymentDoctorId');
+  if (doctorSelect) {
+    doctorSelect.value = doctorId || '';
+  }
+  document.getElementById('addPaymentModal').classList.add('active');
+}
+
+function hideAddPaymentModal() {
+  document.getElementById('addPaymentModal').classList.remove('active');
+}
+
+function submitAddPayment() {
+  const form = document.getElementById('addPaymentForm');
+  if (form) form.requestSubmit();
+}
+
+async function showViewTreatmentModal(treatmentId) {
+  const modal = document.getElementById('viewReceiptModal');
+  const content = document.getElementById('viewReceiptContent');
+  if (!modal || !content) return;
+  content.innerHTML = '<p>Loading treatment...</p>';
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  try {
+    const response = await fetch(`/patients/{{ p.id }}/treatments/${encodeURIComponent(treatmentId)}/view-modal`, { method: 'GET' });
+    if (!response.ok) {
+      throw new Error('Failed to load treatment view');
+    }
+    content.innerHTML = await response.text();
+  } catch (error) {
+    content.innerHTML = '<div class="alert alert-error">Unable to load treatment.</div>';
+  }
+}
+
+// ==================== DELETE TREATMENT MODAL ====================
+function showDeleteTreatmentModal(treatmentId, treatmentName) {
+  const form = document.getElementById('deleteTreatmentForm');
+  if (form) {
+    form.action = `/patients/{{ p.id }}/payments/${treatmentId}/delete`;
+  }
+  document.getElementById('deleteTreatmentName').textContent = treatmentName;
+  document.getElementById('deleteTreatmentWarning').textContent = '{{ t("this_will_delete_all_payments") }}';
+  document.getElementById('deleteTreatmentModal').classList.add('active');
+}
+
+function hideDeleteTreatmentModal() {
+  document.getElementById('deleteTreatmentModal').classList.remove('active');
+}
+
+// ==================== DELETE PAYMENT MODAL ====================
+function showDeletePaymentModal(paymentId, paymentAmount) {
+  const form = document.getElementById('deletePaymentForm');
+  if (form) {
+    form.action = `/patients/{{ p.id }}/payments/${paymentId}/delete`;
+  }
+  document.getElementById('deletePaymentAmount').textContent = paymentAmount;
+  document.getElementById('deletePaymentModal').classList.add('active');
+}
+
+function hideDeletePaymentModal() {
+  document.getElementById('deletePaymentModal').classList.remove('active');
+}
+
+// ==================== REMOVE INITIAL PAYMENT MODAL ====================
+function showRemoveInitialPaymentModal(treatmentId, amountFmt) {
+  const form = document.getElementById('removeInitialPaymentForm');
+  if (form) {
+    form.action = `/patients/{{ p.id }}/treatments/${treatmentId}/initial/delete`;
+  }
+  document.getElementById('removeInitialPaymentAmount').textContent = amountFmt;
+  document.getElementById('removeInitialPaymentModal').classList.add('active');
+}
+
+function hideRemoveInitialPaymentModal() {
+  document.getElementById('removeInitialPaymentModal').classList.remove('active');
+}
+
+function printTreatmentSummary(treatmentId) {
+  if (window.showTreatmentPrintModal) {
+    window.showTreatmentPrintModal(treatmentId, '{{ p.id }}');
+    return;
+  }
+  window.open(`/patients/{{ p.id }}/treatments/${treatmentId}/summary`, '_blank');
+}
+
+// ==================== TOAST NOTIFICATIONS ====================
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `
+    <i class="fa fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+    <span>${message}</span>
+  `;
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// ==================== MODAL CLOSE (SCOPED) ====================
+const __treatmentsModalIds = new Set([
+  'addTreatmentModal',
+  'addPaymentModal',
+  'deleteTreatmentModal',
+  'deletePaymentModal',
+  'removeInitialPaymentModal',
+]);
+
+document.addEventListener('click', function(e) {
+  const deleteTreatmentBtn = e.target.closest('.delete-treatment-btn');
+  if (deleteTreatmentBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const treatmentId = deleteTreatmentBtn.dataset.treatmentId;
+    const treatmentName = deleteTreatmentBtn.dataset.treatmentName || 'Untitled Treatment';
+    showDeleteTreatmentModal(treatmentId, treatmentName);
+    return;
+  }
+
+  if (!e.target || !e.target.classList || !e.target.classList.contains('modal')) return;
+  if (!__treatmentsModalIds.has(e.target.id)) return;
+  e.target.classList.remove('active');
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key !== 'Escape') return;
+  __treatmentsModalIds.forEach(function(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('active');
+  });
+});
+
+// Initialize consultation toggle on the Add Treatment modal form.
+try {
+  window.initConsultationTreatmentForm(document.getElementById('addTreatmentForm'));
+} catch (e) {
+  // non-fatal
+}
+
+// Persist scroll + open cards on full form posts (add/delete modals).
+document.addEventListener('submit', function(e) {
+  const form = e.target;
+  if (!form || !form.id) return;
+  const tracked = new Set([
+    'addTreatmentForm',
+    'addPaymentForm',
+    'deleteTreatmentForm',
+    'deletePaymentForm',
+    'removeInitialPaymentForm',
+  ]);
+  if (!tracked.has(form.id)) return;
+  __markTreatmentsRestoreOnce();
+  __saveTreatmentsUiState({ scrollY: window.scrollY });
+});
+
+// Restore UI state on load.
+document.addEventListener('DOMContentLoaded', function() {
+  const shouldRestore = __consumeTreatmentsRestoreOnce();
+  const st = __loadTreatmentsUiState();
+
+  const filterValue = shouldRestore ? (st.doctorFilterValue || '').toString() : '';
+  const filterEl = document.getElementById('doctorFilter');
+  if (filterEl) {
+    filterEl.value = filterValue;
+  }
+  filterByDoctor(filterValue);
+
+  if (shouldRestore) {
+    const openIds = Array.isArray(st.openTreatmentIds) ? st.openTreatmentIds : [];
+    openIds.forEach(function(id) {
+      setTreatmentExpanded(id, true, false);
+    });
+
+    const scrollY = typeof st.scrollY === 'number' ? st.scrollY : null;
+    if (scrollY !== null) {
+      requestAnimationFrame(function() {
+        window.scrollTo(0, scrollY);
+      });
+    }
+  } else {
+    __saveTreatmentsUiState({
+      openTreatmentIds: [],
+      doctorFilterValue: '',
+      scrollY: null,
+    });
+  }
+});
+</script>

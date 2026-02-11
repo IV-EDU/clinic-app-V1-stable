@@ -1,0 +1,64 @@
+<form method="post" action="{{ action }}" class="admin-form" id="editPaymentModalForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label">{{ t('amount') }} *</label>
+      <input
+        type="number"
+        name="amount"
+        class="form-control"
+        min="0"
+        step="0.01"
+        required
+        value="{{ form.amount|default('') }}"
+      >
+    </div>
+    <div class="form-group">
+      <label class="form-label">{{ t('date') }}</label>
+      <input
+        type="date"
+        name="paid_at"
+        class="form-control"
+        value="{{ form.paid_at|default(today) }}"
+      >
+    </div>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label">{{ t('method') }}</label>
+      {% set method = form.method|default('cash') %}
+      <select name="method" class="form-control">
+        <option value="cash" {{ 'selected' if method == 'cash' else '' }}>{{ t('cash') }}</option>
+        <option value="card" {{ 'selected' if method == 'card' else '' }}>{{ t('card') }}</option>
+        <option value="transfer" {{ 'selected' if method == 'transfer' else '' }}>{{ t('transfer') }}</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">{{ t('doctor') }} *</label>
+      {% set selected_doctor = form.doctor_id|default('') %}
+      <select name="doctor_id" class="form-control" required>
+        <option value="">{{ t('select_doctor') }}</option>
+        {% for doctor in doctor_options or [] %}
+          <option value="{{ doctor['doctor_id'] }}" {{ 'selected' if selected_doctor == doctor['doctor_id'] else '' }}>
+            {{ doctor['doctor_label'] }}
+          </option>
+        {% endfor %}
+      </select>
+      {% if doctor_error %}
+        <div class="field-error doctor-error">{{ doctor_error }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">{{ t('notes') }}</label>
+    <textarea name="note" class="form-control" rows="2">{{ form.note|default('') }}</textarea>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn secondary" onclick="hideFormModal()">{{ t('close') }}</button>
+    <button type="submit" class="btn primary">{{ t('update') }}</button>
+  </div>
+</form>

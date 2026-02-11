@@ -1,0 +1,8 @@
+{% extends '_base.html' %}
+{% import '_macros.html' as macros %}
+{% block content %}
+<div class="card">
+  <h3 style="text-align:center">{{ t('edit_patient') }}</h3>
+  {% include 'patients/_edit_form_fields.html' %}
+</div>
+{% endblock %}

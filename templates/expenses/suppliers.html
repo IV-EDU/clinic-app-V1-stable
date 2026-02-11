@@ -1,0 +1,74 @@
+{% extends 'expenses/base.html' %}
+
+{% block title %}{{ tf('suppliers', 'Suppliers') }}{% endblock %}
+
+{% block actions %}
+<a href="{{ url_for('expenses.new_supplier') }}" class="btn primary">
+  <i class="fa fa-plus"></i> {{ tf('new_supplier', 'New Supplier') }}
+</a>
+{% endblock %}
+
+{% block expenses_content %}
+<div class="card">
+  <div class="card-header">
+    <h3>{{ tf('suppliers', 'Suppliers') }} ({{ suppliers|length }})</h3>
+  </div>
+  <div class="card-body">
+    {% if suppliers %}
+      <div class="suppliers-table">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>{{ tf('name', 'Name') }}</th>
+              <th>{{ tf('contact_person', 'Contact Person') }}</th>
+              <th>{{ tf('phone', 'Phone') }}</th>
+              <th>{{ tf('email', 'Email') }}</th>
+              <th>{{ tf('status', 'Status') }}</th>
+              <th>{{ tf('actions', 'Actions') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for supplier in suppliers %}
+            <tr>
+              <td>
+                <strong>{{ supplier.name }}</strong>
+                {% if supplier.tax_number %}
+                  <br><small class="text-muted">{{ tf('tax_number_short', 'Tax #:') }} {{ supplier.tax_number }}</small>
+                {% endif %}
+              </td>
+              <td>{{ supplier.contact_person or '—' }}</td>
+              <td>{{ supplier.phone or '—' }}</td>
+              <td>{{ supplier.email or '—' }}</td>
+              <td>
+                {% if supplier.is_active %}
+                  <span class="badge badge-success">{{ tf('active', 'Active') }}</span>
+                {% else %}
+                  <span class="badge badge-inactive">{{ tf('inactive', 'Inactive') }}</span>
+                {% endif %}
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <a href="{{ url_for('expenses.edit_supplier', supplier_id=supplier.id) }}" 
+                     class="btn btn-sm secondary" title="{{ tf('edit', 'Edit') }}">
+                    <i class="fa fa-edit"></i>
+                  </a>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <i class="fa fa-building empty-icon"></i>
+        <h3>{{ tf('no_suppliers_found', 'No Suppliers Found') }}</h3>
+        <p>{{ tf('create_first_supplier_hint', 'Create your first supplier to get started.') }}</p>
+        <a href="{{ url_for('expenses.new_supplier') }}" class="btn primary">
+          <i class="fa fa-plus"></i> {{ tf('create_first_supplier', 'Create First Supplier') }}
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

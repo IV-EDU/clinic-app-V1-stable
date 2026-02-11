@@ -1,0 +1,135 @@
+{% extends '_base.html' %}
+{% block content %}
+<div class="card dashboard-search-card">
+  <form method="get" class="search-row">
+    <input type="hidden" name="sort" value="{{ sort or 'new' }}">
+    <div class="search-input">
+      <input name="q" placeholder="{{ t('search_placeholder') }}" value="{{ q or '' }}">
+    </div>
+    <div class="search-actions">
+      <button class="btn primary" type="submit">{{ t('search') }}</button>
+      <a class="btn secondary" href="{{ url_for('index', sort=sort or 'new') }}">{{ t('clear') }}</a>
+      <a class="btn secondary" href="{{ url_for('index', q=q or '', sort='old' if (sort or 'new') == 'new' else 'new') }}">
+        {{ t('sort_oldest_first') if (sort or 'new') == 'new' else t('sort_newest_first') }}
+      </a>
+    </div>
+  </form>
+</div>
+
+<div class="card dashboard-topline">
+  <div class="topline-left">
+    <div class="stat-pill">
+      <div class="pill-label">{{ t('patients') }}</div>
+      <div class="pill-value">{{ total_patients }}</div>
+    </div>
+    {% if current_user.is_authenticated and current_user.has_permission('patients:edit') %}
+      <a class="btn primary" href="{{ url_for('patients.new_patient') }}">{{ t('add_patient') }}</a>
+    {% endif %}
+  </div>
+  <div class="stat-pill align-end">
+    <div class="pill-label">{{ t('total_received') }}</div>
+    <div class="pill-value">{{ today_total }}</div>
+  </div>
+</div>
+
+<div class="card appointments-card">
+  <div class="card-header-row">
+    <h3 class="section-title">{{ t('appointments_today') }}</h3>
+    <a class="btn secondary" href="{{ url_for('appointments.table') }}">{{ t('view') }}</a>
+  </div>
+  <div class="appointments-stats">
+    <div class="dash-stat large">
+      <div class="stat-value">{{ appointments_count }}</div>
+      <div class="stat-label">{{ t('appointments_today') }}</div>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-stat">
+        <div class="stat-label">{{ t('appointment_status_scheduled') }}</div>
+        <div class="stat-value small">{{ upcoming_count }}</div>
+      </div>
+      <div class="dash-stat">
+        <div class="stat-label">{{ t('appointment_status_done') }}</div>
+        <div class="stat-value small">{{ completed_count }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card patient-list-card">
+  {% set home_return_to = request.full_path if request.query_string else request.path %}
+  {% if patients %}
+  <div class="overflow-x-auto">
+    <table class="patient-table">
+      <thead>
+        <tr>
+          <th scope="col" class="file-col">{{ t('file_no') }}</th>
+          {% if show_file_numbers %}
+          <th scope="col" class="page-col">{{ t('page_numbers') }}</th>
+          {% endif %}
+          <th scope="col">{{ t('name') }}</th>
+          <th scope="col">{{ t('phone') }}</th>
+          <th scope="col" class="balance-col">{{ t('balance') }}</th>
+          <th scope="col" class="actions-col">{{ t('actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in patients %}
+        <tr>
+          <td class="file-col">{{ p.short_id or '—' }}</td>
+          {% if show_file_numbers %}
+          <td class="page-col wrap-text">
+            {{ p.primary_page_number or '—' }}
+            {% if q and p.matched_extra_page and (p.primary_page_number or '') != p.matched_extra_page %}
+              <div class="matched-hint">{{ t('matched') }}: {{ p.matched_extra_page }}</div>
+            {% endif %}
+          </td>
+          {% endif %}
+          <td class="wrap-text">{{ p.full_name }}</td>
+          <td class="wrap-text">
+            {{ p.phone or '—' }}
+            {% if q and p.matched_extra_phone and (p.phone or '') != p.matched_extra_phone %}
+              <div class="matched-hint">{{ t('matched') }}: {{ p.matched_extra_phone }}</div>
+            {% endif %}
+          </td>
+          <td class="balance-col">
+            <div class="bal-box {{ 'bal-0' if p.balance_cents==0 else 'bal-pos' }}">{{ '{:.2f}'.format(p.balance_cents/100) }}</div>
+          </td>
+          <td class="actions">
+            <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=p.id, return_to=home_return_to) }}">{{ t('open') }}</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="pagination-row">
+    <div class="pagination-info">
+      {{ t('page') }} {{ page }}{% if total_pages %} / {{ total_pages }}{% endif %}
+    </div>
+    <div class="pagination-controls">
+      {% if has_prev %}
+        <a class="btn secondary" href="{{ url_for('index', page=page-1, q=q, sort=sort or 'new') }}">{{ t('prev') }}</a>
+      {% else %}
+        <button class="btn secondary" disabled>{{ t('prev') }}</button>
+      {% endif %}
+
+      {% for pnum in range(1, total_pages + 1) %}
+        {% if pnum == page %}
+          <span class="btn primary">{{ pnum }}</span>
+        {% else %}
+          <a class="btn secondary" href="{{ url_for('index', page=pnum, q=q, sort=sort or 'new') }}">{{ pnum }}</a>
+        {% endif %}
+      {% endfor %}
+
+      {% if has_next %}
+        <a class="btn primary" href="{{ url_for('index', page=page+1, q=q, sort=sort or 'new') }}">{{ t('next') }}</a>
+      {% else %}
+        <button class="btn secondary" disabled>{{ t('next') }}</button>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+    <div class="no-patients">{{ t('no_patients') }}</div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+<div class="card payment-form-card">
+  <form method="post" action="{{ action }}" id="paymentForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid payment-form-grid">
+      <div class="payment-field-group">
+        <div class="payment-field-label">{{ t('visit_type') }}</div>
+        <div class="payment-field-control">
+          {% set vt = form.visit_type|default('none') %}
+          <select name="visit_type" id="visit_type">
+            <option value="none" {{ 'selected' if vt=='none' else '' }}>{{ t('vt_none') }}</option>
+            <option value="exam" {{ 'selected' if vt=='exam' else '' }}>{{ t('vt_exam') }}</option>
+            <option value="followup" {{ 'selected' if vt=='followup' else '' }}>{{ t('vt_follow') }}</option>
+          </select>
+        </div>
+      </div>
+      <div class="payment-field-group">
+        <div class="payment-field-label">{{ t('total_amount') }}</div>
+        <div class="payment-field-control">
+          <input class="num" name="total_amount" id="total_amount" inputmode="decimal" step="0.01" maxlength="12" pattern="\d+(?:\.\d{1,2})?" placeholder="0" value="{{ form.total_amount|default('') }}">
+          <input type="hidden" name="total_amount_effective" id="total_amount_effective" value="{{ form.total_amount_effective|default('') }}">
+        </div>
+      </div>
+      <div class="payment-field-group">
+        <div class="payment-field-label">{{ t('discount') }}</div>
+        <div class="payment-field-control">
+          <input class="num" name="discount" inputmode="decimal" step="0.01" maxlength="12" pattern="\d+(?:\.\d{1,2})?" placeholder="0" value="{{ form.discount|default('') }}" title="{{ t('discount_hint') }}">
+        </div>
+      </div>
+      <div class="payment-field-group">
+        <div class="payment-field-label">{{ t('down_payment') }}</div>
+        <div class="payment-field-control">
+          <input class="num" name="down_payment" inputmode="decimal" step="0.01" maxlength="12" pattern="\d+(?:\.\d{1,2})?" placeholder="0" value="{{ form.down_payment|default('') }}">
+        </div>
+      </div>
+      <div class="payment-field-group">
+        <div class="payment-field-label">{{ t('remaining_amount') }}</div>
+        <div class="payment-field-control">
+          <input class="num" id="remaining_amount" name="remaining_amount" inputmode="decimal" step="0.01" maxlength="14" pattern="^\d+(?:\.\d{1,2})?$" placeholder="0" value="{{ form.remaining_amount|default('') }}" readonly>
+        </div>
+      </div>
+      <div class="payment-field-group">
+        <div class="payment-field-label">{{ t('treatment_type') }}</div>
+        <div class="payment-field-control">
+          <textarea name="treatment_type" rows="1">{{ form.treatment_type|default('') }}</textarea>
+        </div>
+      </div>
+      <div class="payment-field-group">
+        <div class="payment-field-label">{{ t('sheet_notes') }}</div>
+        <div class="payment-field-control">
+          <textarea name="notes" rows="1">{{ form.notes|default('') }}</textarea>
+        </div>
+      </div>
+      <div class="payment-field-group">
+        <div class="payment-field-label">{{ t('date') }}</div>
+        <div class="payment-field-control">
+          <input name="paid_at" type="date" value="{{ form.paid_at|default(today) }}">
+        </div>
+      </div>
+      <div class="payment-field-group">
+        <div class="payment-field-label">{{ t('method') }}</div>
+        <div class="payment-field-control">
+          {% set m = form.method|default('cash') %}
+          <select name="method">
+            <option value="cash" {{ 'selected' if m=='cash' else '' }}>cash</option>
+            <option value="card" {{ 'selected' if m=='card' else '' }}>card</option>
+            <option value="transfer" {{ 'selected' if m=='transfer' else '' }}>transfer</option>
+          </select>
+        </div>
+      </div>
+      <div class="payment-field-group">
+        <div class="payment-field-label">{{ t('doctor') }}</div>
+        <div class="payment-field-control">
+          {% set selected_doctor = form.doctor_id|default('') %}
+          <select name="doctor_id" id="doctor_id" required>
+            <option value="" disabled {{ 'selected' if not selected_doctor else '' }}>{{ t('select_doctor') }}</option>
+            {% for doctor in doctor_options or [] %}
+              <option value="{{ doctor['doctor_id'] }}" {{ 'selected' if selected_doctor == doctor['doctor_id'] else '' }}>
+                {{ doctor['doctor_label'] }}
+              </option>
+            {% endfor %}
+          </select>
+          {% if doctor_error %}
+            <div class="field-error doctor-error">{{ doctor_error }}</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="payment-form-actions">
+      {% set is_modal = in_modal|default(False) %}
+      {% if is_modal %}
+        <button type="button" class="btn secondary" onclick="hideFormModal()">{{ t('close') }}</button>
+        <button class="btn primary" type="submit">{{ submit_label }}</button>
+      {% else %}
+        <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=p['id']) }}">{{ t('back_to_patient') }}</a>
+        <button class="btn primary" type="submit">{{ submit_label }}</button>
+      {% endif %}
+    </div>
+  </form>
+</div>

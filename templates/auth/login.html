@@ -1,0 +1,28 @@
+{% extends '_base.html' %}
+
+{% block content %}
+<div class="auth-shell">
+  <div class="card login-card">
+    <h1 class="login-title">{{ t('login') }}</h1>
+    {% if bootstrap_mode %}
+      <div class="alert alert-info login-alert">
+        {{ t('login_bootstrap_hint') }}
+      </div>
+    {% endif %}
+    <form method="post" novalidate class="login-form">
+      {{ form.hidden_tag() }}
+      <div class="field">
+        {{ form.username.label(class_='label') }}
+        {{ form.username(class_='input', autocomplete='username') }}
+      </div>
+      <div class="field">
+        {{ form.password.label(class_='label') }}
+        {{ form.password(class_='input', autocomplete='current-password') }}
+      </div>
+      <div class="login-actions">
+        {{ form.submit(class_='btn primary full-width', value=t('login')) }}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

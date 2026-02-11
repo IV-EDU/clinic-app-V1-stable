@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="{{ g.get('lang', 'en') }}" dir="{{ 'rtl' if g.get('lang') == 'ar' else 'ltr' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ t('medical_page_title') }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme-system.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='diag_plus/style.css') }}">
+{% if theme_css %}<style>{{ theme_css|safe }}</style>{% endif %}
+<style>#autosave_badge.saving{background:#fff}#autosave_badge.saved{background:#dcfce7}#autosave_badge.failed{background:#fee2e2}</style>
+</head>
+<body>
+{% macro tf(key, default_text) -%}
+  {%- set val = t(key) if t else default_text -%}
+  {{ default_text if val == key else val }}
+{%- endmacro %}
+<div class="wrap">
+  <div class="head">
+    <div class="hgroup">
+      <a class="btn secondary" href="{{ url_for('palmer_plus.diag_page', pid=pid) }}">← {{ t('diagnosis') }}</a>
+      <strong>{{ t('medical_page_title') }}</strong> <span id="autosave_badge" class="badge-pill">{{ t('idle') }}</span>
+    </div>
+    <div class="hgroup">
+      <a class="btn primary" onclick="saveAll()">{{ t('save') }}</a>
+    </div>
+  </div>
+
+<div class="card patient-card">
+  <div class="patient-avatar">{{ (patient.full_name or patient.short_id or 'P')[0] if patient else 'P' }}</div>
+  <div class="patient-meta">
+    <div class="patient-name">{{ patient.full_name if patient else tf('patient_fallback_name', 'Patient') }}</div>
+    <div class="patient-sub">
+      <span>{{ tf('patient_id_label', 'ID') }}: {{ patient.short_id if patient else pid }}</span>
+      {% if patient and patient.phone %}<span>• {{ patient.phone }}</span>{% endif %}
+      {% if patient and patient.created_at %}<span>• {{ tf('patient_since', 'since') }} {{ patient.created_at[:10] }}</span>{% endif %}
+    </div>
+    {% if patient and patient.notes %}
+    <div class="patient-notes">{{ patient.notes }}</div>
+    {% endif %}
+  </div>
+</div>
+
+
+
+  <div class="card">
+    <div class="row">
+      <label><input type="checkbox" id="allergies_flag" {% if data.allergies_flag %}checked{% endif %}> {{ t('allergies_present') }}</label>
+      <input type="text" id="allergies" value="{{ data.allergies }}" placeholder="{{ t('list_allergies') }}">
+    </div>
+
+    <div class="row">
+      <label class="light">{{ t('risk_flags') }}</label>
+      <label><input type="checkbox" id="anticoag" {% if flags.anticoag %}checked{% endif %}> {{ t('anticoagulants') }}</label>
+      <label><input type="checkbox" id="prophy" {% if flags.prophy %}checked{% endif %}> {{ t('prophylaxis') }}</label>
+      <label><input type="checkbox" id="dm_uncontrolled" {% if flags.dm_uncontrolled %}checked{% endif %}> {{ t('uncontrolled_dm') }}</label>
+      <label><input type="checkbox" id="pregnancy" {% if flags.pregnancy %}checked{% endif %}> {{ t('pregnancy_flag') }}</label>
+      <label><input type="checkbox" id="smoking_vaping" {% if flags.smoking_vaping %}checked{% endif %}> {{ t('smoking_vaping') }}</label>
+      <label><input type="checkbox" id="bisphosphonates_denosumab" {% if flags.bisphosphonates_denosumab %}checked{% endif %}> {{ t('bisphosphonates_denosumab') }}</label>
+      <label><input type="checkbox" id="bleeding_disorder" {% if flags.bleeding_disorder %}checked{% endif %}> {{ t('bleeding_disorder') }}</label>
+      <label><input type="checkbox" id="immunosuppression" {% if flags.immunosuppression %}checked{% endif %}> {{ t('immunosuppression_chemo') }}</label>
+      <label><input type="checkbox" id="prosthetic_valve" {% if flags.prosthetic_valve %}checked{% endif %}> {{ t('prosthetic_valve') }}</label>
+      <label><input type="checkbox" id="pacemaker_icd" {% if flags.pacemaker_icd %}checked{% endif %}> {{ t('pacemaker_icd') }}</label>
+      <label><input type="checkbox" id="latex_allergy" {% if flags.latex_allergy %}checked{% endif %}> {{ t('latex_allergy') }}</label>
+    </div>
+
+    <div class="row">
+      <label>{{ tf('medical_notes_label', 'Medical notes') }}</label>
+      <textarea id="medical_notes" placeholder="{{ t('medical_notes_placeholder') }}">{{ data.medical_notes }}</textarea>
+    </div>
+    <div class="small">{{ tf('last_updated', 'Last updated') }}: {{ data.updated_at }}</div>
+  </div>
+</div>
+
+<script>
+const CSRF_TOKEN = "{{ csrf_token() }}";
+const L = {
+  saved: "{{ tf('saved', 'Saved') }}",
+  failed: "{{ tf('operation_failed', 'Failed') }}",
+  saving: "{{ tf('saving', 'Saving...') }}"
+};
+function debounce(fn, ms){ let t; return function(){ clearTimeout(t); const ctx=this, args=arguments; t=setTimeout(()=>fn.apply(ctx,args), ms); }; }
+
+async function saveAll(){
+  const ids = ["allergies_flag","anticoag","prophy","dm_uncontrolled","pregnancy","smoking_vaping",
+               "bisphosphonates_denosumab","bleeding_disorder","immunosuppression","prosthetic_valve",
+               "pacemaker_icd","latex_allergy"];
+  const payload = Object.fromEntries(ids.map(id => [id, document.getElementById(id).checked]));
+  payload["allergies"] = document.getElementById('allergies').value;
+  payload["medical_notes"] = document.getElementById('medical_notes').value;
+  payload["csrf_token"] = CSRF_TOKEN;
+  const res = await fetch("{{ url_for('palmer_plus.med_save', pid=pid) }}", {
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "X-CSRFToken": CSRF_TOKEN
+    },
+    body: JSON.stringify(payload)
+  });
+  const j = await res.json();
+  if(j.ok){ alert(L.saved); } else { alert(L.failed); }
+}
+
+(function wireAutoSave600(){
+  const form = document.getElementById('medical_form');
+  if(!form) return;
+
+  // Debounced saver for textareas (600ms after last keystroke)
+  const debouncedSave = debounce(function(){ try{ saveAll(); }catch(e){} }, 600);
+
+  // Textareas
+  const allergies = document.getElementById('allergies');
+  const notes = document.getElementById('medical_notes');
+  if(allergies){ allergies.addEventListener('input', debouncedSave); }
+  if(notes){ notes.addEventListener('input', debouncedSave); }
+
+  // Checkboxes: save immediately on change
+  const ids = ["pregnant","diabetic","anticoagulants","hypertension","epilepsy","asthma",
+               "hepatitis","kidney_disease","liver_disease","thyroid_disorder","radiotherapy_chemo",
+               "bisphosphonates_denosumab","bleeding_disorder","immunosuppression","prosthetic_valve",
+               "pacemaker_icd","latex_allergy"];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if(el){ el.addEventListener('change', function(){ try{ saveAll(); }catch(e){} }); }
+  });
+})();
+</script>
+<script>
+// Debounce helper (600ms)
+function debounce(fn, ms){ let t; return function(){ clearTimeout(t); const ctx=this, args=arguments; t=setTimeout(()=>fn.apply(ctx,args), ms); }; }
+
+// Make saveAll update the badge, but don't change its server logic
+(function wrapSaveAll(){
+  function setBadge(state){
+    var b = document.getElementById('autosave_badge');
+    if(!b) return;
+    if(state==='saving'){ b.textContent=L.saving; b.classList.remove('saved','failed'); b.classList.add('saving'); }
+    else if(state==='saved'){ b.textContent=L.saved; b.classList.remove('saving','failed'); b.classList.add('saved'); }
+    else if(state==='failed'){ b.textContent=L.failed; b.classList.remove('saving','saved'); b.classList.add('failed'); }
+  }
+  // wait until saveAll is defined
+  var tries = 0;
+  (function waitAndWrap(){
+    tries++;
+    if(typeof window.saveAll === 'function' && !window.__saveAllWrapped){
+      window.__saveAllWrapped = true;
+      var _orig = window.saveAll;
+      window.saveAll = async function(){
+        try{ setBadge('saving'); }catch(e){}
+        try{
+          var r = await _orig.apply(this, arguments);
+          try{ setBadge('saved'); }catch(e2){}
+          return r;
+        }catch(err){
+          try{ setBadge('failed'); }catch(e3){}
+          throw err;
+        }
+      };
+    }else if(tries < 50){
+      setTimeout(waitAndWrap, 50);
+    }
+  })();
+})();
+
+// Wire autosave on all inputs within the medical form
+(function wireAutoSave600(){
+  function safeWire(){
+    var form = document.getElementById('medical_form');
+    if(!form){ setTimeout(safeWire, 50); return; }
+
+    // Debounced save for text-like inputs
+    var debounced = debounce(function(){ try{ window.saveAll(); }catch(e){} }, 600);
+
+    form.querySelectorAll('input, textarea, select').forEach(function(el){
+      var type = (el.type || '').toLowerCase();
+      var isTextLike = el.tagName === 'TEXTAREA' || type === 'text' || type === 'search' || type === 'tel' || type === 'email' || type === 'number';
+      if(isTextLike){
+        el.addEventListener('input', debounced);
+      }else{
+        el.addEventListener('change', function(){ try{ window.saveAll(); }catch(e){} });
+      }
+    });
+  }
+  if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', safeWire); }
+  else{ safeWire(); }
+})();
+</script>
+</body>
+</html>

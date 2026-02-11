@@ -1,0 +1,38 @@
+{% extends '_base.html' %}
+{% block content %}
+<div class="card" style="text-align:center;color:#b45309;background:#fef3c7;padding:12px;border-radius:10px;border:1px solid #f59e0b">
+  <div style="font-weight:700;margin-bottom:6px">{{ t('dup_found_title') }}</div>
+  <div style="margin-bottom:10px">
+    {{ t('dup_found_msg') }}
+    {% for dup in duplicates %}
+      <a href="{{ url_for('patients.patient_detail', pid=dup['id']) }}" target="_blank">#{{ dup['short_id'] or '' }} {{ dup['full_name'] }}</a>{% if not loop.last %} {% endif %}
+    {% endfor %}
+  </div>
+  <form method="post" class="row" style="justify-content:center;gap:8px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="short_id" value="{{ form_values.short_id }}">
+    <input type="hidden" name="full_name" value="{{ form_values.full_name }}">
+    <input type="hidden" name="phone" value="{{ form_values.phone }}">
+    <input type="hidden" name="primary_page_number" value="{{ form_values.primary_page_number or '' }}">
+    <input type="hidden" name="primary_notebook_name" value="{{ form_values.primary_notebook_name or '' }}">
+    <input type="hidden" name="primary_notebook_color" value="{{ form_values.primary_notebook_color or '' }}">
+    <input type="hidden" name="notes" value="{{ form_values.notes }}">
+    {% for phone_row in phone_rows or [] %}
+      {% if not loop.first %}
+        <input type="hidden" name="extra_phone_label" value="{{ phone_row.label or '' }}">
+        <input type="hidden" name="extra_phone_number" value="{{ phone_row.phone or '' }}">
+      {% endif %}
+    {% endfor %}
+    {% for page_row in page_rows or [] %}
+      {% if not loop.first %}
+        <input type="hidden" name="extra_page_number" value="{{ page_row.page_number or '' }}">
+        <input type="hidden" name="extra_notebook_name" value="{{ page_row.notebook_name or '' }}">
+        <input type="hidden" name="extra_notebook_color" value="{{ page_row.notebook_color or '' }}">
+      {% endif %}
+    {% endfor %}
+    <input type="hidden" name="confirm_dup" value="1">
+    <button class="btn" type="submit">{{ t('save_anyway') }}</button>
+    <a class="btn secondary" href="{{ url_for('patients.new_patient') }}">{{ t('try_again') }}</a>
+  </form>
+</div>
+{% endblock %}

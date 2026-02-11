@@ -1,0 +1,117 @@
+{% extends 'expenses/base.html' %}
+
+{% block title %}{{ tf('expense_receipt_details_title', 'Expense Receipt Details') }} - {{ receipt.serial_number }}{% endblock %}
+
+{% block expenses_content %}
+<div class="expense-detail-container">
+  <div class="receipt-header">
+    <div class="receipt-info">
+      <p class="eyebrow">{{ tf('expense', 'Expense') }}</p>
+      <h2>{{ tf('expenses_paid_on', 'Paid {amount} EGP on {date}')|replace('{amount}', receipt.total_amount_fmt)|replace('{date}', receipt.receipt_date) }}</h2>
+      <p class="receipt-date">{{ tf('expenses_ref', 'Ref') }}: {{ receipt.serial_number }}</p>
+    </div>
+    <div class="receipt-actions">
+      {% if current_user and user_has_permission(current_user, 'expenses:edit') %}
+      <a href="{{ url_for('expenses.edit_receipt', expense_id=receipt.id) }}" class="btn secondary">
+        <i class="fa fa-edit"></i> {{ tf('edit', 'Edit') }}
+      </a>
+      <a href="{{ url_for('expenses.delete_receipt_confirm', expense_id=receipt.id) }}" class="btn danger">
+        <i class="fa fa-trash"></i> {{ tf('delete', 'Delete') }}
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="receipt-info-grid">
+    <div class="info-group">
+      <h4>{{ tf('receipt_details', 'Receipt Details') }}</h4>
+      <div class="info-item">
+        <label>{{ tf('date', 'Date') }}:</label>
+        <span>{{ receipt.receipt_date }}</span>
+      </div>
+      <div class="info-item">
+        <label>{{ tf('items_count', 'Items Count') }}:</label>
+        <span>{{ receipt.items|length }} {{ tf('items', 'items') }}</span>
+      </div>
+    </div>
+
+    <div class="info-group">
+      <h4>{{ tf('financial_summary', 'Financial Summary') }}</h4>
+      <div class="info-item total">
+        <label>{{ tf('total_amount', 'Total Amount') }}:</label>
+        <span>{{ receipt.total_amount_fmt }} EGP</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Items Section -->
+  <div class="card">
+    <div class="card-header">
+      <h3>{{ tf('receipt_items', 'Receipt Items') }}</h3>
+    </div>
+    <div class="card-body">
+      {% if receipt.items %}
+      <div class="items-table">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">{{ tf('material_name', 'Material Name') }}</th>
+              <th scope="col">{{ tf('quantity', 'Quantity') }}</th>
+              <th scope="col">{{ tf('unit_price', 'Unit Price') }}</th>
+              <th scope="col">{{ tf('total_price', 'Total Price') }}</th>
+              <th scope="col">{{ tf('notes', 'Notes') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in receipt.items %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ item.material_name }}</td>
+              <td>{{ "%.2f"|format(item.quantity) }}</td>
+              <td class="amount-cell">{{ "%.2f"|format(item.unit_price) }} EGP</td>
+              <td class="amount-cell">{{ "%.2f"|format(item.total_price) }} EGP</td>
+              <td>
+                {% if item.notes %}
+                  <span class="notes-preview" title="{{ item.notes }}">{{ item.notes[:50] }}{% if item.notes|length > 50 %}...{% endif %}</span>
+                {% else %}
+                  — 
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="total-row">
+              <td colspan="4" class="amount-cell"><strong>{{ tf('total_amount', 'Total Amount') }}:</strong></td>
+              <td class="amount-cell"><strong>{{ receipt.total_amount_fmt }} EGP</strong></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <p>{{ tf('no_items_in_receipt', 'No items found in this receipt.') }}</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Notes Section -->
+  {% if receipt.notes %}
+  <div class="notes-section">
+    <h4>{{ tf('what_you_bought', 'What you bought') }}</h4>
+    <div class="notes-content">{{ receipt.notes }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Receipt Metadata -->
+  <div class="receipt-metadata">
+    <small class="text-muted">
+      {{ tf('created', 'Created') }}: {{ receipt.created_at[:19] }} | 
+      {{ tf('receipt_id', 'Receipt ID') }}: {{ receipt.id }}
+    </small>
+  </div>
+</div>
+{% endblock %}

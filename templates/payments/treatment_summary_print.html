@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="{{ lang|default('en') }}" dir="{{ dir|default('ltr') }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ t('print_summary') }} – {{ patient.get('full_name') or '' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <style>
+    body { background: #fff; }
+    .print-wrap { max-width: 900px; margin: 16px auto; padding: 0 12px; }
+    .hrow { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; }
+    .muted { color: #6b7280; font-size: 13px; }
+    .title { font-size: 20px; font-weight: 800; margin: 0; }
+    .subtitle { margin: 2px 0 0 0; }
+    .grid { display:grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap:10px; margin-top:12px; }
+    .metric { border:1px solid #e5e7eb; border-radius:12px; padding:10px; background:#f9fafb; }
+    .metric .k { font-size:12px; color:#6b7280; font-weight:700; }
+    .metric .v { font-size:16px; font-weight:800; margin-top:2px; }
+    table { width:100%; border-collapse:collapse; margin-top:14px; }
+    th, td { border:1px solid #e5e7eb; padding:8px 10px; text-align:start; vertical-align:top; }
+    th { background:#f3f4f6; font-size:13px; }
+    .badge { display:inline-block; padding:2px 8px; border-radius:999px; border:1px solid #e5e7eb; background:#fff; font-size:12px; font-weight:700; }
+    @media print {
+      .no-print { display:none !important; }
+      .print-wrap { margin: 0; max-width: none; }
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-wrap">
+    <div class="card">
+      <div class="hrow">
+        <div>
+          <h1 class="title">{{ t('print_summary') }}</h1>
+          <p class="subtitle muted">
+            {{ t('treatment_type') }}: <strong>{{ treatment.get('treatment') or '—' }}</strong>
+            {% if treatment.get('doctor_label') %} • {{ t('doctor') }}: <strong>{{ treatment.get('doctor_label') }}</strong>{% endif %}
+          </p>
+        </div>
+        <div class="muted" style="text-align:end">
+          <div>{{ t('name') }}: <strong>{{ patient.get('full_name') or '—' }}</strong></div>
+          <div>{{ t('file_no') }}: <strong>{{ patient.get('short_id') or '—' }}</strong></div>
+          <div>{{ t('phone') }}: <strong>{{ patient.get('phone') or '—' }}</strong></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="metric"><div class="k">{{ t('total') }}</div><div class="v">{{ totals.total_fmt }}</div></div>
+        <div class="metric"><div class="k">{{ t('discount') }}</div><div class="v">{{ totals.discount_fmt }}</div></div>
+        <div class="metric"><div class="k">{{ t('paid') }}</div><div class="v">{{ totals.paid_fmt }}</div></div>
+        <div class="metric"><div class="k">{{ t('summary_remaining') }}</div><div class="v">{{ totals.remaining_fmt }}</div></div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 140px;">{{ t('date') }}</th>
+            <th style="width: 120px;">{{ t('amount') }}</th>
+            <th style="width: 140px;">{{ t('method') }}</th>
+            <th>{{ t('sheet_notes') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if payments %}
+            {% for pay in payments %}
+              <tr>
+                <td>
+                  {{ pay.paid_at or '—' }}
+                  {% if pay.is_initial %}
+                    <div><span class="badge">{{ t('initial') }}</span></div>
+                  {% endif %}
+                </td>
+                <td>{{ pay.amount_fmt }}</td>
+                <td>{{ pay.method or '—' }}</td>
+                <td>{{ pay.note or '—' }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="4" class="muted">{{ t('no_rows') }}</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+
+      <div class="no-print muted" style="margin-top:12px">
+        {{ t('print_receipt_hint') if t('print_receipt_hint') != 'print_receipt_hint' else 'Tip: For a cleaner print, turn off “Headers and footers” in your browser print settings.' }}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () { window.print(); }, 50);
+    });
+  </script>
+</body>
+</html>

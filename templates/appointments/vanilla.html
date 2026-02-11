@@ -1,0 +1,2518 @@
+{% extends '_base.html' %}
+{% macro tf(key, default_text) -%}
+  {%- set val = t(key) if t else default_text -%}
+  {{ default_text if val == key else val }}
+{%- endmacro %}
+{% block head %}
+{{ super() }}
+<style>
+/* Base Styles (Copied from your admin_settings.html) */
+.admin-settings-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+.card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.card-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+.appt-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+}
+.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Modal Styles */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal.active { display: flex; }
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-title { margin: 0; font-size: 1.25rem; font-weight: 600; color: #1f2937; }
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--muted, #6b7280);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+.modal-close:hover { background: #f3f4f6; color: var(--ink, #374151); }
+.modal-body { padding: 1.5rem; }
+.modal-footer {
+  padding: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+/* Form Styles */
+.admin-form { display: grid; gap: 1rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+.form-label { font-size: 0.875rem; font-weight: 600; color: var(--ink, #374151); }
+.form-input, .form-select {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s ease;
+}
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+.form-checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.alert { padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.875rem; }
+.alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.loading { opacity: 0.6; pointer-events: none; }
+
+/* --- ENHANCED APPOINTMENT STYLES --- */
+.appt-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+.appt-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.appt-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--ink, #1f2937);
+}
+
+.filter-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.filter-card-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink, #1f2937);
+}
+
+/* Filter Styles */
+.appt-header-card{padding:20px;margin-bottom:16px}
+.appt-filter-card{padding:20px}
+.appt-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+.filter-btn {
+  border: 1px solid var(--border);
+  background: #f9fafb;
+  color: var(--ink);
+  transition: all 0.2s ease;
+}
+.filter-btn:not(.active):hover {
+  background: #f3f4f6;
+  border-color: var(--border);
+}
+.filter-btn.active {
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+  border-color: var(--primary-color, #2563eb);
+}
+/* Ensure active filters stay solid on hover */
+.btn.filter-btn.active,
+.btn.filter-btn.active:hover {
+  background: var(--primary-color, #2563eb);
+  color: var(--btn-text-on-primary, #fff);
+  border-color: var(--primary-color, #2563eb);
+}
+.filter-btn:focus-visible,
+.status-button:focus-visible,
+.appt-group-header:focus-visible,
+.btn:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary-color, #2563eb);
+  outline-offset: 2px;
+}
+.appt-filter-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+.appt-filter-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: flex-end;
+}
+/* Fixed Layout for Use Range and Clear Button */
+.appt-filter-row-dates {
+  display: grid;
+  grid-template-columns: 1fr 140px;
+  gap: 0.75rem;
+  align-items: start;
+}
+.appt-date-range-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.appt-date-row {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+}
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.use-range-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.end-date-inline {
+  margin-top: 0; /* Remove top margin since it's inline now */
+}
+#end-date-group {
+  transition: opacity 0.2s ease;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+}
+#end-date-group.visible {
+  opacity: 1;
+  max-height: 120px;
+}
+.filter-controls-group {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+.filter-controls-group .btn {
+  width: 100px;
+  min-height: 38px;
+  justify-content: center;
+}
+/* Responsive layout for smaller screens */
+@media (max-width: 768px) {
+  .appt-filter-row-dates {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .appt-date-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .use-range-inline {
+    justify-content: center;
+    margin-top: 0.5rem;
+  }
+  .filter-controls-group {
+    justify-content: flex-start;
+  }
+  .filter-controls-group .btn {
+    width: 120px;
+  }
+}
+@media (max-width: 480px) {
+  .filter-controls-group .btn {
+    width: 100%;
+  }
+}
+
+/* Enhanced Group Styles with Date Header Boxes */
+.appt-group {
+  margin-top: 2rem;
+}
+.appt-group-header {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink,#1f2937);
+  padding: 1rem 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--primary-color,#2563eb) 18%, var(--border,#d1d5db));
+  border-radius: 8px;
+  margin-bottom: 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color,#2563eb) 8%, #f9fafb),
+    color-mix(in srgb, var(--accent-color,#0ea5e9) 4%, #ffffff)
+  );
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+.appt-group-header:hover {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color,#2563eb) 10%, #f3f4f6),
+    color-mix(in srgb, var(--accent-color,#0ea5e9) 6%, #f9fafb)
+  );
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+.appt-group-header.expanded {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color,#2563eb) 16%, #e5f0ff),
+    color-mix(in srgb, var(--accent-color,#0ea5e9) 10%, #ffffff)
+  );
+  margin-bottom: 1rem;
+  border-color: var(--primary-color,#2563eb);
+}
+.appt-group-header .date-day {
+  color: var(--metric-color, var(--primary-color,#2563eb));
+  font-weight: 700;
+}
+.appt-group-header .date-count {
+  background: color-mix(in srgb, var(--metric-color, var(--primary-color,#2563eb)) 20%, #e0f2ff);
+  color: var(--metric-color, var(--primary-color,#2563eb));
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.appt-group-header .date-toggle {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.appt-group-header.expanded .date-toggle {
+  transform: rotate(180deg);
+}
+.appt-group-content {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+.appt-group-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
+.appt-group-content.expanded {
+  max-height: none;
+  opacity: 1;
+  margin-bottom: 1.5rem;
+}
+
+/* Auto-resizing textarea */
+.auto-resize-textarea {
+  resize: none;
+  min-height: 100px;
+  transition: height 0.2s ease;
+}
+.no-appointments-card {
+  text-align: center;
+  padding: 3rem;
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid var(--border, #e5e7eb);
+}
+.no-appointments-icon {
+  font-size: 2.5rem;
+  color: #9ca3af;
+}
+.no-appointments-text {
+  font-size: 1rem;
+  color: var(--muted, #6b7280);
+  margin-top: 0.5rem;
+}
+
+/* Vertical Card Styles */
+.appt-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.appt-card {
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s ease;
+  min-height: 330px; 
+}
+.appt-card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+/* Patient Chip Header */
+.appt-card-patient-chip {
+  display: block;
+  padding: 1.25rem;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  text-decoration: none;
+  background: #f9fafb;
+  border-radius: 12px 12px 0 0;
+  transition: background-color 0.2s ease;
+  overflow: hidden; 
+}
+.appt-card-patient-chip:hover {
+  background: #f3f4f6;
+}
+.appt-card-patient-name {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--ink, #111827);
+  margin-bottom: 0.5rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.appt-card-patient-details {
+  display: flex;
+  justify-content: center; /* Centered details */
+  gap: 1rem; /* Added more gap */
+  font-size: 0.875rem;
+  color: var(--muted, #6b7280);
+  white-space: nowrap; /* Prevent wrapping */
+  overflow: hidden;
+}
+/* Stop text from spilling out */
+.appt-card-patient-details span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+}
+
+.appt-card-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex-grow: 1; /* Makes body fill space */
+}
+.appt-card-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--ink, #374151);
+  overflow: hidden;
+}
+.appt-card-row span,
+.appt-card-row strong {
+  min-width: 0;
+}
+.appt-card-row span:last-child,
+.appt-card-row strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.appt-card-row.appt-card-reason span:last-child {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.doctor-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  background: var(--chip-color, rgba(59, 130, 246, 0.08));
+  color: var(--ink, #111827);
+  border: 1px solid var(--chip-color, rgba(148, 163, 184, 0.7));
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.03);
+}
+.appt-card-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--muted, #6b7280);
+  flex-shrink: 0; /* Prevent icon from shrinking */
+}
+.appt-card-reason {
+  font-style: italic;
+  color: var(--muted, #6b7280);
+}
+.appt-card-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border, #e5e7eb);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+/* MODIFIED: Ensure buttons stay on one line */
+.appt-card-footer-buttons {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0; /* Prevent buttons from wrapping */
+}
+
+/* Status Button Styles */
+.status-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid var(--border, #e5e7eb);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0; /* Prevent button from shrinking/wrapping */
+}
+.status-scheduled { background: #fef9c3; color: #713f12; border-color: #fde68a; }
+.status-scheduled:hover { background: #fef3c7; }
+.status-pending,
+.status-checked_in {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fed7aa;
+}
+.status-pending:hover,
+.status-checked_in:hover { background: #ffedd5; }
+.status-done { background: var(--green-bg, #d1fae5); color: var(--green, #065f46); border-color: #a7f3d0; }
+.status-done:hover { background: #bbf7d0; }
+.status-cancelled { background: #e5e7eb; color: var(--ink, #374151); border-color: #d1d5db; }
+.status-cancelled:hover { background: #e0e7ff; }
+
+/* Status Modal */
+.status-modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.status-modal-btn {
+  width: 100%;
+  padding: 1.5rem 1rem;
+  font-size: 1rem;
+}
+
+.patient-search-wrapper {
+  position: relative;
+}
+
+/* Time Selection Enhancement */
+.time-interval-input {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+.time-interval-input::-webkit-calendar-picker-indicator {
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Form Field Alignment */
+.appt-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.appt-form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 768px) {
+  .appt-form-row, .appt-form-row-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Notes Field Minimization */
+.notes-field-wrapper {
+  position: relative;
+}
+.notes-field-minimized {
+  max-height: 60px;
+  overflow: hidden;
+  position: relative;
+}
+.notes-field-minimized::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(transparent, white);
+  pointer-events: none;
+}
+.notes-toggle {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.notes-toggle:hover {
+  background: #e5e7eb;
+}
+
+/* Enhanced Patient Suggestions - Centered Layout */
+.patient-suggestions {
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  background: white;
+  max-height: 320px;
+  overflow-y: auto;
+  backdrop-filter: blur(8px);
+}
+.patient-suggestions {
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  background: white;
+  max-height: 320px;
+  overflow-y: auto;
+  backdrop-filter: blur(8px);
+}
+/* Enhanced Patient Suggestions with Avatars */
+.patient-suggestion-item {
+  border: none;
+  background: none;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.patient-suggestion-item:last-child {
+  border-bottom: none;
+}
+.patient-suggestion-item:hover,
+.patient-suggestion-item:focus {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  outline: none;
+}
+.patient-suggestion-item.selected {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-left: 4px solid #3b82f6;
+}
+
+/* Avatar Styles */
+.patient-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+.patient-info {
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+.patient-name {
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+  font-size: clamp(0.75rem, 2.2vw, 0.9rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+.patient-secondary-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+  color: #475569;
+  gap: 0.75rem;
+}
+.patient-file {
+  font-weight: 500;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.patient-contact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
+.patient-phone {
+  font-weight: 500;
+  color: #334155;
+}
+.patient-age, .patient-last-visit {
+  font-size: 0.65rem;
+  color: #64748b;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .patient-suggestion-item {
+    padding: 0.875rem 1rem;
+  }
+  .patient-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 0.75rem;
+  }
+  .patient-contact {
+    align-items: flex-start;
+  }
+  .patient-secondary-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+}
+/* Responsive improvements */
+@media (max-width: 640px) {
+  .patient-suggestions {
+    max-height: 240px;
+  }
+  .patient-suggestion-item {
+    padding: 0.875rem 1rem;
+  }
+}
+/* Enhanced patient selection preview */
+.patient-selection-preview {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #0ea5e9;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 0.75rem;
+  display: none;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+.patient-selection-preview.visible {
+  display: block;
+  animation: slideDown 0.2s ease-out;
+}
+.patient-preview-name {
+  font-weight: 600;
+  color: #0c4a6e;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+.patient-preview-details {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.875rem;
+  color: #0369a1;
+}
+.patient-preview-detail {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+.patient-preview-detail .icon {
+  font-size: 0.875rem;
+  width: 16px;
+  text-align: center;
+}
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* Responsive improvements for patient suggestions */
+@media (max-width: 640px) {
+  .patient-suggestions {
+    max-height: 240px;
+  }
+  .patient-suggestion-item {
+    padding: 0.75rem 1rem;
+  }
+  .patient-suggestion-subline {
+    flex-wrap: wrap;
+    white-space: normal;
+  }
+  .patient-preview-details {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* Error states */
+.form-group.error .form-input,
+.form-group.error .form-select {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+.form-group.error .form-label {
+  color: #ef4444;
+}
+
+/* Success states */
+.form-group.success .form-input,
+.form-group.success .form-select {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="appt-container">
+  {% set doctor_color_map = doctor_color_map or {} %}
+  {% set default_doctor_color = default_doctor_color or '#2563EB' %}
+  
+  <!-- Header -->
+  <div class="appt-header u-card appt-header-card">
+    <h1 class="appt-title">{{ t('appointments') }}</h1>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="u-card appt-filter-card">
+    <div class="filter-card-header">
+      <h2 class="section-title">{{ t('appointments_filters') }}</h2>
+      <button class="btn btn-primary" type="button" onclick="openApptModal()">
+        + {{ t('appointments_new') }}
+      </button>
+    </div>
+
+    <form id="appt-form-main" method="GET" action="{{ url_for('appointments.vanilla') }}"
+      data-today="{{ today_str }}" data-yesterday="{{ yesterday_str }}" data-tomorrow="{{ tomorrow_str }}">
+      
+      {% set start_arg = start_date_value %}
+      {% set end_arg = end_date_value %}
+      {% set single_day_filter = (not use_range) or (start_arg and end_arg and start_arg == end_arg) %}
+      
+      <!-- Quick Filter Buttons -->
+      <div class="appt-filter-buttons">
+        <button type="button" class="btn secondary filter-btn {% if start_arg == today_str and single_day_filter %}active{% endif %}" onclick="setQuickFilter('today')" data-filter="today">
+          {{ t('today') }}
+        </button>
+        <button type="button" class="btn secondary filter-btn {% if start_arg == yesterday_str and single_day_filter %}active{% endif %}" onclick="setQuickFilter('yesterday')" data-filter="yesterday">
+          {{ t('yesterday') }}
+        </button>
+        <button type="button" class="btn secondary filter-btn {% if start_arg == tomorrow_str and single_day_filter %}active{% endif %}" onclick="setQuickFilter('tomorrow')" data-filter="tomorrow">
+          {{ t('tomorrow') }}
+        </button>
+        <button type="button" class="btn secondary filter-btn {% if not start_arg %}active{% endif %}" onclick="setQuickFilter('all')" data-filter="all">
+          {{ t('all') }}
+        </button>
+      </div>
+
+      <!-- Main Filter Form -->
+      <div class="appt-filter-form">
+        <!-- Search Row -->
+        <div class="form-group">
+          <label class="form-label" for="search_term">{{ t('appointments_search_label') }}</label>
+          <input type="text" id="search_term" name="search_term" class="form-input" value="{{ request.args.get('search_term', '') }}" placeholder="{{ t('appointments_search_placeholder') }}">
+        </div>
+        <!-- Doctor Row -->
+        <div class="form-group">
+          <label class="form-label" for="doctor_id">Doctor</label>
+          <select id="doctor_id" name="doctor_id" class="form-select">
+            <option value="all" {% if selected_doctor == 'all' %}selected{% endif %}>All doctors</option>
+            {% for doctor in doctors %}
+              <option value="{{ doctor.doctor_id }}" {% if selected_doctor|string == doctor.doctor_id|string %}selected{% endif %}>{{ doctor.doctor_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <!-- Date Filter Row -->
+        <div class="appt-filter-row-dates">
+          <div class="appt-date-range-group">
+            <div class="appt-date-row">
+              <div class="form-group date-input-group">
+            <label class="form-label" for="start_date">{{ t('date') }} <span class="use-range-inline">
+              <label class="form-checkbox-group">
+                <input type="checkbox" id="use_range_check" name="use_range" value="on" {% if use_range %}checked{% endif %}>
+                <span>{{ t('appointments_range_label') }}</span>
+              </label>
+            </span></label>
+                <input type="date" id="start_date" name="start_date" class="form-input" value="{{ start_date_value }}">
+              </div>
+              
+              <div class="form-group end-date-inline" id="end-date-group" {% if not use_range %}style="display: none;"{% endif %}>
+                <label class="form-label" for="end_date">{{ tf('appointments_end_date', 'End date') }}</label>
+                <input type="date" id="end_date" name="end_date" class="form-input" value="{{ end_date_value }}">
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-controls-group">
+            <button type="button" id="clear-filters" class="btn btn-secondary">{{ t('clear') }}</button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div id="appointments-groups">
+  <!-- Appointment List with Tab-style Headers -->
+  {% if grouped_appointments %}
+    {% set status_labels = {
+      'scheduled': t('appointment_status_scheduled'),
+      'pending': t('appointment_status_checked_in'),
+      'checked_in': t('appointment_status_checked_in'),
+      'done': t('appointment_status_done'),
+      'cancelled': t('appointment_status_cancelled'),
+      'in_progress': t('appointment_status_in_progress'),
+      'no_show': t('appointment_status_no_show')
+    } %}
+    {% for date_iso, appts in grouped_appointments.items() %}
+    <div class="appt-group" data-date="{{ date_iso }}">
+      <button class="appt-group-header" onclick="toggleDateGroup(this, '{{ date_iso }}')" data-expanded="false" data-date="{{ date_iso }}">
+        {% set date_label = appts[0].start_time.strftime('%Y-%m-%d') %}
+        {% if date_iso == today_str %}
+          <span class="date-day">{{ t('today') }}</span> - {{ date_label }}
+        {% elif date_iso == yesterday_str %}
+          <span class="date-day">{{ t('yesterday') }}</span> - {{ date_label }}
+        {% elif date_iso == tomorrow_str %}
+          <span class="date-day">{{ t('tomorrow') }}</span> - {{ date_label }}
+        {% else %}
+          {{ date_label }}
+        {% endif %}
+        <span class="date-count">({{ appts|length }})</span>
+        <span class="date-toggle">▼</span>
+      </button>
+      <div class="appt-group-content collapsed" id="group-{{ date_iso }}">
+        <div class="appt-card-grid">
+          {% for appt in appts %}
+          <div class="appt-card" data-appt-id="{{ appt.id }}" data-appt-date="{{ date_iso }}" data-doctor-id="{{ appt.doctor_id or '' }}" data-doctor-label="{{ appt.doctor_label or '' }}">
+            
+            <!-- Patient Chip Header -->
+            {% set patient = appt.patient %}
+            <a href="{% if patient %}{{ url_for('patients.patient_detail', pid=patient.id) }}{% else %}#{% endif %}" target="_blank" class="appt-card-patient-chip">
+              <div class="appt-card-patient-name">{{ patient.full_name if patient else (appt.patient_name or t('unknown_patient', 'Unknown Patient')) }}</div>
+              <div class="appt-card-patient-details">
+                <span>📁 {{ (patient.short_id if patient else '—') or '—' }}</span>
+                <span>📞 {{ (patient.phone if patient else appt.patient_phone) or '—' }}</span>
+              </div>
+            </a>
+            
+            <!-- Card Body -->
+            <div class="appt-card-body">
+            <div class="appt-card-row">
+              <span class="appt-card-icon">🕒</span>
+              <strong>{{ appt.start_time.strftime('%H:%M') }}</strong>
+            </div>
+            <div class="appt-card-row">
+              <span class="appt-card-icon">👨‍⚕️</span>
+                {% set raw_doc_label = appt.doctor_label or t('doctor') %}
+            {% set doc_display = raw_doc_label %}
+                {% set doc_key = appt.doctor_id if appt.doctor_id is not none else '' %}
+                {% set doc_color = doctor_color_map.get(doc_key, default_doctor_color) or default_doctor_color %}
+                <span class="doctor-chip" style="--chip-color: {{ doc_color }};">
+                  {{ doc_display }}
+                </span>
+              </div>
+              <div class="appt-card-row appt-card-reason">
+                <span class="appt-card-icon">📝</span>
+                <span>{{ appt.title or t('no_reason_provided', 'No reason provided') }}</span>
+              </div>
+            </div>
+
+            <!-- Card Footer -->
+            {% set normalized_status = 'pending' if appt.status == 'checked_in' else appt.status %}
+            {% set display_status = status_labels.get(appt.status, appt.status.replace('_', ' ')|title) %}
+            <div class="appt-card-footer">
+              <button
+                class="status-button status-{{ normalized_status }}"
+                onclick="openStatusModal('{{ appt.id }}', '{{ appt.status }}')">
+                {{ display_status }}
+              </button>
+              <!-- Enhanced buttons with proper spacing -->
+              <div class="appt-card-footer-buttons">
+                <button class="btn btn-secondary btn-sm" onclick="openViewModal('{{ appt.id }}')">{{ t('view') }}</button>
+                <button class="btn btn-secondary btn-sm" onclick="openApptModal('{{ appt.id }}')">{{ t('edit') }}</button>
+                <button class="btn btn-danger btn-sm" onclick="openDeleteModal('{{ appt.id }}', '{{ tf('patient_fallback_name', 'Patient') }}')">{{ t('delete') }}</button>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="card no-appointments-card">
+      <div class="no-appointments-icon">🤷‍♂️</div>
+      <h2 class="section-title">{{ t('no_rows') }}</h2>
+      <p class="no-appointments-text">{{ t('search_placeholder') }}</p>
+    </div>
+  {% endif %}
+  </div>
+</div>
+
+<!-- --- MODALS --- -->
+
+<!-- Add/Edit Appointment Modal -->
+<div id="appt-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="appt-modal-title" class="modal-title">{{ t('appointments_new') }}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="appt-alert" class="alert alert-error" style="display: none;"></div>
+      <form id="appt-form" class="admin-form">
+        <input type="hidden" id="appt-id" name="id">
+        <input type="hidden" id="appt-patient-file" name="patient_file">
+        <input type="hidden" id="appt-patient-phone" name="patient_phone">
+
+        <!-- Patient Section with Enhanced Layout -->
+        <div class="form-group" id="patient-form-group">
+          <label class="form-label">{{ tf('appointment_patient_label', 'Patient') }} *</label>
+          <div class="patient-search-wrapper">
+            <input type="text" id="appt-patient-search" class="form-input" placeholder="{{ tf('appointment_patient_placeholder', 'Type patient name, file number, or phone...') }}" required autocomplete="off">
+            <input type="hidden" id="appt-patient" name="patient_id">
+            <div id="patient-suggestions" class="patient-suggestions" style="display: none;"></div>
+          </div>
+          <!-- Patient Selection Preview -->
+          <div id="patient-selection-preview" class="patient-selection-preview">
+            <div class="patient-preview-name" id="patient-preview-name"></div>
+            <div class="patient-preview-details">
+              <div class="patient-preview-detail">
+                <span class="icon">📁</span>
+                <span id="patient-preview-file"></span>
+              </div>
+              <div class="patient-preview-detail">
+                <span class="icon">📞</span>
+                <span id="patient-preview-phone"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Doctor and Status Row -->
+        <div class="appt-form-row">
+          <div class="form-group">
+            <label class="form-label">{{ tf('appointment_doctor_label', 'Doctor') }} *</label>
+            <select id="appt-doctor" class="form-select" required>
+              <option value="" disabled selected hidden>{{ tf('appointment_choose_doctor', 'Choose a doctor') }}</option>
+              {% for d in doctors %}
+              <option value="{{ d.doctor_id }}">{{ d.doctor_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">{{ tf('appointment_status_label', 'Status') }} *</label>
+            <select id="appt-status" class="form-select" required>
+              <option value="scheduled">{{ t('appointment_status_scheduled') }}</option>
+              <option value="checked_in">{{ t('appointment_status_checked_in') }}</option>
+              <option value="done">{{ t('appointment_status_done') }}</option>
+              <option value="cancelled">{{ t('appointment_status_cancelled') }}</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- Date and Time Row -->
+        <div class="appt-form-row">
+          <div class="form-group">
+            <label class="form-label">{{ tf('appointment_date_label', 'Date') }} *</label>
+            <input type="date" id="appt-date" class="form-input" required value="{{ today_str }}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">{{ tf('appointment_start_time_label', 'Start Time') }} *</label>
+            <input type="time" id="appt-start-time" class="form-input" required step="60" min="08:00" max="20:00" placeholder="{{ tf('appointment_start_time_placeholder', 'Select time') }}">
+          </div>
+        </div>
+        
+        <!-- Title and Notes Fields -->
+        <div class="form-group">
+          <label class="form-label">{{ tf('appointment_title_label', 'Search Title') }}</label>
+          <input type="text" id="appt-title" class="form-input" placeholder="{{ tf('appointment_title_placeholder', 'e.g., Checkup, Filling...') }}">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{{ tf('notes', 'Notes') }}</label>
+          <textarea id="appt-notes" class="form-input auto-resize-textarea" rows="3" placeholder="{{ tf('notes_optional', 'Additional notes...') }}"></textarea>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">{{ t('cancel') }}</button>
+      <button id="appt-submit-btn" class="btn btn-primary" onclick="saveAppt()">{{ t('appointments_submit') }}</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Modal -->
+<div id="view-modal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ tf('appointment_view_title', 'View Appointment') }}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="view-alert" class="alert alert-error" style="display: none;"></div>
+      <div id="view-content" class="admin-form">
+        <!-- Content will be loaded here by JavaScript -->
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">{{ t('close') }}</button>
+    </div>
+  </div>
+</div>
+
+<!-- Change Status Modal -->
+<div id="status-modal" class="modal">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ tf('change_status', 'Change Status') }}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="status-appt-id">
+      <div id="status-alert" class="alert alert-error" style="display: none;"></div>
+      <div class="status-modal-grid">
+        <button class="btn status-modal-btn status-scheduled" data-status="scheduled" onclick="updateStatus('scheduled')">{{ t('appointment_status_scheduled') }}</button>
+        <button class="btn status-modal-btn status-pending" data-status="pending" onclick="updateStatus('checked_in')">{{ t('appointment_status_checked_in') }}</button>
+        <button class="btn status-modal-btn status-done" data-status="done" onclick="updateStatus('done')">{{ t('appointment_status_done') }}</button>
+        <button class="btn status-modal-btn status-cancelled" data-status="cancelled" onclick="updateStatus('cancelled')">{{ t('appointment_status_cancelled') }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div id="delete-modal" class="modal">
+  <div class="modal-content" style="max-width: 450px;">
+    <div class="modal-header">
+      <h3 class="modal-title">{{ tf('appointment_delete_title', 'Delete Appointment') }}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="delete-id">
+      <p>{{ tf('appointment_delete_confirm', 'Are you sure you want to delete the appointment for') }} <strong id="delete-name"></strong>? {{ tf('appointment_delete_warning', 'This action cannot be undone.') }}</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">{{ t('cancel') }}</button>
+      <button id="delete-submit-btn" class="btn btn-danger" onclick="confirmDelete()">{{ t('delete') }}</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * Enhanced Appointment Management System
+ * Handles all interactive functionality with comprehensive enhancements
+ */
+
+// Get CSRF token from meta tag
+const csrfMetaTag = document.querySelector('meta[name="csrf-token"]');
+const CSRF_TOKEN = csrfMetaTag ? (csrfMetaTag.getAttribute('content') || '') : '';
+const APPT_I18N = {
+  status: {
+    scheduled: "{{ t('appointment_status_scheduled') }}",
+    pending: "{{ t('appointment_status_checked_in') }}",
+    checked_in: "{{ t('appointment_status_checked_in') }}",
+    done: "{{ t('appointment_status_done') }}",
+    cancelled: "{{ t('appointment_status_cancelled') }}",
+    in_progress: "{{ t('appointment_status_in_progress') }}",
+    no_show: "{{ t('appointment_status_no_show') }}"
+  },
+  newTitle: "{{ t('appointments_new') }}",
+  editTitle: "{{ tf('appointment_edit_title', 'Edit Appointment') }}",
+  createBtn: "{{ t('appointments_submit') }}",
+  updateBtn: "{{ tf('appointment_update_btn', 'Update Appointment') }}",
+  deleteBtn: "{{ t('delete') }}",
+  deleteWorking: "{{ tf('appointment_delete_working', 'Deleting...') }}",
+  deleteSuccess: "{{ tf('appointment_deleted', 'Appointment deleted') }}",
+  deleteFailed: "{{ tf('appointment_delete_failed', 'Failed to delete appointment.') }}",
+  foundCount: "{{ tf('appointments_found_count', 'Found {count} appointments') }}",
+  showAll: "{{ tf('appointments_show_all_count', 'Showing all {count} appointments') }}",
+  genericError: "{{ tf('appointments_generic_error', 'An error occurred') }}",
+  searchError: "{{ tf('appointments_search_error', 'Error searching patients') }}",
+  loading: "{{ tf('appointment_loading', 'Loading...') }}",
+  viewPatient: "{{ tf('appointment_patient_label','Patient') }}",
+  viewTime: "{{ tf('appointment_time_label','Time') }}",
+  viewDoctor: "{{ tf('appointment_doctor_label','Doctor') }}",
+  viewStatus: "{{ tf('appointment_status_label','Status') }}",
+  viewTitle: "{{ tf('appointment_title_label','Title') }}",
+  viewNotes: "{{ tf('notes','Notes') }}",
+  saveFailed: "{{ tf('appointment_save_failed','Failed to save appointment.') }}",
+  updated: "{{ tf('appointment_updated','Appointment updated') }}",
+  added: "{{ tf('appointment_added','Appointment added') }}"
+};
+
+// Global variables for enhanced functionality
+let notesExpanded = false;
+let selectedPatientData = null;
+
+// --- Enhanced Modal Functions ---
+function openApptModal(apptId = null) {
+  const modal = document.getElementById('appt-modal');
+  const title = document.getElementById('appt-modal-title');
+  const submitBtn = document.getElementById('appt-submit-btn');
+  const alert = document.getElementById('appt-alert');
+  
+  alert.style.display = 'none';
+  document.getElementById('appt-form').reset();
+  document.getElementById('appt-id').value = '';
+  document.getElementById('appt-patient-file').value = '';
+  document.getElementById('appt-patient-phone').value = '';
+  
+  // Reset patient preview
+  hidePatientPreview();
+  
+  const today = document.getElementById('appt-form-main').dataset.today || new Date().toISOString().split('T')[0];
+  document.getElementById('appt-date').value = today; // Default to today
+
+  if (apptId) {
+    // This is an EDIT - disable patient fields for editing existing appointment
+    title.textContent = APPT_I18N.editTitle;
+    submitBtn.textContent = APPT_I18N.updateBtn;
+    disablePatientFields(true); // Disable patient fields in edit mode
+    loadApptData(apptId, 'edit');
+  } else {
+    // This is a NEW appointment
+    title.textContent = APPT_I18N.newTitle;
+    submitBtn.textContent = APPT_I18N.createBtn;
+    disablePatientFields(false); // Enable patient fields for new appointment
+    modal.classList.add('active');
+  }
+}
+
+function openViewModal(apptId) {
+  const modal = document.getElementById('view-modal');
+  const content = document.getElementById('view-content');
+  const alert = document.getElementById('view-alert');
+  content.innerHTML = '<p>' + (APPT_I18N.loading || 'Loading...') + '</p>';
+  alert.style.display = 'none';
+  modal.classList.add('active');
+  loadApptData(apptId, 'view');
+}
+
+function openStatusModal(apptId, currentStatus) {
+  document.getElementById('status-appt-id').value = apptId;
+  const normalizedStatus = currentStatus === 'checked_in' ? 'pending' : currentStatus;
+  document.querySelectorAll('.status-modal-btn').forEach(btn => {
+    const btnStatus = btn.dataset.status;
+    btn.disabled = btnStatus === normalizedStatus;
+  });
+  document.getElementById('status-modal').classList.add('active');
+}
+
+// --- Tab-style Date Group Functions ---
+function toggleDateGroup(headerButton, dateId) {
+  const content = document.getElementById(`group-${dateId}`);
+  if (!content) {
+    return;
+  }
+  const isExpanded = headerButton.dataset.expanded === 'true';
+  
+  if (isExpanded) {
+    headerButton.classList.remove('expanded');
+    headerButton.dataset.expanded = 'false';
+    content.classList.remove('expanded');
+    content.classList.add('collapsed');
+    expandedDateIds.delete(dateId);
+  } else {
+    headerButton.classList.add('expanded');
+    headerButton.dataset.expanded = 'true';
+    content.classList.remove('collapsed');
+    content.classList.add('expanded');
+    expandedDateIds.add(dateId);
+  }
+}
+
+// --- Enhanced Patient Field Management ---
+function disablePatientFields(disabled) {
+  const searchInput = document.getElementById('appt-patient-search');
+  const patientGroup = document.getElementById('patient-form-group');
+  
+  if (disabled) {
+    searchInput.disabled = true;
+    searchInput.style.backgroundColor = '#f9fafb';
+    searchInput.style.cursor = 'not-allowed';
+    patientGroup.classList.add('disabled');
+  } else {
+    searchInput.disabled = false;
+    searchInput.style.backgroundColor = '';
+    searchInput.style.cursor = '';
+    patientGroup.classList.remove('disabled');
+  }
+}
+
+// --- Patient Preview Functions ---
+function showPatientPreview(patientData) {
+  const preview = document.getElementById('patient-selection-preview');
+  const nameEl = document.getElementById('patient-preview-name');
+  const fileEl = document.getElementById('patient-preview-file');
+  const phoneEl = document.getElementById('patient-preview-phone');
+  
+  if (patientData) {
+    nameEl.textContent = patientData.name;
+    fileEl.textContent = patientData.file_number || '—';
+    phoneEl.textContent = patientData.phone_number || '—';
+    preview.classList.add('visible');
+  } else {
+    hidePatientPreview();
+  }
+}
+
+function hidePatientPreview() {
+  const preview = document.getElementById('patient-selection-preview');
+  preview.classList.remove('visible');
+}
+
+// --- Auto-resizing Textarea ---
+function autoResizeTextarea(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+function initAutoResize() {
+  const notesTextarea = document.getElementById('appt-notes');
+  const titleInput = document.getElementById('appt-title');
+  
+  if (notesTextarea && titleInput) {
+    // Set initial height to match title field
+    notesTextarea.style.height = titleInput.offsetHeight + 'px';
+    
+    // Auto-resize on input
+    notesTextarea.addEventListener('input', function() {
+      autoResizeTextarea(this);
+    });
+    
+    // Auto-resize when title changes (for layout sync)
+    titleInput.addEventListener('input', function() {
+      autoResizeTextarea(notesTextarea);
+    });
+  }
+}
+
+// --- Enhanced Data Loading ---
+async function loadApptData(apptId, mode = 'edit') {
+  const alert = document.getElementById(mode === 'edit' ? 'appt-alert' : 'view-alert');
+  try {
+    const response = await fetch(`/api/appointments/${apptId}`, { credentials: 'same-origin' });
+    if (!response.ok) {
+        throw new Error(`Server responded with status ${response.status}`);
+    }
+    const appt = await response.json();
+
+    if (appt.error) { throw new Error(appt.error); }
+    
+    // Format date/time for inputs
+    const start = new Date(appt.start_time);
+    
+    // Handle timezone offset for date/time inputs
+    const toLocalISOString = (date) => {
+        const offset = date.getTimezoneOffset() * 60000;
+        const localDate = new Date(date.getTime() - offset);
+        return localDate.toISOString();
+    }
+    
+    const localStart = toLocalISOString(start);
+    const timeValue = localStart.split('T')[1].substring(0, 5);
+    
+    if (mode === 'edit') {
+      document.getElementById('appt-id').value = appt.id;
+      document.getElementById('appt-patient').value = appt.patient_id;
+      document.getElementById('appt-patient-search').value = appt.patient_name || '';
+      document.getElementById('appt-patient-file').value = appt.patient_short_id || '';
+      document.getElementById('appt-patient-phone').value = appt.patient_phone || '';
+      document.getElementById('appt-doctor').value = appt.doctor_id;
+      const normalizedStatus = appt.status === 'checked_in' ? 'pending' : (appt.status || 'scheduled');
+      document.getElementById('appt-status').value = normalizedStatus;
+      document.getElementById('appt-title').value = appt.title || '';
+      document.getElementById('appt-notes').value = appt.notes || '';
+      document.getElementById('appt-date').value = localStart.split('T')[0];
+      
+      // Set time with proper rounding to 30-minute intervals
+      const [hours, minutes] = timeValue.split(':');
+      const totalMinutes = parseInt(hours) * 60 + parseInt(minutes);
+      const roundedMinutes = Math.round(totalMinutes / 30) * 30;
+      const roundedHours = Math.floor(roundedMinutes / 60);
+      const roundedMins = roundedMinutes % 60;
+      const roundedTime = `${roundedHours.toString().padStart(2, '0')}:${roundedMins.toString().padStart(2, '0')}`;
+      
+      document.getElementById('appt-start-time').value = roundedTime;
+      
+      // Show patient preview
+      selectedPatientData = {
+        id: appt.patient_id,
+        name: appt.patient_name,
+        file_number: appt.patient_short_id,
+        phone_number: appt.patient_phone
+      };
+      showPatientPreview(selectedPatientData);
+      
+      document.getElementById('appt-modal').classList.add('active');
+    } else {
+      // Build View Modal Content with enhanced layout
+      const contentEl = document.getElementById('view-content');
+      contentEl.innerHTML = `
+        <div class="form-group">
+          <label class="form-label">${APPT_I18N.viewPatient || "{{ tf('appointment_patient_label','Patient') }}"}</label>
+          <div class="form-input" style="background:#f9fafb;">
+            <div style="font-weight:600;">${appt.patient_name || '—'}</div>
+            <div style="font-size:0.875rem; color:var(--muted,#6b7280); margin-top:0.25rem;">
+              📁 ${appt.patient_short_id || '—'} | 📞 ${appt.patient_phone || '—'}
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">${APPT_I18N.viewTime || "{{ tf('appointment_time_label','Time') }}"}</label>
+          <div class="form-input" style="background:#f9fafb;">${start.toLocaleString('en-US', {dateStyle: 'long', timeStyle: 'short'})}</div>
+        </div>
+        <div class="appt-form-row">
+          <div class="form-group">
+            <label class="form-label">${APPT_I18N.viewDoctor || "{{ tf('appointment_doctor_label','Doctor') }}"}</label>
+            <div class="form-input" style="background:#f9fafb;">${appt.doctor_label || appt.doctor_name || '—'}</div>
+          </div>
+        <div class="form-group">
+          <label class="form-label">${APPT_I18N.viewStatus || "{{ tf('appointment_status_label','Status') }}"}</label>
+          <div class="form-input" style="background:#f9fafb;">${formatStatusLabel(appt.status)}</div>
+        </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">${APPT_I18N.viewTitle || "{{ tf('appointment_title_label','Title') }}"}</label>
+          <div class="form-input" style="background:#f9fafb;">${appt.title || '—'}</div>
+        </div>
+        ${appt.notes ? `
+        <div class="form-group">
+          <label class="form-label">${APPT_I18N.viewNotes || "{{ tf('notes','Notes') }}"}</label>
+          <div class="form-input" style="background:#f9fafb; min-height: 60px; white-space: pre-wrap;">${appt.notes}</div>
+        </div>
+        ` : ''}
+      `;
+    }
+
+  } catch (error) {
+    alert.textContent = 'Error loading appointment data: ' + error.message;
+    alert.style.display = 'block';
+  }
+}
+
+// --- Enhanced Save Function with JSON Error Handling ---
+async function saveAppt() {
+  const submitBtn = document.getElementById('appt-submit-btn');
+  const alert = document.getElementById('appt-alert');
+  
+  const apptData = {
+    id: document.getElementById('appt-id').value || null,
+    patient_id: document.getElementById('appt-patient').value,
+    patient_file: document.getElementById('appt-patient-file').value,
+    patient_phone: document.getElementById('appt-patient-phone').value,
+    doctor_id: document.getElementById('appt-doctor').value,
+    date: document.getElementById('appt-date').value,
+    start_time: document.getElementById('appt-start-time').value,
+    status: document.getElementById('appt-status').value,
+    title: document.getElementById('appt-title').value,
+    notes: document.getElementById('appt-notes').value
+  };
+
+  // Enhanced validation
+  let validationErrors = [];
+  if (!apptData.patient_id) validationErrors.push('Patient is required');
+  if (!apptData.doctor_id) validationErrors.push('Doctor is required');
+  if (!apptData.date) validationErrors.push('Date is required');
+  if (!apptData.start_time) validationErrors.push(APPT_I18N.startTimeRequired || "{{ tf('appointment_start_time_required','Time is required') }}");
+  
+  if (validationErrors.length > 0) {
+    alert.textContent = 'Please correct the following: ' + validationErrors.join(', ');
+    alert.style.display = 'block';
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Saving...';
+  submitBtn.classList.add('loading');
+
+  try {
+    const response = await fetch('/api/appointments/save', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify(apptData)
+    });
+    const result = await parseJsonResponse(response);
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || APPT_I18N.saveFailed || 'Failed to save appointment.');
+    }
+
+    closeModal();
+    const refreshed = await refreshAppointmentsList(apptData.id ? (APPT_I18N.updated || '') : (APPT_I18N.added || ''));
+    if (refreshed) {
+      filterAppointments({ silent: true });
+    }
+  } catch (error) {
+    alert.textContent = (APPT_I18N.genericError || 'An error occurred') + ': ' + error.message;
+    alert.style.display = 'block';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = apptData.id ? APPT_I18N.updateBtn : APPT_I18N.createBtn;
+    submitBtn.classList.remove('loading');
+  }
+}
+
+async function updateStatus(newStatus) {
+  const apptId = document.getElementById('status-appt-id').value;
+  const alert = document.getElementById('status-alert');
+  alert.style.display = 'none';
+
+  try {
+    const response = await fetch('/api/appointments/status', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ id: apptId, status: newStatus })
+    });
+    const result = await parseJsonResponse(response);
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || 'Failed to update status.');
+    }
+
+    closeModal();
+    const refreshed = await refreshAppointmentsList('✅ Status updated');
+    if (refreshed) {
+      filterAppointments({ silent: true });
+    }
+  } catch (error) {
+    alert.textContent = 'An error occurred: ' + error.message;
+    alert.style.display = 'block';
+  }
+}
+
+let patientSearchTimeout = null;
+
+// --- Enhanced Patient Search Functions ---
+function initPatientSearch() {
+  const searchInput = document.getElementById('appt-patient-search');
+  const hiddenInput = document.getElementById('appt-patient');
+  const suggestionsDiv = document.getElementById('patient-suggestions');
+
+  searchInput.addEventListener('input', function() {
+    const query = this.value.trim();
+    clearTimeout(patientSearchTimeout);
+
+    if (query.length < 2) {
+      suggestionsDiv.style.display = 'none';
+      hiddenInput.value = '';
+      document.getElementById('appt-patient-file').value = '';
+      document.getElementById('appt-patient-phone').value = '';
+      hidePatientPreview();
+      selectedPatientData = null;
+      return;
+    }
+
+    patientSearchTimeout = setTimeout(() => searchPatients(query), 300);
+  });
+
+  searchInput.addEventListener('blur', function() {
+    // Hide suggestions after a short delay to allow clicks
+    setTimeout(() => {
+      suggestionsDiv.style.display = 'none';
+    }, 200);
+  });
+
+  searchInput.addEventListener('focus', function() {
+    const query = this.value.trim();
+    if (query.length >= 2) {
+      searchPatients(query);
+    }
+  });
+}
+
+async function searchPatients(query) {
+  const suggestionsDiv = document.getElementById('patient-suggestions');
+
+  try {
+    const response = await fetch(`/api/patients/search?q=${encodeURIComponent(query)}`, {
+      credentials: 'same-origin'
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const patients = await response.json();
+
+    if (patients.length === 0) {
+      suggestionsDiv.innerHTML = '<div class="patient-suggestion-item">{{ t("no_patients") }}</div>';
+      suggestionsDiv.style.display = 'block';
+      return;
+    }
+
+    const html = patients.map(patient => {
+      // Generate initials from name
+      let initials = '?';
+      if (patient.name) {
+        const names = patient.name.split(' ');
+        initials = names.slice(0, 2).map(n => n[0]).join('').toUpperCase();
+      }
+      
+      return `
+      <button type="button"
+        class="patient-suggestion-item"
+        data-id="${patient.id || ''}"
+        data-name="${patient.name || ''}"
+        data-file="${patient.file_number || ''}"
+        data-phone="${patient.phone_number || ''}">
+        <div class="patient-avatar">
+          ${initials}
+        </div>
+        <div class="patient-info">
+          <div class="patient-name">${patient.name || 'Unknown'}</div>
+          <div class="patient-secondary-info">
+            <span class="patient-file">📁 ${patient.file_number || 'N/A'}</span>
+            <div class="patient-contact">
+              <span class="patient-phone">📞 ${patient.phone_number || 'No phone'}</span>
+            </div>
+          </div>
+        </div>
+      </button>
+    `;
+    }).join('');
+
+    suggestionsDiv.innerHTML = html;
+    suggestionsDiv.style.display = 'block';
+
+    suggestionsDiv.querySelectorAll('.patient-suggestion-item').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        selectPatient(btn.dataset.id, btn.dataset.name, btn.dataset.file, btn.dataset.phone);
+      });
+    });
+
+  } catch (error) {
+    console.error('Patient search error:', error);
+    suggestionsDiv.innerHTML = '<div class="patient-suggestion-item">' + (APPT_I18N.searchError || '') + '</div>';
+    suggestionsDiv.style.display = 'block';
+  }
+}
+
+function selectPatient(patientId, displayName, fileNumber, phoneNumber) {
+  const searchInput = document.getElementById('appt-patient-search');
+  const hiddenInput = document.getElementById('appt-patient');
+  const fileInput = document.getElementById('appt-patient-file');
+  const phoneInput = document.getElementById('appt-patient-phone');
+  const suggestionsDiv = document.getElementById('patient-suggestions');
+
+  searchInput.value = displayName;
+  hiddenInput.value = patientId;
+  fileInput.value = fileNumber || '';
+  phoneInput.value = phoneNumber || '';
+  suggestionsDiv.style.display = 'none';
+  
+  // Update patient data and show preview
+  selectedPatientData = {
+    id: patientId,
+    name: displayName,
+    file_number: fileNumber,
+    phone_number: phoneNumber
+  };
+  showPatientPreview(selectedPatientData);
+}
+
+function openDeleteModal(apptId, patientName) {
+  document.getElementById('delete-id').value = apptId;
+  document.getElementById('delete-name').textContent = patientName;
+  document.getElementById('delete-modal').classList.add('active');
+}
+
+async function confirmDelete() {
+  const submitBtn = document.getElementById('delete-submit-btn');
+  const apptId = document.getElementById('delete-id').value;
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = APPT_I18N.deleteWorking || APPT_I18N.deleteBtn;
+  submitBtn.classList.add('loading');
+
+  try {
+    const response = await fetch('/api/appointments/delete', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+      body: JSON.stringify({ id: apptId })
+    });
+    const result = await parseJsonResponse(response);
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || APPT_I18N.deleteFailed);
+    }
+
+    closeModal();
+    const refreshed = await refreshAppointmentsList(APPT_I18N.deleteSuccess);
+    if (refreshed) {
+      filterAppointments({ silent: true });
+    }
+  } catch (error) {
+    alert((APPT_I18N.genericError || '') + ': ' + error.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = APPT_I18N.deleteBtn;
+    submitBtn.classList.remove('loading');
+  }
+}
+
+function closeModal() {
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.classList.remove('active');
+  });
+}
+
+// --- Client-side Live Filter System ---
+let allAppointments = [];
+let filteredAppointments = [];
+let searchTimeout = null;
+let expandedDateIds = new Set();
+let activeFilterMode = 'all';
+
+// Debounce function to improve performance
+function debounce(func, wait) {
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(searchTimeout);
+      func(...args);
+    };
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(later, wait);
+  };
+}
+
+// Helper utilities to keep date handling consistent with the backend
+function formatLocalDate(dateObj) {
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseLocalDate(dateStr) {
+  if (!dateStr) {
+    return null;
+  }
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) {
+    return null;
+  }
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function getReferenceDate(type) {
+  const form = document.getElementById('appt-form-main');
+  if (form && form.dataset) {
+    const datasetValue = form.dataset[type];
+    if (datasetValue) {
+      return datasetValue;
+    }
+  }
+  const baseDate = new Date();
+  if (type === 'yesterday') {
+    baseDate.setDate(baseDate.getDate() - 1);
+  } else if (type === 'tomorrow') {
+    baseDate.setDate(baseDate.getDate() + 1);
+  }
+  return formatLocalDate(baseDate);
+}
+
+function formatStatusLabel(status) {
+  if (!status) {
+    return APPT_I18N.status.scheduled;
+  }
+  const lookup = APPT_I18N.status;
+  const key = status.toLowerCase();
+  if (lookup[key]) {
+    return lookup[key];
+  }
+  return key.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+async function parseJsonResponse(response) {
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+  const text = await response.text();
+  throw new Error(text || `Server responded with status ${response.status}`);
+}
+
+async function refreshAppointmentsList(successMessage = null, options = {}) {
+  const form = document.getElementById('appt-form-main');
+  if (!form) {
+    if (successMessage) {
+      showSearchFeedback(successMessage);
+    }
+    return false;
+  }
+
+  const { preserveFilters = true, preserveExpanded = true } = options;
+  const baseUrl = form.getAttribute('action') || window.location.pathname;
+  const formData = new FormData(form);
+  const params = new URLSearchParams();
+
+  for (const [key, value] of formData.entries()) {
+    params.append(key, value);
+  }
+
+  const queryString = params.toString();
+  const fetchUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+  const preservedExpanded = preserveExpanded
+    ? Array.from(document.querySelectorAll('.appt-group-header[data-expanded="true"]'))
+        .map(header => header.dataset.date)
+        .filter(Boolean)
+    : [];
+
+  try {
+    const response = await fetch(fetchUrl, {
+      headers: { 'X-Requested-With': 'fetch' },
+      credentials: 'same-origin'
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const newGroups = doc.getElementById('appointments-groups');
+    const target = document.getElementById('appointments-groups');
+    if (!newGroups || !target) {
+      throw new Error('Unable to refresh appointments list');
+    }
+    target.innerHTML = newGroups.innerHTML;
+    if (window.applyDoctorChipContrast) {
+      window.applyDoctorChipContrast();
+    }
+    expandedDateIds = new Set(preservedExpanded);
+    initAppointmentData();
+    applyGroupExpansionState();
+    updateGroupCounts();
+    if (preserveFilters) {
+      filterAppointments({ silent: true });
+    }
+    if (successMessage) {
+      showSearchFeedback(successMessage);
+    }
+    return true;
+  } catch (error) {
+    console.error('Refresh appointments error:', error);
+    showSearchFeedback('⚠️ Unable to refresh appointments. Please reload.');
+    return false;
+  }
+}
+
+function setGroupExpandedState(header, content, isExpanded) {
+  if (!header || !content) {
+    return;
+  }
+  if (isExpanded) {
+    header.classList.add('expanded');
+    header.dataset.expanded = 'true';
+    content.classList.add('expanded');
+    content.classList.remove('collapsed');
+  } else {
+    header.classList.remove('expanded');
+    header.dataset.expanded = 'false';
+    content.classList.add('collapsed');
+    content.classList.remove('expanded');
+  }
+}
+
+function getActiveDateFilterType() {
+  const startDate = document.getElementById('start_date')?.value || '';
+  const endDate = document.getElementById('end_date')?.value || '';
+  const useRange = document.getElementById('use_range_check')?.checked || false;
+  
+  if (!startDate) {
+    return 'all';
+  }
+  
+  const today = getReferenceDate('today');
+  const yesterday = getReferenceDate('yesterday');
+  const tomorrow = getReferenceDate('tomorrow');
+  const singleDay = !useRange || !endDate || endDate === startDate;
+  
+  if (singleDay) {
+    if (startDate === today) {
+      return 'today';
+    }
+    if (startDate === yesterday) {
+      return 'yesterday';
+    }
+    if (startDate === tomorrow) {
+      return 'tomorrow';
+    }
+    return 'single';
+  }
+  
+  return 'range';
+}
+
+function applyGroupExpansionState() {
+  const filterType = getActiveDateFilterType();
+  const specialFilter = filterType === 'today' || filterType === 'yesterday' || filterType === 'tomorrow';
+  const targetDate = specialFilter ? getReferenceDate(filterType) : null;
+  const groups = document.querySelectorAll('.appt-group');
+  const nextExpanded = new Set();
+
+  groups.forEach(group => {
+    if (expandedDateIds.has(group.dataset.date)) {
+      nextExpanded.add(group.dataset.date);
+    }
+  });
+  expandedDateIds = nextExpanded;
+
+  groups.forEach(group => {
+    const header = group.querySelector('.appt-group-header');
+    const content = group.querySelector('.appt-group-content');
+    const groupDate = group.dataset.date;
+    const isVisible = group.style.display !== 'none';
+    const shouldExpand =
+      (isVisible && expandedDateIds.has(groupDate)) ||
+      (specialFilter && isVisible && targetDate === groupDate);
+    setGroupExpandedState(header, content, shouldExpand);
+    if (shouldExpand) {
+      expandedDateIds.add(groupDate);
+    }
+  });
+}
+
+function initAppointmentData() {
+  const appointmentCards = document.querySelectorAll('.appt-card');
+  allAppointments = [];
+  filteredAppointments = [];
+  
+  appointmentCards.forEach(card => {
+    const apptId = card.dataset.apptId;
+    const groupElement = card.closest('.appt-group');
+    const groupHeader = groupElement?.querySelector('.appt-group-header');
+    const groupText = groupHeader?.textContent || '';
+    const datasetDate = card.dataset.apptDate || groupElement?.dataset?.date || '';
+    const datasetDoctorIdRaw = card.dataset.doctorId || '';
+    const datasetDoctorId = datasetDoctorIdRaw.toLowerCase();
+    const datasetDoctorLabelRaw = card.dataset.doctorLabel || '';
+    
+    // Extract text content for search/filter display
+    const patientNameEl = card.querySelector('.appt-card-patient-name');
+    const patientDetailsEl = card.querySelector('.appt-card-patient-details');
+    const doctorEl = card.querySelector('.appt-card-body .appt-card-row:nth-child(2)');
+    const titleEl = card.querySelector('.appt-card-body .appt-card-reason span');
+    const timeEl = card.querySelector('.appt-card-body .appt-card-row:nth-child(1) strong');
+    
+    const patientName = patientNameEl?.textContent?.trim() || '';
+    const patientPhone = patientDetailsEl?.textContent?.match(/📞\s*([^📁\n]+)/)?.[1]?.trim() || '';
+    const patientFile = patientDetailsEl?.textContent?.match(/📁\s*([^📞\n]+)/)?.[1]?.trim() || '';
+    const rawDoctorLabel = (datasetDoctorLabelRaw || doctorEl?.textContent || '').trim();
+    const normalizedDoctorLower = rawDoctorLabel.toLowerCase();
+    const doctorSearchValue = normalizedDoctorLower.replace(/^dr\.?\s*/, '').trim() || normalizedDoctorLower;
+    const title = titleEl?.textContent?.trim() || '';
+    const timeDisplay = timeEl?.textContent?.trim() || '';
+    
+    let apptDate = datasetDate;
+    if (!apptDate) {
+      if (groupText.includes('Today')) {
+        apptDate = getReferenceDate('today');
+      } else if (groupText.includes('Yesterday')) {
+        apptDate = getReferenceDate('yesterday');
+      } else if (groupText.includes('Tomorrow')) {
+        apptDate = getReferenceDate('tomorrow');
+      } else {
+        const friendlyMatch = groupText.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}/);
+        if (friendlyMatch) {
+          const parsed = new Date(friendlyMatch[0]);
+          if (!isNaN(parsed)) {
+            apptDate = formatLocalDate(parsed);
+          }
+        }
+      }
+    }
+    
+    allAppointments.push({
+      id: apptId,
+      element: card,
+      groupElement: groupElement,
+      groupHeader: groupHeader,
+      patientName: patientName.toLowerCase(),
+      patientPhone: patientPhone.toLowerCase(),
+      patientFile: patientFile.toLowerCase(),
+      doctor: doctorSearchValue,
+      doctorId: datasetDoctorId,
+      doctorLabel: normalizedDoctorLower,
+      title: title.toLowerCase(),
+      timeDisplay: timeDisplay.toLowerCase(),
+      apptDate: apptDate,
+      originalPatientName: patientName,
+      originalPatientPhone: patientPhone,
+      originalPatientFile: patientFile,
+      originalDoctor: rawDoctorLabel,
+      originalDoctorId: datasetDoctorIdRaw,
+      originalDoctorLabel: rawDoctorLabel,
+      originalTitle: title,
+      originalTimeDisplay: timeDisplay
+    });
+  });
+  
+  filteredAppointments = [...allAppointments];
+  console.log(`Loaded ${allAppointments.length} appointments for live search`);
+}
+
+function filterAppointments(options = {}) {
+  const silent = Boolean(options.silent);
+  // Add visual feedback
+  if (!silent) {
+    showSearchFeedback('🔄 Filtering...');
+  }
+  
+  const searchTerm = document.getElementById('search_term')?.value.trim().toLowerCase() || '';
+  const doctorFilterRaw = document.getElementById('doctor_id')?.value || 'all';
+  const doctorFilter = doctorFilterRaw.toLowerCase();
+  const startDate = document.getElementById('start_date')?.value || '';
+  const endDate = document.getElementById('end_date')?.value || '';
+  const useRange = document.getElementById('use_range_check')?.checked || false;
+  const startDateTime = startDate ? parseLocalDate(startDate) : null;
+  if (startDateTime) {
+    startDateTime.setHours(0, 0, 0, 0);
+  }
+  let endDateTime = null;
+  if (startDateTime) {
+    if (useRange && endDate) {
+      endDateTime = parseLocalDate(endDate);
+    } else {
+      endDateTime = new Date(startDateTime);
+    }
+    if (endDateTime) {
+      endDateTime.setHours(23, 59, 59, 999);
+    }
+  }
+  
+  console.log(`Filtering - Search: "${searchTerm}", Doctor: "${doctorFilterRaw}", Start: "${startDate}", End: "${endDate}", Range: ${useRange}`);
+  
+  filteredAppointments = allAppointments.filter(appt => {
+    // Search term filter
+    const matchesSearch = !searchTerm ||
+      appt.patientName.includes(searchTerm) ||
+      appt.patientPhone.includes(searchTerm) ||
+      appt.patientFile.includes(searchTerm) ||
+      appt.doctor.includes(searchTerm) ||
+      appt.title.includes(searchTerm) ||
+      appt.timeDisplay.includes(searchTerm);
+    
+    // Doctor filter - prefer the exact doctor id when available
+    let matchesDoctor = true;
+    if (doctorFilter !== 'all') {
+      const normalizedOriginalDoctor = appt.originalDoctor ? appt.originalDoctor.toLowerCase() : '';
+      matchesDoctor =
+        appt.doctorId === doctorFilter ||
+        (appt.originalDoctorId && appt.originalDoctorId.toLowerCase() === doctorFilter) ||
+        appt.doctor.includes(doctorFilter) ||
+        normalizedOriginalDoctor.includes(doctorFilter);
+    }
+    
+    // Date filter - Enhanced logic (only apply if startDate is set)
+    let matchesDate = true;
+    if (startDateTime && endDateTime) {
+      try {
+        // If we have appointment date, use it; otherwise try to extract from group text
+        let apptDateStr = appt.apptDate || appt.groupElement?.dataset?.date || '';
+        if (!apptDateStr && appt.groupHeader) {
+          const groupText = appt.groupHeader.textContent || '';
+          // Extract date from group text more reliably
+          if (groupText.includes('Today')) {
+            apptDateStr = getReferenceDate('today');
+          } else if (groupText.includes('Yesterday')) {
+            apptDateStr = getReferenceDate('yesterday');
+          } else if (groupText.includes('Tomorrow')) {
+            apptDateStr = getReferenceDate('tomorrow');
+          } else {
+            const friendlyMatch = groupText.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}/);
+            if (friendlyMatch) {
+              const parsed = new Date(friendlyMatch[0]);
+              if (!isNaN(parsed)) {
+                apptDateStr = formatLocalDate(parsed);
+              }
+            }
+          }
+        }
+        
+        if (apptDateStr) {
+          const apptDateTime = parseLocalDate(apptDateStr);
+          if (apptDateTime) {
+            apptDateTime.setHours(12, 0, 0, 0); // midday avoids timezone drift
+            matchesDate = apptDateTime >= startDateTime && apptDateTime <= endDateTime;
+          } else {
+            matchesDate = true;
+          }
+        } else {
+          // If we can't determine the appointment date, include it in results
+          matchesDate = true;
+        }
+      } catch (error) {
+        console.warn('Date filtering error:', error);
+        matchesDate = true; // Include if date parsing fails
+      }
+    }
+    
+    const matches = matchesSearch && matchesDoctor && matchesDate;
+    if (!matchesDoctor) {
+      console.log(`Doctor filter failed for "${appt.originalDoctor}" vs "${doctorFilterRaw}"`);
+    }
+    
+    return matches;
+  });
+  
+  console.log(`Filtered to ${filteredAppointments.length} out of ${allAppointments.length} appointments`);
+  displayFilteredAppointments();
+  
+  if (!silent) {
+    const activeFilters = [searchTerm, doctorFilterRaw !== 'all' ? doctorFilterRaw : null, startDate].filter(Boolean);
+    if (activeFilters.length > 0) {
+      showSearchFeedback((APPT_I18N.foundCount || '').replace('{count}', filteredAppointments.length));
+    } else {
+      showSearchFeedback((APPT_I18N.showAll || '').replace('{count}', filteredAppointments.length));
+    }
+  }
+}
+
+function showSearchFeedback(message) {
+  // Remove existing feedback
+  const existingFeedback = document.querySelector('.search-feedback');
+  if (existingFeedback) {
+    existingFeedback.remove();
+  }
+  
+  // Create new feedback
+  const feedback = document.createElement('div');
+  feedback.className = 'search-feedback';
+  feedback.textContent = message;
+  feedback.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #10b981;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+  `;
+  
+  document.body.appendChild(feedback);
+  
+  // Animate in
+  setTimeout(() => {
+    feedback.style.opacity = '1';
+    feedback.style.transform = 'translateY(0)';
+  }, 10);
+  
+  // Remove after 2 seconds
+  setTimeout(() => {
+    feedback.style.opacity = '0';
+    feedback.style.transform = 'translateY(-10px)';
+    setTimeout(() => {
+      if (feedback.parentNode) {
+        feedback.remove();
+      }
+    }, 300);
+  }, 2000);
+}
+
+function displayFilteredAppointments() {
+  // Create a more efficient approach using a Set to track visible elements
+  const visibleGroups = new Set();
+  
+  const allCards = document.querySelectorAll('.appt-card');
+  const allGroups = document.querySelectorAll('.appt-group');
+
+  // Hide everything before applying the current filter set
+  allCards.forEach(card => {
+    card.style.display = 'none';
+  });
+  allGroups.forEach(group => {
+    group.style.display = 'none';
+  });
+
+  if (filteredAppointments.length > 0) {
+    // Show only filtered appointments and their groups
+    filteredAppointments.forEach(appt => {
+      if (appt.element) {
+        appt.element.style.display = 'flex';
+        visibleGroups.add(appt.groupElement);
+      }
+    });
+    
+    // Show groups that have visible appointments
+    visibleGroups.forEach(group => {
+      if (group) {
+        group.style.display = 'block';
+      }
+    });
+    console.log(`Showing ${filteredAppointments.length} filtered appointments in ${visibleGroups.size} groups`);
+  } else {
+    console.log('No appointments match the current filters');
+  }
+  
+  // Update "no results" message
+  updateNoResultsMessage();
+  
+  // Update the group count display to reflect filtered results
+  updateGroupCounts();
+  
+  // Apply expansion rules so only allowed groups stay open
+  applyGroupExpansionState();
+}
+
+function updateGroupCounts() {
+  // Update date group headers to show filtered count
+  const groups = document.querySelectorAll('.appt-group');
+  
+  groups.forEach(group => {
+    const visibleCards = group.querySelectorAll('.appt-card[style*="flex"]');
+    const header = group.querySelector('.appt-group-header');
+    const countElement = header?.querySelector('.date-count');
+    
+    if (countElement && visibleCards.length >= 0) {
+      countElement.textContent = `(${visibleCards.length})`;
+    }
+  });
+}
+
+function updateNoResultsMessage() {
+  // Remove existing no-results message
+  const existingMessage = document.querySelector('.no-results-message');
+  if (existingMessage) {
+    existingMessage.remove();
+  }
+  
+  const container = document.querySelector('.appt-container');
+  
+  if (filteredAppointments.length === 0 && allAppointments.length > 0) {
+    const noResultsDiv = document.createElement('div');
+    noResultsDiv.className = 'card no-results-message';
+    noResultsDiv.innerHTML = `
+      <div class="no-appointments-icon">🔍</div>
+      <h2 class="section-title">{{ t('no_rows') }}</h2>
+      <p class="no-appointments-text">{{ t('search_placeholder') }}</p>
+    `;
+    
+    // Insert after the filter card
+    const filterCard = document.querySelector('.card');
+    if (filterCard && filterCard.nextSibling) {
+      filterCard.parentNode.insertBefore(noResultsDiv, filterCard.nextSibling);
+    } else {
+      container.appendChild(noResultsDiv);
+    }
+  }
+}
+
+function initLiveSearch() {
+  const searchTerm = document.getElementById('search_term');
+  
+  if (searchTerm) {
+    // Use debounced input event handler for better performance
+    const debouncedFilter = debounce(() => {
+      filterAppointments();
+    }, 300); // 300ms delay
+    
+    searchTerm.addEventListener('input', debouncedFilter);
+    
+    // Prevent Enter from submitting form
+    searchTerm.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        // Force immediate filter on Enter
+        filterAppointments();
+      }
+    });
+    
+    console.log('Live search initialized with debouncing');
+  }
+}
+
+function setQuickFilter(filterType) {
+  const startDateInput = document.getElementById('start_date');
+  const endDateInput = document.getElementById('end_date');
+  const useRangeCheck = document.getElementById('use_range_check');
+  const endDateGroup = document.getElementById('end-date-group');
+  if (!startDateInput || !endDateInput || !useRangeCheck || !endDateGroup) {
+    return;
+  }
+  
+  const quickDates = {
+    today: getReferenceDate('today'),
+    yesterday: getReferenceDate('yesterday'),
+    tomorrow: getReferenceDate('tomorrow')
+  };
+  if (filterType === 'all') {
+    expandedDateIds.clear();
+  }
+  
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  const activeButton = document.querySelector(`[data-filter="${filterType}"]`);
+  if (activeButton) {
+    activeButton.classList.add('active');
+  }
+  activeFilterMode = filterType;
+  
+  if (filterType === 'today' || filterType === 'yesterday' || filterType === 'tomorrow') {
+    const dateValue = quickDates[filterType];
+    startDateInput.value = dateValue;
+    endDateInput.value = dateValue;
+    useRangeCheck.checked = false;
+    endDateGroup.style.display = 'none';
+    endDateGroup.classList.remove('visible');
+  } else {
+    startDateInput.value = '';
+    endDateInput.value = '';
+    useRangeCheck.checked = false;
+    endDateGroup.style.display = 'none';
+    endDateGroup.classList.remove('visible');
+  }
+  
+  const preserveExpanded = filterType !== 'all';
+  refreshAppointmentsList(null, { preserveFilters: true, preserveExpanded }).then(() => {
+    filterAppointments({ silent: true });
+  });
+}
+
+function initQuickFilterButtons() {
+  const startDate = document.getElementById('start_date').value;
+  const endDate = document.getElementById('end_date').value;
+  const useRange = document.getElementById('use_range_check').checked;
+  
+  const today = getReferenceDate('today');
+  const yesterday = getReferenceDate('yesterday');
+  const tomorrow = getReferenceDate('tomorrow');
+  
+  const matchesSingleDay = (targetDate) => {
+    if (!startDate || !targetDate) {
+      return false;
+    }
+    if (!useRange) {
+      return startDate === targetDate;
+    }
+    return startDate === targetDate && (!endDate || endDate === targetDate);
+  };
+  
+  let activeFilter = 'all';
+  if (matchesSingleDay(today)) {
+    activeFilter = 'today';
+  } else if (matchesSingleDay(yesterday)) {
+    activeFilter = 'yesterday';
+  } else if (matchesSingleDay(tomorrow)) {
+    activeFilter = 'tomorrow';
+  }
+  activeFilterMode = activeFilter;
+  
+  const activeButton = document.querySelector(`[data-filter="${activeFilter}"]`);
+  if (activeButton) {
+    activeButton.classList.add('active');
+  }
+  
+}
+
+function initLiveFilters() {
+  const doctorSelect = document.getElementById('doctor_id');
+  const startDate = document.getElementById('start_date');
+  const endDate = document.getElementById('end_date');
+  const useRange = document.getElementById('use_range_check');
+  const clearButton = document.getElementById('clear-filters');
+
+  // Add event listeners for live filtering - all now use client-side filtering
+  if (doctorSelect) {
+    doctorSelect.addEventListener('change', function() {
+      refreshAppointmentsList().then(() => {
+        filterAppointments({ silent: true });
+      });
+    });
+  }
+  if (startDate) {
+    startDate.addEventListener('change', function() {
+      // Auto-update end date if not using range
+      if (!useRange.checked) {
+        const endDateInput = document.getElementById('end_date');
+        if (endDateInput) {
+          endDateInput.value = this.value;
+        }
+      }
+      refreshAppointmentsList().then(() => {
+        filterAppointments({ silent: true });
+      });
+    });
+  }
+  if (endDate) {
+    endDate.addEventListener('change', function() {
+      refreshAppointmentsList().then(() => {
+        filterAppointments({ silent: true });
+      });
+    });
+  }
+  if (useRange) {
+    useRange.addEventListener('change', function() {
+      const endDateGroup = document.getElementById('end-date-group');
+      if (this.checked) {
+        endDateGroup.style.display = 'block';
+        endDateGroup.classList.add('visible');
+      } else {
+        endDateGroup.style.display = 'none';
+        endDateGroup.classList.remove('visible');
+        // Sync end date with start date
+        const startDateInput = document.getElementById('start_date');
+        const endDateInput = document.getElementById('end_date');
+        if (startDateInput && endDateInput) {
+          endDateInput.value = startDateInput.value;
+        }
+      }
+      refreshAppointmentsList().then(() => {
+        filterAppointments({ silent: true });
+      });
+    });
+  }
+
+  // Clear filters button - now only clears search and shows all
+  if (clearButton) {
+    clearButton.addEventListener('click', function() {
+      // Clear search term and show all appointments
+      const searchTerm = document.getElementById('search_term');
+      if (searchTerm) {
+        searchTerm.value = '';
+      }
+      
+      document.getElementById('doctor_id').value = 'all';
+      expandedDateIds.clear();
+      setQuickFilter('today');
+    });
+  }
+  
+  console.log('Live filters initialized');
+}
+
+// --- Enhanced DOMContentLoaded Initialization ---
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize patient search with enhanced functionality
+  initPatientSearch();
+
+  // Initialize auto-resizing textarea and time validation
+  initAutoResize();
+
+  // Initialize appointment data for client-side filtering
+  initAppointmentData();
+
+  // Initialize live search for main filter (client-side, no page refresh)
+  initLiveSearch();
+
+  // Initialize live filtering for other filters
+  initLiveFilters();
+
+  // Initialize quick filter button active states
+  initQuickFilterButtons();
+
+  // Apply current filters after DOM is ready
+  setTimeout(() => {
+    filterAppointments({ silent: true });
+  }, 100);
+});
+
+// Close modal on outside click
+document.addEventListener('click', function(event) {
+  const modals = document.querySelectorAll('.modal');
+  modals.forEach(modal => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeModal();
+  }
+});
+</script>
+{% endblock %}

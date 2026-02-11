@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="{{ g.get('lang', 'en') }}" dir="{{ 'rtl' if g.get('lang') == 'ar' else 'ltr' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ t('images_page_title') }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme-system.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='diag_plus/style.css') }}">
+{% if theme_css %}<style>{{ theme_css|safe }}</style>{% endif %}
+<style>
+    :root{ --bg:var(--bg-primary,#f7f7fb); --panel:var(--bg-surface,#fff); --ring:var(--border-strong,#e5e7eb); --hover:#f3f4f6; --accent: var(--primary-color, #2563eb); --danger:#ef4444; --muted:var(--text-muted,#6b7280); --font-ar:var(--font-arabic,'Tajawal','Noto Sans Arabic','Segoe UI',Arial,sans-serif); --font-lat:var(--font-latin,'Segoe UI',Arial,sans-serif); }
+    body{ background:var(--page-bg, var(--bg)); color:var(--text-primary,#111827); font-family:var(--font-lat); }
+    html[lang="ar"] body{ font-family:var(--font-ar); }
+    .header{position:sticky; top:0; z-index:10; background:linear-gradient(90deg,color-mix(in srgb,var(--primary-color,#3b82f6) 10%,#f3f4ff) 0%,#fdfdfd 52%,color-mix(in srgb,var(--primary-color,#3b82f6) 10%,#f3f4ff) 100%); border-bottom:1px solid var(--ring);}
+    .bar{max-width:1200px; margin:0 auto; padding:12px 16px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+    .title{font-weight:700; font-size:18px; margin-right:auto;}
+    .btn{display:inline-flex; align-items:center; justify-content:center; padding:8px 12px; border:1px solid var(--primary-color,var(--accent)); border-radius:8px; background:var(--primary-color,var(--accent)); color:var(--btn-text-on-primary,#fff); cursor:pointer; text-decoration:none; transition:background-color .2s ease,border-color .2s ease,color .2s ease; font-family:inherit;}
+    .btn:hover{background:var(--primary-color,var(--accent)); filter:brightness(0.95); border-color:var(--primary-color,var(--accent));}
+    .btn.danger{background:#fee2e2; border-color:#fecaca; color:#991b1b;}
+    .btn.primary{background:var(--primary-color,var(--accent)); border-color:var(--primary-color,var(--accent)); color:var(--btn-text-on-primary,#fff);}
+    .btn:focus-visible{outline:2px solid var(--primary-color,var(--accent)); outline-offset:2px;}
+    .container{max-width:1200px; margin:0 auto; padding:16px;}
+    .drop{margin-top:12px; border:2px dashed var(--ring); border-radius:12px; padding:18px; background:#fff; display:flex; align-items:center; justify-content:center; color:var(--muted);}
+    .drop.dragover{border-color:var(--accent); background:#f0f7ff; color:#1f2937;}
+    .grid{margin-top:16px; display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:14px;}
+    .card{border:1px solid var(--ring); border-radius:12px; padding:8px; display:flex; flex-direction:column; gap:6px; background:#fff; position:relative;}
+    .thumb{width:100%; height:150px; object-fit:cover; border-radius:8px; cursor:pointer; background:#fafafa;}
+    .filename{font-size:12px; word-break:break-all;}
+    .toast{position:fixed; bottom:20px; right:20px; background:#111827; color:#fff; padding:10px 14px; border-radius:8px; opacity:0; transform:translateY(10px); transition:.2s ease; pointer-events:none;}
+    .toast.show{opacity:1; transform:translateY(0);}
+    .lightbox{position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center; z-index:50;}
+    .lightbox.show{display:flex;}
+    .panel{background:#fff; border-radius:12px; max-width:90vw; max-height:90vh; display:flex; flex-direction:column; overflow:hidden;}
+    .panel header, .panel footer{display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--ring);}
+    .panel footer{border-bottom:none; border-top:1px solid var(--ring); justify-content:flex-end;}
+    .panel main{padding:12px; overflow:auto;}
+    .panel img{max-width:82vw; max-height:70vh; display:block; margin:0 auto; border-radius:8px;}
+    .input{border:1px solid var(--ring); border-radius:8px; padding:6px 8px; width:240px;}
+    [dir="rtl"] .bar{flex-direction:row-reverse}
+    [dir="rtl"] .title{margin-right:0; margin-left:auto;}
+    [dir="rtl"] .toast{right:auto; left:20px;}
+  </style>
+</head>
+<body>
+{% macro tf(key, default_text) -%}
+  {%- set val = t(key) if t else default_text -%}
+  {{ default_text if val == key else val }}
+{%- endmacro %}
+  <div class="header">
+    <div class="bar">
+      <a id="back_btn" class="btn" href="{{ url_for('palmer_plus.diag_page', pid=pid, chart_type=chart_type) }}">← {{ t('back') }}</a>
+      <div class="title">{{ t('images_page_title') }}</div>
+      <label class="btn primary">
+        {{ t('import_images') }}
+        <input id="file_input" type="file" accept="image/*" multiple style="display:none">
+      </label>
+      <button id="delete_selected_btn" class="btn">{{ t('delete_selected') if t else 'Delete selected' }}</button>
+      <button id="select_all_btn" class="btn">{{ t('select_all') }}</button>
+      <button id="clear_selection_btn" class="btn">{{ t('clear_selection') }}</button>
+      <button id="export_selected_btn" class="btn">{{ t('export_selected') }}</button>
+      <a id="export_all_btn" class="btn danger" href="{{ url_for('palmer_plus.export_all_images', pid=pid) }}">{{ t('export_all') }}</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <div id="drop" class="drop">{{ t('images_drop_hint') }}</div>
+    <div id="grid" class="grid">
+      {% if images %}
+        {% for img in images %}
+          <label class="card" data-name="{{ img['name'] }}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <input type="checkbox" class="sel" value="{{ img['name'] }}">
+              <div>
+                <button type="button" class="btn" data-action="rename" style="padding:4px 8px;">{{ t('rename') if t else 'Rename' }}</button>
+                <button type="button" class="btn danger" data-action="delete" style="padding:4px 8px;">{{ t('delete') }}</button>
+              </div>
+            </div>
+            <img class="thumb" src="{{ url_for('palmer_plus.get_patient_image', pid=pid, filename=img['name']) }}" alt="">
+            <div class="filename">{{ img['name'] }}</div>
+          </label>
+        {% endfor %}
+      {% else %}
+        <div style="opacity:.7">{{ t('no_images_yet') }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="lightbox" class="lightbox" aria-hidden="true">
+    <div class="panel">
+      <header>
+        <strong id="lb_name">{{ t('image') if t else 'Image' }}</strong>
+        <span style="flex:1"></span>
+        <button id="lb_prev" class="btn">{{ t('prev') if t else 'Prev' }}</button>
+        <button id="lb_next" class="btn">{{ t('next') if t else 'Next' }}</button>
+        <button id="lb_close" class="btn">{{ t('close') if t else 'Close' }}</button>
+      </header>
+      <main>
+        <img id="lb_img" src="" alt="">
+      </main>
+      <footer>
+        <input id="lb_rename_input" class="input" placeholder="{{ tf('new_name_placeholder', 'New name.ext') }}">
+        <button id="lb_rename_btn" class="btn">{{ tf('rename', 'Rename') }}</button>
+        <button id="lb_delete_btn" class="btn danger">{{ t('delete') }}</button>
+      </footer>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+(function(){
+  // Query elements safely
+  const $ = (id) => document.getElementById(id);
+  const fileInput = $("file_input");
+  const drop = $("drop");
+  const CSRF_TOKEN = "{{ csrf_token() }}";
+  const toast = $("toast");
+  const grid = $("grid");
+
+  const btnExportSel = $("export_selected_btn");
+  const btnExportAll = $("export_all_btn");
+  const btnSelectAll = $("select_all_btn");
+  const btnClearSel = $("clear_selection_btn");
+  const btnDeleteSel = $("delete_selected_btn");
+
+  const lb = $("lightbox"), lbImg = $("lb_img"), lbName = $("lb_name"), lbInput = $("lb_rename_input");
+  const lbPrev = $("lb_prev"), lbNext = $("lb_next"), lbClose = $("lb_close"), lbRen = $("lb_rename_btn"), lbDel = $("lb_delete_btn");
+  const MSG = {
+    renamed: "{{ tf('renamed_ok', 'Renamed') }}",
+    renameFailed: "{{ tf('rename_failed', 'Rename failed') }}",
+    deleted: "{{ tf('deleted_ok', 'Deleted') }}",
+    deleteFailed: "{{ tf('delete_failed', 'Delete failed') }}",
+    deleteConfirmSingle: "{{ tf('delete_image_confirm', 'Delete this image?') }}",
+    uploadedWithSkip: "{{ tf('uploaded_with_skip', 'Uploaded {saved} • Skipped {skipped}') }}",
+    uploadedCount: "{{ tf('uploaded_count', 'Uploaded {count}') }}"
+  };
+
+  function showToast(msg){
+    if(!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(()=>toast.classList.remove('show'), 1600);
+  }
+
+  function selectedNames(){
+    const boxes = document.querySelectorAll('.sel:checked');
+    return Array.from(boxes).map(x=>x.value);
+  }
+
+  // Upload helpers
+  async function uploadFiles(files){
+    if(!files || !files.length){ showToast("{{ t('no_files') }}"); return; }
+    const fd = new FormData();
+    for(const f of files){ fd.append('files', f); }
+    const url = "{{ url_for('palmer_plus.upload_patient_images', pid=pid) }}";
+    try{
+      const r = await fetch(url, {method:'POST', body: fd, headers: {"X-CSRFToken": CSRF_TOKEN}});
+      if(!r.ok){ showToast("{{ t('upload_failed') }}"); return; }
+      const j = await r.json().catch(()=>({}));
+      if(j.duplicates && !j.saved){ showToast("{{ t('duplicates_skipped') }}"); }
+      else if(j.duplicates){ showToast(MSG.uploadedWithSkip.replace('{saved}', j.saved || 0).replace('{skipped}', j.duplicates || 0)); }
+      else { showToast(MSG.uploadedCount.replace('{count}', j.saved || 0)); }
+      setTimeout(()=>location.reload(), 400);
+    }catch(e){
+      showToast("{{ t('upload_failed') }}");
+    }
+  }
+
+  if(fileInput){
+    fileInput.addEventListener('change', ()=> uploadFiles(fileInput.files));
+  }
+  if(drop){
+    ['dragenter','dragover'].forEach(ev=> drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.add('dragover'); }));
+    ['dragleave','drop'].forEach(ev=> drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.remove('dragover'); }));
+    drop.addEventListener('drop', (e)=> uploadFiles(e.dataTransfer.files));
+  }
+
+  // Export selected (GET)
+  if(btnExportSel){
+    btnExportSel.addEventListener('click', ()=>{
+      const names = selectedNames();
+      if(!names.length){ showToast("{{ t('no_images_selected') }}"); return; }
+      const qs = new URLSearchParams();
+      qs.set('files', JSON.stringify(names));
+      qs.set('chart_type', "{{ chart_type }}");
+      window.location = "{{ url_for('palmer_plus.export_selected_images', pid=pid) }}" + "?" + qs.toString();
+    });
+  }
+
+  // Select helpers
+  if(btnSelectAll){
+    btnSelectAll.addEventListener('click', ()=>{
+      document.querySelectorAll('.sel').forEach(ch=> ch.checked = true);
+    });
+  }
+  if(btnClearSel){
+    btnClearSel.addEventListener('click', ()=>{
+      document.querySelectorAll('.sel').forEach(ch=> ch.checked = false);
+    });
+  }
+
+  // Bulk delete
+  if(btnDeleteSel){
+    btnDeleteSel.addEventListener('click', async ()=>{
+      const names = selectedNames();
+      if(!names.length){ showToast("{{ t('no_images_selected') }}"); return; }
+      if(!confirm("{{ t('delete_selected_confirm') }}")) return;
+      const r = await fetch("{{ url_for('palmer_plus.delete_patient_images', pid=pid) }}", {
+        method:'POST', headers:{'Content-Type':'application/json',"X-CSRFToken": CSRF_TOKEN}, body: JSON.stringify({names})
+      });
+      if(r.ok){ showToast("{{ t('deleted_ok') }}"); setTimeout(()=>location.reload(), 350); } else { showToast("{{ t('delete_failed') }}"); }
+    });
+  }
+
+  // Lightbox
+  let items = Array.from(document.querySelectorAll('.card'));
+  let index = -1;
+  function openAt(i){
+    if(i<0 || i>=items.length) return;
+    index = i;
+    const el = items[i];
+    const img = el.querySelector('.thumb');
+    const name = el.getAttribute('data-name');
+    lbImg.src = img.src; lbName.textContent = name; lbInput.value = name;
+    lb.classList.add('show'); lb.setAttribute('aria-hidden','false');
+  }
+  function closeLB(){ lb.classList.remove('show'); lb.setAttribute('aria-hidden','true'); }
+  function next(delta){ if(index<0) return; const i = index + delta; if(i<0 || i>=items.length) return; openAt(i); }
+
+  if(grid){
+    grid.addEventListener('click', async (e)=>{
+      const card = e.target.closest('.card'); if(!card) return;
+      const name = card.getAttribute('data-name');
+      if(e.target.classList.contains('thumb')){ openAt(items.indexOf(card)); return; }
+      if(e.target.dataset.action === 'delete'){
+        if(!confirm("{{ t('delete_selected_confirm') }}")) return;
+        const r = await fetch("{{ url_for('palmer_plus.delete_patient_images', pid=pid) }}", {method:'POST', headers:{'Content-Type':'application/json',"X-CSRFToken": CSRF_TOKEN}, body: JSON.stringify({names:[name]})});
+        if(r.ok){ showToast("{{ t('deleted_ok') }}"); setTimeout(()=>location.reload(), 350); } else { showToast("{{ t('delete_failed') }}"); }
+        return;
+      }
+      if(e.target.dataset.action === 'rename'){
+        const nn = prompt("{{ t('new_name_prompt') }}", name);
+        if(!nn || nn===name) return;
+        const r = await fetch("{{ url_for('palmer_plus.rename_patient_image', pid=pid) }}", {method:'POST', headers:{'Content-Type':'application/json',"X-CSRFToken": CSRF_TOKEN}, body: JSON.stringify({old:name, new:nn})});
+        if(r.ok){ showToast("{{ t('renamed_ok') }}"); setTimeout(()=>location.reload(), 350); } else { showToast("{{ t('rename_failed') }}"); }
+        return;
+      }
+    });
+  }
+
+  if(lbPrev) lbPrev.addEventListener('click', ()=> next(-1));
+  if(lbNext) lbNext.addEventListener('click', ()=> next(1));
+  if(lbClose) lbClose.addEventListener('click', closeLB);
+  if(lb) lb.addEventListener('click', (e)=>{ if(e.target===lb) closeLB(); });
+  if(lbRen) lbRen.addEventListener('click', async ()=>{
+    const old = lbName.textContent.trim();
+    const nn = lbInput.value.trim(); if(!nn || nn===old) return;
+    const r = await fetch("{{ url_for('palmer_plus.rename_patient_image', pid=pid) }}", {method:'POST', headers:{'Content-Type':'application/json',"X-CSRFToken": CSRF_TOKEN}, body: JSON.stringify({old, new:nn})});
+    if(r.ok){ showToast(MSG.renamed); setTimeout(()=>location.reload(), 350); } else { showToast(MSG.renameFailed); }
+  });
+  if(lbDel) lbDel.addEventListener('click', async ()=>{
+    const old = lbName.textContent.trim();
+    if(!confirm(MSG.deleteConfirmSingle)) return;
+    const r = await fetch("{{ url_for('palmer_plus.delete_patient_images', pid=pid) }}", {method:'POST', headers:{'Content-Type':'application/json',"X-CSRFToken": CSRF_TOKEN}, body: JSON.stringify({names:[old]})});
+    if(r.ok){ showToast(MSG.deleted); setTimeout(()=>location.reload(), 350); } else { showToast(MSG.deleteFailed); }
+  });
+})();
+</script>
+</body>
+</html>

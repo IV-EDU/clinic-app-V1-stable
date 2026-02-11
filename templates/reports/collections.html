@@ -1,0 +1,336 @@
+{% extends '_base.html' %}
+{% block content %}
+<div class="card reports-header-card">
+  <div class="reports-header-main">
+    <div>
+      <p class="eyebrow">{{ t('collections') }}</p>
+      <h1 class="reports-title">
+        {% if tab == 'daily' %}{{ t('tab_daily') }}{% else %}{{ t('tab_monthly') }}{% endif %}
+      </h1>
+    </div>
+    <div class="reports-header-right">
+      <div class="reports-view-switch">
+        <a class="btn secondary active" href="{{ url_for('reports.collections', tab=tab, f=from_date, t=to_date, view=view_mode) }}">{{ t('collections') }}</a>
+        <a class="btn secondary" href="{{ url_for('reports.collections_doctors', tab=tab, f=from_date, t=to_date, view=view_mode) }}">{{ t('collections_by_doctor') }}</a>
+        <a class="btn secondary" href="{{ url_for('reports.receivables') }}">{{ t('receivables') }}</a>
+      </div>
+      <div class="reports-tabs">
+        <a class="btn {% if tab=='daily' %}secondary active{% else %}secondary{% endif %}" href="{{ url_for('reports.collections', tab='daily', f=from_date, t=to_date, view=view_mode) }}">{{ t('tab_daily') }}</a>
+        <a class="btn {% if tab=='monthly' %}secondary active{% else %}secondary{% endif %}" href="{{ url_for('reports.collections', tab='monthly', f=from_date, t=to_date, view=view_mode) }}">{{ t('tab_monthly') }}</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card reports-filters-card">
+  <form method="get" class="reports-filters">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <div class="reports-filter-field">
+      <label class="h">{{ t('doctor') }}</label>
+      <select name="doctor">
+        <option value="all" {% if doctor_filter == 'all' %}selected{% endif %}>{{ t('all') }}</option>
+        {% for doc in doctors %}
+          <option value="{{ doc.doctor_id }}" {% if doctor_filter == doc.doctor_id %}selected{% endif %}>
+            {{ doc.doctor_label }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="reports-filter-field">
+      <label class="h">{{ t('view') }}</label>
+      <select name="view">
+        <option value="payments" {% if view_mode == 'payments' %}selected{% endif %}>{{ t('payments') }}</option>
+        <option value="treatments" {% if view_mode == 'treatments' %}selected{% endif %}>{{ t('treatments') }}</option>
+      </select>
+    </div>
+    <div class="reports-filter-field">
+      <label class="h">{{ t('from') }}</label>
+      <input type="date" name="f" value="{{ from_date or '' }}">
+    </div>
+    <div class="reports-filter-field">
+      <label class="h">{{ t('to') }}</label>
+      <input type="date" name="t" value="{{ to_date or '' }}">
+    </div>
+    <div class="reports-filter-actions">
+      <button class="btn primary" type="submit">{{ t('filter') }}</button>
+      <a class="btn secondary" href="{{ url_for('reports.collections', tab=tab, view=view_mode) }}">{{ t('reset') }}</a>
+      <a class="btn secondary" href="{{ export_url }}">{{ t('export') }}</a>
+    </div>
+  </form>
+  <p class="reports-hint">
+    {{ t('collections_any_hint') }}
+  </p>
+</div>
+
+<div class="card reports-summary-card">
+  <div class="reports-summary-grid">
+    <div class="summary-box">
+      <div class="box-label">{{ t('collections_total') }}</div>
+      <div class="box-value">{{ summary_total_fmt }} EGP</div>
+    </div>
+    <div class="summary-box">
+      <div class="box-label">{{ t('payments') }}</div>
+      <div class="box-value">{{ summary_payments_count }}</div>
+    </div>
+    <div class="summary-box">
+      <div class="box-label">{{ t('patients') }}</div>
+      <div class="box-value">{{ summary_unique_patients }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card reports-table-card">
+  {% if tab=='daily' %}
+    {% if rows %}
+      <table class="reports-table">
+        <thead>
+          <tr>
+            <th>{{ t('date') }}</th>
+            <th class="numeric">{{ t('collected') }}</th>
+            <th class="actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td class="c">{{ r['paid_at'] }}</td>
+            <td class="c numeric">{{ '{:.2f}'.format((r['amt'] or 0)/100) }}</td>
+            <td class="c actions">
+              <button type="button"
+                      class="btn secondary reports-view-btn"
+                      data-kind="day"
+                      data-label="{{ r['paid_at'] }}"
+                      data-url="{{ url_for('reports.collections_day', d=r['paid_at'], format='json', doctor=doctor_filter, view=view_mode) }}">
+                {{ t('view_day') }}
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <div class="pagination-row">
+        <div class="pagination-info">
+          {{ t('page') }} {{ page }}{% if total_pages %} / {{ total_pages }}{% endif %}
+        </div>
+        <div class="pagination-controls">
+          {% if has_prev %}
+            <a class="btn secondary" href="{{ url_for('reports.collections', tab=tab, f=from_date, t=to_date, doctor=doctor_filter, view=view_mode, page=page-1) }}">{{ t('prev') }}</a>
+          {% else %}
+            <button class="btn secondary" disabled>{{ t('prev') }}</button>
+          {% endif %}
+
+          {% for pnum in range(1, total_pages + 1) %}
+            {% if pnum == page %}
+              <span class="btn primary">{{ pnum }}</span>
+            {% else %}
+              <a class="btn secondary" href="{{ url_for('reports.collections', tab=tab, f=from_date, t=to_date, doctor=doctor_filter, view=view_mode, page=pnum) }}">{{ pnum }}</a>
+            {% endif %}
+          {% endfor %}
+
+          {% if has_next %}
+            <a class="btn primary" href="{{ url_for('reports.collections', tab=tab, f=from_date, t=to_date, doctor=doctor_filter, view=view_mode, page=page+1) }}">{{ t('next') }}</a>
+          {% else %}
+            <button class="btn secondary" disabled>{{ t('next') }}</button>
+          {% endif %}
+        </div>
+      </div>
+    {% else %}<div class="reports-empty">{{ t('no_rows') }}</div>{% endif %}
+  {% else %}
+    {% if rows %}
+      <table class="reports-table">
+        <thead>
+          <tr>
+            <th>{{ t('month') }}</th>
+            <th class="numeric">{{ t('collected') }}</th>
+            <th class="actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td class="c">{{ r['month'] }}</td>
+            <td class="c numeric">{{ '{:.2f}'.format((r['amt'] or 0)/100) }}</td>
+            <td class="c actions">
+              <button type="button"
+                      class="btn secondary reports-view-btn"
+                      data-kind="{{ 'range' if range_mode else 'month' }}"
+                      data-label="{{ r['month'] }}"
+                      data-url="{% if range_mode %}{{ url_for('reports.collections_range', f=from_date or '', t=to_date or '', format='json', doctor=doctor_filter, view=view_mode) }}{% else %}{{ url_for('reports.collections_month', m=r['month'], f=from_date or '', t=to_date or '', format='json', doctor=doctor_filter, view=view_mode) }}{% endif %}">
+                {% if range_mode %}{{ t('view_range') }}{% else %}{{ t('view_month') }}{% endif %}
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      <div class="pagination-row">
+        <div class="pagination-info">
+          {{ t('page') }} {{ page }}{% if total_pages %} / {{ total_pages }}{% endif %}
+        </div>
+        <div class="pagination-controls">
+          {% if has_prev %}
+            <a class="btn secondary" href="{{ url_for('reports.collections', tab=tab, f=from_date, t=to_date, doctor=doctor_filter, view=view_mode, page=page-1) }}">{{ t('prev') }}</a>
+          {% else %}
+            <button class="btn secondary" disabled>{{ t('prev') }}</button>
+          {% endif %}
+
+          {% for pnum in range(1, total_pages + 1) %}
+            {% if pnum == page %}
+              <span class="btn primary">{{ pnum }}</span>
+            {% else %}
+              <a class="btn secondary" href="{{ url_for('reports.collections', tab=tab, f=from_date, t=to_date, doctor=doctor_filter, view=view_mode, page=pnum) }}">{{ pnum }}</a>
+            {% endif %}
+          {% endfor %}
+
+          {% if has_next %}
+            <a class="btn primary" href="{{ url_for('reports.collections', tab=tab, f=from_date, t=to_date, doctor=doctor_filter, view=view_mode, page=page+1) }}">{{ t('next') }}</a>
+          {% else %}
+            <button class="btn secondary" disabled>{{ t('next') }}</button>
+          {% endif %}
+        </div>
+      </div>
+    {% else %}<div class="reports-empty">{{ t('no_rows') }}</div>{% endif %}
+  {% endif %}
+</div>
+
+<!-- Details Modal -->
+<div id="reports-modal" class="reports-modal" aria-hidden="true">
+  <div class="reports-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="reports-modal-title">
+    <div class="reports-modal-header">
+      <h2 id="reports-modal-title" class="reports-modal-title"></h2>
+      <button type="button" class="reports-modal-close" aria-label="{{ t('close') }}">&times;</button>
+    </div>
+    <div class="reports-modal-body">
+      <div id="reports-modal-content"></div>
+    </div>
+    <div class="reports-modal-footer">
+      <a id="reports-modal-export" href="#" class="btn secondary" target="_blank" rel="noopener">{{ t('export') }}</a>
+      <button type="button" class="btn" id="reports-modal-close-btn">{{ t('close') }}</button>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+{{ super() }}
+<script>
+(function(){
+  function qs(sel){ return document.querySelector(sel); }
+  function qsa(sel){ return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+
+  var modal = qs('#reports-modal');
+  var titleEl = qs('#reports-modal-title');
+  var contentEl = qs('#reports-modal-content');
+  var exportEl = qs('#reports-modal-export');
+  var closeBtn = qs('#reports-modal-close-btn');
+  var closeX = qs('.reports-modal-close');
+
+  function openModal(){
+    if(!modal) return;
+    modal.setAttribute('aria-hidden', 'false');
+    modal.classList.add('open');
+  }
+
+  function closeModal(){
+    if(!modal) return;
+    modal.setAttribute('aria-hidden', 'true');
+    modal.classList.remove('open');
+  }
+
+  function renderModal(data){
+    var rows = data && data.rows ? data.rows : [];
+    if(!rows.length){
+      contentEl.innerHTML = '<div class="reports-empty">{{ t("no_rows") }}</div>';
+      return;
+    }
+    var viewMode = (data && data.view_mode) ? data.view_mode : 'payments';
+    var html = [];
+    html.push('<div class="reports-summary-grid" style="margin-bottom:12px;">');
+    html.push('<div class="summary-box"><div class="box-label">{{ t("collections_total") }}</div><div class="box-value">'+ (data.summary_total_fmt || '') +' EGP</div></div>');
+    if(viewMode === 'treatments'){
+      html.push('<div class="summary-box"><div class="box-label">{{ t("treatments") }}</div><div class="box-value">'+ (data.treatments_count || 0) +'</div></div>');
+    }else{
+      html.push('<div class="summary-box"><div class="box-label">{{ t("payments") }}</div><div class="box-value">'+ (data.payments_count || 0) +'</div></div>');
+    }
+    html.push('<div class="summary-box"><div class="box-label">{{ t("patients") }}</div><div class="box-value">'+ (data.patients_count || 0) +'</div></div>');
+    html.push('</div>');
+    html.push('<table class="reports-table">');
+    html.push('<thead><tr>');
+    if(viewMode === 'treatments'){
+      html.push('<th>{{ t("patient") }}</th>');
+      html.push('<th>{{ t("treatment_name") }}</th>');
+      html.push('<th class="numeric">{{ t("amount") }}</th>');
+      html.push('<th class="numeric">{{ t("payments") }}</th>');
+    }else{
+      html.push('<th>{{ t("date") }}</th>');
+      html.push('<th>{{ t("patient") }}</th>');
+      html.push('<th class="numeric">{{ t("amount") }}</th>');
+      html.push('<th>{{ t("method") }}</th>');
+      html.push('<th>{{ t("doctor") }}</th>');
+    }
+    html.push('</tr></thead><tbody>');
+    rows.forEach(function(r){
+      html.push('<tr>');
+      var patientCell = (r.patient_url ? '<a href="'+ r.patient_url +'" target="_blank" rel="noopener">'+ (r.full_name || '') +'</a>' : (r.full_name || ''));
+      if(viewMode === 'treatments'){
+        html.push('<td class="c">'+ patientCell +'</td>');
+        html.push('<td class="c">'+ (r.treatment || '—') +'</td>');
+        html.push('<td class="c numeric">'+ (r.amount_fmt || '') +'</td>');
+        html.push('<td class="c numeric">'+ (r.payments_count || 0) +'</td>');
+      }else{
+        html.push('<td class="c">'+ (r.paid_at || '') +'</td>');
+        html.push('<td class="c">'+ patientCell +'</td>');
+        html.push('<td class="c numeric">'+ (r.amount_fmt || '') +'</td>');
+        html.push('<td class="c">'+ (r.method || '') +'</td>');
+        var doctorLabel = r.doctor_label || '';
+        var doctorCell = doctorLabel ? '<span class="reports-doctor-chip">'+ doctorLabel +'</span>' : '';
+        html.push('<td class="c">'+ doctorCell +'</td>');
+      }
+      html.push('</tr>');
+    });
+    html.push('</tbody></table>');
+    contentEl.innerHTML = html.join('');
+  }
+
+  function attachHandlers(){
+    if(closeBtn){ closeBtn.addEventListener('click', closeModal); }
+    if(closeX){ closeX.addEventListener('click', closeModal); }
+    if(modal){
+      modal.addEventListener('click', function(evt){
+        if(evt.target === modal){ closeModal(); }
+      });
+    }
+
+    qsa('.reports-view-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var url = btn.getAttribute('data-url');
+        var label = btn.getAttribute('data-label') || '';
+        if(!url) return;
+        fetch(url, { credentials: 'same-origin' })
+          .then(function(res){ return res.json(); })
+          .then(function(data){
+            if(titleEl){
+              titleEl.textContent = data.title || label;
+            }
+            if(exportEl && data.export_url){
+              exportEl.href = data.export_url;
+            }
+            renderModal(data);
+            openModal();
+          })
+          .catch(function(){
+            contentEl.innerHTML = '<div class="reports-empty">{{ t("admin_generic_error") }}</div>';
+            openModal();
+          });
+      });
+    });
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', attachHandlers);
+  }else{
+    attachHandlers();
+  }
+})();
+</script>
+{% endblock %}
+{% endblock %}

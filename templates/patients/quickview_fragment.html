@@ -1,0 +1,70 @@
+<div class="card patient-header-card" style="margin:0;">
+  <div class="patient-summary-grid">
+    <div class="summary-item">
+      <div class="summary-label">{{ t('file_no') }}</div>
+      <div class="summary-value">
+        <span class="page-chip">{{ p['short_id'] or '—' }}</span>
+      </div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">{{ t('page_numbers') }}</div>
+      <div class="summary-value">
+        <span class="page-chip">📄 <span class="page-chip-notebook">{{ primary_page_number or '—' }}</span></span>
+      </div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">{{ t('name') }}</div>
+      <div class="summary-value">{{ p['full_name'] }}</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">{{ t('phone') }}</div>
+      <div class="summary-value">{{ p['phone'] or '—' }}</div>
+    </div>
+    <div class="summary-item">
+      <div class="summary-label">{{ t('overall_balance') }}</div>
+      <div class="summary-value">
+        <div class="bal-box {{ overall_class }}">{{ overall_fmt }}</div>
+      </div>
+    </div>
+  </div>
+  {% if p['notes'] %}
+  <div class="patient-notes" style="margin-top:0.75rem;">
+    <div class="summary-label">{{ t('sheet_notes') }}</div>
+    <div class="summary-value wrap-text">{{ p['notes'] }}</div>
+  </div>
+  {% endif %}
+  <div class="actions-row" style="justify-content:flex-end;margin-top:0.75rem;">
+    <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=p['id']) }}" target="_blank" rel="noopener">{{ t('open') }}</a>
+  </div>
+</div>
+
+{% if recent_payments %}
+<div class="card" style="margin-top:0.75rem;">
+  <div class="card-header">
+    <h4 class="card-title" style="font-size:1rem;">{{ t('payments') }}</h4>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th scope="col">{{ t('date') }}</th>
+          <th scope="col">{{ t('payment_method') }}</th>
+          <th scope="col">{{ t('total') }}</th>
+          <th scope="col">{{ t('remaining_amount') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pay in recent_payments %}
+        <tr>
+          <td>{{ pay.paid_at or '—' }}</td>
+          <td>{{ pay.method or '—' }}</td>
+          <td>{{ pay.total_fmt or '—' }}</td>
+          <td>{{ pay.remaining_fmt or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+

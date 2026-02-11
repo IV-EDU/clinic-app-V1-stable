@@ -1,0 +1,96 @@
+{% extends "_base.html" %}
+
+{% block content %}
+<div class="card">
+  <h1>{{ t("new_role") if not role else t("edit_role") }}</h1>
+
+  {% if errors %}
+    <div class="alert alert-danger" role="alert">
+      {% for err in errors %}
+        <div>{{ err }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-group">
+      <label for="name">Role name</label>
+      <input id="name" name="name" class="form-control" value="{{ role.name if role else '' }}" required>
+    </div>
+
+    <div class="form-group">
+      <label for="description">{{ t("description") }}</label>
+      <textarea id="description" name="description" class="form-control" rows="2">{{ role.description if role else "" }}</textarea>
+    </div>
+
+    {% set ns = namespace(merge_perm=None) %}
+    {% for perm in permissions %}
+      {% if perm.code == "patients:merge" %}
+        {% set ns.merge_perm = perm %}
+      {% endif %}
+    {% endfor %}
+
+    {% if ns.merge_perm %}
+      <fieldset style="margin: 12px 0 14px;">
+        <legend>{{ t("role_sensitive_actions_title") }}</legend>
+        <label>
+          <input type="checkbox" name="permissions" value="{{ ns.merge_perm.id }}" {% if role and ns.merge_perm in role.permissions %}checked{% endif %}>
+          <strong>{{ t("role_sensitive_merge_label") }}</strong>
+        </label>
+        <div style="margin-top: 6px; color: #667085; font-size: 13px;">
+          {{ t("role_sensitive_merge_warning") }}
+        </div>
+      </fieldset>
+    {% endif %}
+
+    <fieldset>
+      <legend>{{ t("permissions") }}</legend>
+
+      <div class="form-group" style="margin: 10px 0 12px;">
+        <input id="permSearch" class="form-control" type="text" placeholder="{{ t('role_permissions_search_placeholder') }}" autocomplete="off">
+      </div>
+
+      <div id="permList">
+        {% for perm in permissions %}
+          {% if perm.code != "patients:merge" %}
+            <div class="perm-item" data-perm-search="{{ (perm.code ~ ' ' ~ (perm.description or '')) | lower }}" style="margin: 8px 0;">
+              <label style="display: inline-flex; align-items: center; gap: 8px;">
+                <input type="checkbox" name="permissions" value="{{ perm.id }}" {% if role and perm in role.permissions %}checked{% endif %}>
+                <span><strong>{{ perm.code }}</strong></span>
+              </label>
+              {% if perm.description %}
+                <div style="margin-inline-start: 26px; color: #667085; font-size: 13px;">{{ perm.description }}</div>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <div class="actions" style="margin-top: 12px;">
+      <button class="btn btn-primary" type="submit">{{ t("save") }}</button>
+      <a class="btn btn-secondary" href="{{ url_for('admin_settings.index') }}">{{ t("cancel") }}</a>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var input = document.getElementById('permSearch');
+  if(!input) return;
+  var items = Array.prototype.slice.call(document.querySelectorAll('[data-perm-search]'));
+  function norm(s){ return (s||'').toString().toLowerCase(); }
+  function update(){
+    var q = norm(input.value).trim();
+    items.forEach(function(el){
+      var hay = norm(el.getAttribute('data-perm-search'));
+      var show = !q || hay.indexOf(q) !== -1;
+      el.style.display = show ? '' : 'none';
+    });
+  }
+  input.addEventListener('input', update);
+});
+</script>
+{% endblock %}

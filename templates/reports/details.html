@@ -1,0 +1,41 @@
+{% extends '_base.html' %}
+{% block content %}
+<div class="card reports-header-card">
+  <div class="reports-header-main">
+    <div class="reports-header-left">
+      <a class="btn secondary" href="{{ back_href or back_url() }}">← {{ t('back') }}</a>
+    </div>
+    <div class="reports-header-title">
+      <h1 class="reports-title">{{ title }}</h1>
+    </div>
+    <div class="reports-header-right">
+      <a class="btn secondary" href="{{ export_url }}">{{ t('export') }}</a>
+    </div>
+  </div>
+</div>
+
+<div class="card reports-table-card">
+  {% if rows %}
+    <table class="reports-table">
+      <thead>
+        <tr>
+          <th>{{ t('date') }}</th>
+          <th>{{ t('patient') }}</th>
+          <th class="numeric">{{ t('amount') }}</th>
+          <th>{{ t('method') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="c">{{ r['paid_at'] }}</td>
+          <td class="c">{{ r['full_name'] }}</td>
+          <td class="c numeric">{{ '{:.2f}'.format((r['amount_cents'] or 0)/100) }}</td>
+          <td class="c">{{ r['method'] or '' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% else %}<div class="reports-empty">{{ t('no_rows') }}</div>{% endif %}
+</div>
+{% endblock %}

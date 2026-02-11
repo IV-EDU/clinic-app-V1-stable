@@ -1,0 +1,13 @@
+{% extends '_base.html' %}
+{% block content %}
+{% if show_id_header %}
+<div class="card payment-summary-card">
+  <div class="grid payment-patient-grid">
+    <div><div class="h">{{ t('file_no') }}</div><div class="c">{{ p['short_id'] }}</div></div>
+    <div><div class="h">{{ t('name') }}</div><div class="c">{{ p['full_name'] }}</div></div>
+    <div><div class="h">{{ t('phone') }}</div><div class="c">{{ p['phone'] or '—' }}</div></div>
+  </div>
+</div>
+{% endif %}
+{% include 'payments/_form_fields.html' %}
+{% endblock %}

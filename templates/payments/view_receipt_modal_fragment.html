@@ -1,0 +1,127 @@
+{% macro kv_row(label, value) -%}
+  <div class="kv-line">
+    <span class="kv-label">{{ label }}</span>
+    <strong class="kv-value">{{ value }}</strong>
+  </div>
+{%- endmacro %}
+
+<div class="receipt-modal-host">
+  <div class="receipt-card" dir="{{ dir|default('ltr') }}">
+    {% set receipt_scope = scope|default('payment_only') %}
+    {% set show_snapshot = (receipt_scope == 'payment_snapshot') %}
+    {% set clinic_title = clinic.name or t('payment_summary') %}
+    <header class="receipt-header">
+      {% if (dir|default('ltr')) == 'rtl' %}
+        <div class="receipt-meta">
+          {{ kv_row(t('receipt_number_label'), receipt.number) }}
+          {{ kv_row(t('receipt_date_label'), receipt.date) }}
+          {{ kv_row(t('payment_method'), receipt.method or t('method_cash')) }}
+        </div>
+        <div class="clinic-block">
+          <div class="clinic-brand">
+            {% if pdf_logo_url %}
+              <div class="clinic-logo-wrapper">
+                <img
+                  src="{{ pdf_logo_url }}"
+                  alt="{{ clinic_title }}"
+                  class="clinic-logo-img"
+                  onerror="this.closest('.clinic-logo-wrapper').style.display='none';this.closest('.clinic-brand').querySelector('.clinic-name-fallback').style.display='block';"
+                >
+              </div>
+              <div class="clinic-name clinic-name-fallback" style="display:none">{{ clinic_title }}</div>
+            {% else %}
+              <div class="clinic-name">{{ clinic_title }}</div>
+            {% endif %}
+          </div>
+          {% if clinic.address %}<div class="clinic-meta">{{ clinic.address }}</div>{% endif %}
+          {% if clinic.phone %}<div class="clinic-meta">{{ clinic.phone }}</div>{% endif %}
+        </div>
+      {% else %}
+        <div class="clinic-block">
+          <div class="clinic-brand">
+            {% if pdf_logo_url %}
+              <div class="clinic-logo-wrapper">
+                <img
+                  src="{{ pdf_logo_url }}"
+                  alt="{{ clinic_title }}"
+                  class="clinic-logo-img"
+                  onerror="this.closest('.clinic-logo-wrapper').style.display='none';this.closest('.clinic-brand').querySelector('.clinic-name-fallback').style.display='block';"
+                >
+              </div>
+              <div class="clinic-name clinic-name-fallback" style="display:none">{{ clinic_title }}</div>
+            {% else %}
+              <div class="clinic-name">{{ clinic_title }}</div>
+            {% endif %}
+          </div>
+          {% if clinic.address %}<div class="clinic-meta">{{ clinic.address }}</div>{% endif %}
+          {% if clinic.phone %}<div class="clinic-meta">{{ clinic.phone }}</div>{% endif %}
+        </div>
+        <div class="receipt-meta">
+          {{ kv_row(t('receipt_number_label'), receipt.number) }}
+          {{ kv_row(t('receipt_date_label'), receipt.date) }}
+          {{ kv_row(t('payment_method'), receipt.method or t('method_cash')) }}
+        </div>
+      {% endif %}
+    </header>
+
+    <section class="info-grid">
+      {% if (dir|default('ltr')) == 'rtl' %}
+        <div class="info-block">
+          <div class="block-title">{{ t('payment') }}</div>
+          {{ kv_row(t('amount'), receipt.paid) }}
+          {{ kv_row(t('doctor'), receipt.doctor) }}
+          {{ kv_row(t('payment_method'), receipt.method or t('method_cash')) }}
+        </div>
+        <div class="info-block">
+          <div class="block-title">{{ t('receipt_patient_label') }}</div>
+          {{ kv_row(t('name'), patient.name) }}
+          {{ kv_row(t('file_no'), patient.file_no) }}
+          {{ kv_row(t('phone'), patient.phone or '—') }}
+        </div>
+      {% else %}
+        <div class="info-block">
+          <div class="block-title">{{ t('receipt_patient_label') }}</div>
+          {{ kv_row(t('name'), patient.name) }}
+          {{ kv_row(t('file_no'), patient.file_no) }}
+          {{ kv_row(t('phone'), patient.phone or '—') }}
+        </div>
+        <div class="info-block">
+          <div class="block-title">{{ t('payment') }}</div>
+          {{ kv_row(t('amount'), receipt.paid) }}
+          {{ kv_row(t('doctor'), receipt.doctor) }}
+          {{ kv_row(t('payment_method'), receipt.method or t('method_cash')) }}
+        </div>
+      {% endif %}
+    </section>
+
+    {% if show_snapshot and snapshot %}
+      <section class="note-block" data-section="snapshot">
+        <div class="block-title">{{ t('payment_snapshot') }}</div>
+        <div class="info-block">
+          {{ kv_row(t('summary_total'), snapshot.total) }}
+          {{ kv_row(t('summary_discount'), snapshot.discount) }}
+          {{ kv_row(t('summary_paid'), snapshot.paid_so_far) }}
+          {{ kv_row(t('summary_remaining'), snapshot.remaining) }}
+        </div>
+      </section>
+    {% endif %}
+
+    {% if receipt.treatment %}
+      <section class="note-block" data-section="treatment">
+        <div class="block-title">{{ t('treatment_notes') }}</div>
+        <p class="note-text" dir="auto">{{ receipt.treatment }}</p>
+      </section>
+    {% endif %}
+
+    {% if receipt.notes %}
+      <section class="note-block" data-section="notes">
+        <div class="block-title">{{ t('payment_notes') }}</div>
+        <p class="note-text" dir="auto">{{ receipt.notes }}</p>
+      </section>
+    {% endif %}
+
+    <footer class="receipt-footer">
+      <div class="thanks">{{ t('thank_you_message') }}</div>
+    </footer>
+  </div>
+</div>

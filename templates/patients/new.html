@@ -1,0 +1,22 @@
+{% extends '_base.html' %}
+{% import '_macros.html' as macros %}
+{% block content %}
+<div class="card">
+  <h3 style="text-align:center">{{ t('new_patient') }}</h3>
+  <form method="post" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row" style="flex-basis:100%">
+      {{ macros.labeled_input('short_id', t('file_no'), placeholder=t('file_no_hint')) }}
+      {% if show_file_numbers %}
+        {{ macros.labeled_input('primary_page_number', t('page_numbers'), placeholder=t('page_number_placeholder')) }}
+      {% endif %}
+      {{ macros.labeled_input('full_name', t('name'), required=True) }}
+      {{ macros.labeled_input('phone', t('phone'), placeholder=t('optional')) }}
+    </div>
+    {{ macros.labeled_textarea('notes', t('notes'), placeholder=t('optional')) }}
+    <div style="flex-basis:100%;display:flex;gap:8px;justify-content:center">
+      <a class="btn secondary" href="{{ url_for('index') }}">{{ t('cancel') }}</a><button>{{ t('save') }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,461 @@
+{% extends 'expenses/base.html' %}
+
+{% block title %}{{ tf('receipt_files_title', 'Receipt Files') }} - {{ receipt.serial_number }}{% endblock %}
+
+{% block expenses_content %}
+<div class="receipt-files-container">
+    <div class="page-header">
+        <div class="receipt-info">
+            <h1>{{ tf('files_for_receipt', 'Files for Receipt') }} #{{ receipt.serial_number }}</h1>
+            <div class="receipt-meta">
+                <span>{{ receipt.receipt_date }}</span>
+                <span>{{ receipt.supplier_name }}</span>
+                <span>{{ receipt.total_amount_fmt }} EGP</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('expenses.view_receipt', expense_id=receipt.id) }}" class="btn secondary">
+                <i class="fa fa-arrow-left"></i> {{ tf('back_to_receipt', 'Back to Receipt') }}
+            </a>
+            {% if current_user.has_permission('expenses:edit') %}
+                <button type="button" class="btn primary" onclick="showFileUpload()">
+                    <i class="fa fa-plus"></i> {{ tf('add_files', 'Add Files') }}
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if files %}
+        <div class="files-section">
+            <h2>{{ tf('attached_files', 'Attached Files') }} ({{ files|length }})</h2>
+            <div class="files-grid">
+                {% for file in files %}
+                <div class="file-card">
+                    <div class="file-preview">
+                        {% if file.file_type in ['jpg', 'jpeg', 'png'] %}
+                            <img src="{{ file.file_url }}" alt="{{ file.original_filename }}" class="file-image" onclick="previewImage('{{ file.file_url }}', '{{ file.original_filename }}')">
+                        {% elif file.file_type == 'pdf' %}
+                            <div class="pdf-preview">
+                                <i class="fa fa-file-pdf text-danger file-icon"></i>
+                                <span class="file-label">{{ tf('pdf_document', 'PDF Document') }}</span>
+                            </div>
+                        {% else %}
+                            <div class="file-preview">
+                                <i class="fa fa-file text-secondary file-icon"></i>
+                                <span class="file-label">{{ file.file_type.upper() }} {{ tf('file_label', 'File') }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="file-details">
+                        <div class="file-name" title="{{ file.original_filename }}">{{ file.original_filename }}</div>
+                        <div class="file-meta">
+                            <span class="file-size">{{ (file.file_size / 1024)|round(1) }} KB</span>
+                            <span class="file-date">{{ file.upload_date[:10] }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="file-actions">
+                        <a href="{{ file.file_url }}" target="_blank" class="btn btn-sm secondary" title="{{ tf('view', 'View') }}">
+                            <i class="fa fa-eye"></i>
+                        </a>
+                        <a href="{{ file.file_url }}" download="{{ file.original_filename }}" class="btn btn-sm secondary" title="{{ tf('download', 'Download') }}">
+                            <i class="fa fa-download"></i>
+                        </a>
+                        {% if current_user.has_permission('expenses:edit') %}
+                            <button type="button" class="btn btn-sm danger" onclick="deleteFile('{{ file.id }}', '{{ file.original_filename }}')" title="{{ tf('delete', 'Delete') }}">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fa fa-paperclip empty-icon"></i>
+            <h3>{{ tf('no_files_attached', 'No Files Attached') }}</h3>
+            <p>{{ tf('upload_receipt_files_hint', 'Upload receipt files to keep digital copies of your expense receipts.') }}</p>
+            {% if current_user.has_permission('expenses:edit') %}
+                <button type="button" class="btn primary" onclick="showFileUpload()">
+                    <i class="fa fa-plus"></i> {{ tf('upload_first_file', 'Upload First File') }}
+                </button>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- File Upload Section (Hidden by default) -->
+    <div class="file-upload-section" id="fileUploadSection" style="display: none;">
+        <div class="upload-header">
+            <h3>{{ tf('upload_receipt_files', 'Upload Receipt Files') }}</h3>
+            <button type="button" class="btn btn-sm danger" onclick="hideFileUpload()">
+                <i class="fa fa-times"></i> {{ tf('cancel', 'Cancel') }}
+            </button>
+        </div>
+        <div id="expense-file-upload" data-receipt-id="{{ receipt.id }}"></div>
+    </div>
+</div>
+
+<!-- Image Preview Modal -->
+<div class="image-preview-modal" id="imagePreviewModal" onclick="closeImagePreview()">
+    <div class="image-preview-content" onclick="event.stopPropagation()">
+        <div class="image-preview-header">
+            <h4 id="imagePreviewTitle">{{ tf('image_preview', 'Image Preview') }}</h4>
+            <button class="image-preview-close" onclick="closeImagePreview()">&times;</button>
+        </div>
+        <div class="image-preview-body">
+            <img id="previewImage" class="preview-image">
+        </div>
+    </div>
+</div>
+
+<!-- Include CSS for file upload -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/expense-file-upload.css') }}">
+
+<script>
+const L = {
+    upload_failed: "{{ tf('upload_failed', 'Upload failed') }}",
+    delete_confirm: "{{ tf('delete_file_confirm', 'Delete this file?') }}",
+    delete_failed: "{{ tf('delete_failed', 'Delete failed') }}",
+    delete_unknown: "{{ tf('delete_failed_unknown', 'Failed to delete file') }}"
+};
+function showFileUpload() {
+    const section = document.getElementById('fileUploadSection');
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth' });
+    
+    // Initialize file upload if not already done
+    if (!window.expenseFileUpload) {
+        const uploadContainer = document.getElementById('expense-file-upload');
+        window.expenseFileUpload = new ExpenseFileUpload('expense-file-upload', {
+            receiptId: uploadContainer.dataset.receiptId,
+            onUpload: function(file) {
+                // Reload page to show new file
+                window.location.reload();
+            },
+            onError: function(error) {
+                alert((L.upload_failed || 'Upload failed') + ': ' + error.message);
+            }
+        });
+    }
+}
+
+function hideFileUpload() {
+    const section = document.getElementById('fileUploadSection');
+    section.style.display = 'none';
+}
+
+function previewImage(url, filename) {
+    const modal = document.getElementById('imagePreviewModal');
+    const image = document.getElementById('previewImage');
+    const title = document.getElementById('imagePreviewTitle');
+    
+    image.src = url;
+    title.textContent = filename;
+    modal.style.display = 'flex';
+}
+
+function closeImagePreview() {
+    const modal = document.getElementById('imagePreviewModal');
+    modal.style.display = 'none';
+}
+
+function deleteFile(fileId, filename) {
+    if (confirm((L.delete_confirm || 'Delete this file?').replace('{name}', filename))) {
+        fetch(`/api/expenses/files/${window.currentReceiptId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ filename: fileId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove file from UI
+                const fileElement = document.querySelector(`[data-file-id="${fileId}"]`);
+                if (fileElement) {
+                    fileElement.remove();
+                }
+                // Reload if no more files
+                if (document.querySelectorAll('.file-card').length === 0) {
+                    window.location.reload();
+                }
+            } else {
+                alert((L.delete_failed || 'Failed to delete file') + ': ' + (data.error || ''));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert(L.delete_unknown || 'Failed to delete file');
+        });
+    }
+}
+
+// Set current receipt ID for API calls
+window.currentReceiptId = '{{ receipt.id }}';
+</script>
+
+<!-- Include JavaScript for file upload -->
+<script src="{{ url_for('static', filename='js/expense-file-upload.js') }}"></script>
+
+<style>
+.receipt-files-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.page-header {
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.receipt-info h1 {
+    margin: 0 0 8px 0;
+    color: #1f2937;
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.receipt-meta {
+    display: flex;
+    gap: 20px;
+    color: #6b7280;
+    font-size: 1.1rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.files-section h2 {
+    margin: 0 0 20px 0;
+    color: #374151;
+    font-size: 1.5rem;
+}
+
+.files-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.file-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.file-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.file-preview {
+    height: 200px;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.file-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.file-image:hover {
+    transform: scale(1.05);
+}
+
+.pdf-preview, .file-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: #6b7280;
+}
+
+.file-icon {
+    font-size: 3rem;
+}
+
+.file-label {
+    font-weight: 500;
+    text-align: center;
+}
+
+.file-details {
+    padding: 16px;
+}
+
+.file-name {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.file-actions {
+    padding: 12px 16px;
+    border-top: 1px solid #e5e7eb;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6b7280;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    color: #d1d5db;
+}
+
+.empty-state h3 {
+    margin: 0 0 10px 0;
+    color: #374151;
+    font-size: 1.5rem;
+}
+
+.empty-state p {
+    margin: 0 0 20px 0;
+    font-size: 1.1rem;
+}
+
+.file-upload-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.upload-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.upload-header h3 {
+    margin: 0;
+    color: #374151;
+    font-size: 1.25rem;
+}
+
+.image-preview-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    align-items: center;
+    justify-content: center;
+}
+
+.image-preview-content {
+    background: white;
+    border-radius: 8px;
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: hidden;
+    position: relative;
+}
+
+.image-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.image-preview-header h4 {
+    margin: 0;
+    color: #374151;
+}
+
+.image-preview-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+    padding: 4px;
+}
+
+.image-preview-close:hover {
+    color: #374151;
+}
+
+.image-preview-body {
+    padding: 20px;
+    text-align: center;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 70vh;
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .receipt-files-container {
+        padding: 10px;
+    }
+    
+    .page-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: stretch;
+    }
+    
+    .header-actions {
+        justify-content: center;
+    }
+    
+    .receipt-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .files-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'simple_expenses/base.html' %}
+
+{% block title %}{{ tf('expenses', 'Expenses') }}{% endblock %}
+
+{% block simple_expenses_content %}
+  {% macro tf(key, default_text) -%}
+    {%- set val = t(key) if t else default_text -%}
+    {{ default_text if val == key else val }}
+  {%- endmacro %}
+  <div class="expense-page u-stack-md">
+    <div class="page-header u-card">
+      <div>
+        <p class="eyebrow">{{ tf('clinic_spending', 'Clinic spending') }}</p>
+        <h1 class="page-title">{{ tf('expenses', 'Expenses') }}</h1>
+        <p class="subtext">{{ tf('expenses_intro', 'Log what you bought and how much. We keep a clean total for the month.') }}</p>
+      </div>
+      <form method="get" class="month-switcher">
+        <label for="month">
+          <i class="fa fa-calendar"></i>
+          <span>{{ month_label }}</span>
+        </label>
+        <input type="month" id="month" name="month" value="{{ selected_month }}">
+      </form>
+    </div>
+
+    <div class="main-grid">
+      <section class="panel hero u-card">
+        <div class="hero-top">
+          <div>
+            <p class="eyebrow">{{ tf('total_this_month', 'Total this month') }}</p>
+            <div class="hero-amount">{{ monthly_total_fmt }} EGP</div>
+          </div>
+          <div class="pill">{{ tf('running_total', 'Running total') }}</div>
+        </div>
+        <p class="muted">{{ tf('expenses_hint', 'Keep every receipt in one place. Description + price is all you need.') }}</p>
+      </section>
+
+      <section class="panel form-panel u-card">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">{{ tf('add_expense', 'Add expense') }}</p>
+            <h2>{{ tf('materials_receipts', 'Materials / receipts') }}</h2>
+          </div>
+          <i class="fa fa-plus-circle"></i>
+        </div>
+        <form method="POST" action="{{ url_for('simple_expenses.new_expense') }}" class="expense-form">
+          {{ form.hidden_tag() }}
+          <input type="hidden" name="selected_month" value="{{ selected_month }}">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="{{ form.receipt_date.id }}">{{ tf('date', 'Date') }}</label>
+              {{ form.receipt_date(class="form-control") }}
+              {% for error in form.receipt_date.errors %}
+                <div class="field-error">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="form-group">
+              <label for="{{ form.amount.id }}">{{ tf('amount', 'Amount') }} (EGP)</label>
+              {{ form.amount(class="form-control amount-input", placeholder="0.00", inputmode="decimal") }}
+              {% for error in form.amount.errors %}
+                <div class="field-error">{{ error }}</div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="{{ form.description.id }}">{{ tf('what_did_you_buy', 'What did you buy?') }}</label>
+            {{ form.description(class="form-control", rows="2", placeholder=tf('expenses_placeholder', 'e.g., gloves, disinfectant, courier fees...')) }}
+            {% for error in form.description.errors %}
+              <div class="field-error">{{ error }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="u-btn primary">
+              <i class="fa fa-save"></i>
+              {{ tf('save', 'Save expense') }}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel list-panel u-card">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">{{ tf('this_month', 'This month') }}</p>
+            <h2>{{ recent_expenses|length }} {{ tf('expense', 'expense') }}{% if recent_expenses|length != 1 %}{{ tf('s_suffix', 's') }}{% endif %}</h2>
+          </div>
+        </div>
+
+        {% if recent_expenses %}
+          <div class="expense-list">
+            {% for expense in recent_expenses %}
+              {% set lines = expense.description.splitlines() %}
+              <div class="expense-row">
+                <div class="expense-info">
+                  <div class="row-top">
+                    <div class="date-chip"><i class="fa fa-calendar-o"></i> {{ expense.receipt_date }}</div>
+                    <span class="amount">{{ expense.amount_fmt }} EGP</span>
+                  </div>
+                  <div class="row-actions">
+                    <button type="button"
+                            class="ghost-btn view-btn"
+                            data-date="{{ expense.receipt_date }}"
+                            data-amount="{{ expense.amount_fmt }} EGP"
+                            data-desc="{{ '\n'.join(lines)|e }}">
+                      <i class="fa fa-eye"></i> {{ tf('view_details', 'View details') }}
+                    </button>
+                    <form method="POST" action="{{ url_for('simple_expenses.delete_expense', expense_id=expense.id, month=selected_month) }}" onsubmit="return confirm('{{ tf('delete_expense_confirm', 'Delete this expense?') }}');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <button type="submit" class="icon-btn danger" title="{{ tf('delete', 'Delete') }}">
+                        🗑️
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state">
+            <i class="fa fa-receipt-o"></i>
+            <p>{{ tf('no_expenses', 'No expenses for') }} {{ month_label }} {{ tf('yet', 'yet.') }}</p>
+            <p class="muted">{{ tf('expenses_hint', 'Add the first one to start the monthly total.') }}</p>
+          </div>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+
+  <!-- Details Modal -->
+  <div class="modal" id="expenseModal" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">{{ tf('expense_details', 'Expense details') }}</p>
+            <h3 id="modalAmount"></h3>
+          </div>
+          <button type="button" class="icon-btn close-btn" id="closeModal" title="{{ tf('close', 'Close') }}">
+            ✕
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="date-chip" id="modalDate"></div>
+          <ul class="desc-list" id="modalDesc"></ul>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="u-btn primary" id="closeModalBottom">{{ tf('close', 'Close') }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    window.SIMPLE_EXPENSES_I18N = {
+      noDesc: "{{ tf('no_description', 'No description provided.') }}"
+    };
+  </script>
+{% endblock %}

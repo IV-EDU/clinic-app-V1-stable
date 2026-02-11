@@ -1,0 +1,115 @@
+<!-- Print Receipt Modal -->
+<div
+    class="modal"
+    id="printReceiptModal"
+    data-title-payment="{{ t('print_receipt_title') }}"
+    data-title-treatment="{{ t('print_summary') }}"
+    data-confirm-payment="{{ t('print_receipt') }}"
+    data-confirm-treatment="{{ t('print_summary') }}"
+>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h5 class="modal-title">{{ t('print_receipt_title') }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            
+            <div class="modal-body simple-body">
+                <p class="hint">{{ t('print_receipt_hint') if t('print_receipt_hint') != 'print_receipt_hint' else 'For a cleaner receipt, turn off “Headers and footers” in your browser’s print settings.' }}</p>
+
+                <div class="option-block">
+                    <label class="form-label">{{ t('language') }}</label>
+                    <div class="radio-row">
+                        <label class="radio-chip">
+                            <input type="radio" name="receipt-lang" value="current" checked>
+                            <span>{{ t('current_language') or 'Current language' }}</span>
+                        </label>
+                        <label class="radio-chip">
+                            <input type="radio" name="receipt-lang" value="en">
+                            <span>{{ t('lang_en') or 'English' }}</span>
+                        </label>
+                        <label class="radio-chip">
+                            <input type="radio" name="receipt-lang" value="ar">
+                            <span>{{ t('lang_ar') or 'العربية' }}</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="option-block" id="paymentPrintScopeBlock">
+                    <label class="form-label">{{ t('print_scope') }}</label>
+                    <div class="radio-row">
+                        <label class="radio-chip">
+                            <input type="radio" name="receipt-scope" value="payment_only" checked>
+                            <span>{{ t('payment_only') }}</span>
+                        </label>
+                        <label class="radio-chip">
+                            <input type="radio" name="receipt-scope" value="payment_snapshot">
+                            <span>{{ t('payment_snapshot') }}</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="option-block">
+                    <label class="form-label">{{ t('print_options') }}</label>
+                    <div class="checkbox-row">
+                        <label class="checkbox-chip" id="paymentNotesOption">
+                            <input type="checkbox" id="include-payment-notes">
+                            <span>{{ t('include_payment_notes') }}</span>
+                        </label>
+                        <label class="checkbox-chip" id="treatmentNotesOption">
+                            <input type="checkbox" id="include-notes">
+                            <span>{{ t('include_notes') }}</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="print-actions">
+                    <button type="button" class="btn primary" id="confirmPrintReceiptBtn">
+                        <i class="fa fa-print"></i>
+                        {{ t('print_receipt') }}
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn secondary" data-dismiss="modal">{{ t('cancel') }}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Loading Overlay -->
+<div class="print-loading">
+    <div class="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h4>{{ t('print_loading') or 'Generating receipt...' }}</h4>
+            <p>{{ t('please_wait') or 'Please wait while we generate your receipt.' }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- Print Success Message -->
+<div class="print-message print-message-success">
+    <div class="message-content">
+        <i class="fa fa-check-circle"></i>
+        <span id="successMessage">{{ t('receipt_downloaded') or 'Receipt downloaded successfully' }}</span>
+        <button class="message-close" onclick="this.parentNode.parentNode.remove()">
+            <i class="fa fa-times"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Print Error Message -->
+<div class="print-message print-message-error">
+    <div class="message-content">
+        <i class="fa fa-exclamation-circle"></i>
+        <span id="errorMessage">{{ t('print_error') or 'Failed to generate receipt. Please try again.' }}</span>
+        <button class="message-close" onclick="this.parentNode.parentNode.remove()">
+            <i class="fa fa-times"></i>
+        </button>
+    </div>
+</div>

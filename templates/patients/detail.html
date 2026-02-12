@@ -131,6 +131,26 @@
         <button class="modal-close" type="button" onclick="hideMergePatientModal()">&times;</button>
       </div>
       <div class="modal-body">
+        <div class="merge-comparison">
+          <!-- Current Patient -->
+          <div class="merge-card active">
+            <div class="u-text-muted" style="font-size: 0.75rem; text-transform: uppercase;">{{ t('current_patient') }}</div>
+            <div style="font-weight: 700; font-size: 1.1rem; margin: 4px 0;">{{ p['full_name'] }}</div>
+            <div class="u-text-muted">📁 {{ p['short_id'] or '—' }}</div>
+            <div class="u-text-muted">📞 {{ p['phone'] or '—' }}</div>
+          </div>
+
+          <!-- Target Patient (to be selected) -->
+          <div class="merge-card" id="merge-target-card">
+            <div class="u-text-muted" style="font-size: 0.75rem; text-transform: uppercase;">{{ t('merge_target') }}</div>
+            <div id="merge-preview-name" style="font-weight: 700; font-size: 1.1rem; margin: 4px 0;">?</div>
+            <div class="u-text-muted">📁 <span id="merge-preview-file">—</span></div>
+            <div class="u-text-muted">📞 <span id="merge-preview-phone">—</span></div>
+          </div>
+
+          <div class="merge-direction">↓</div>
+        </div>
+
         <div class="form-group">
           <label class="form-label" for="merge-target-short-id">
             {{ t('merge_target_short_id') }}
@@ -140,19 +160,6 @@
           <div class="merge-suggestions-group">
             <div id="merge-suggestions-same" class="merge-suggestions"></div>
             <div id="merge-suggestions-search" class="merge-suggestions"></div>
-          </div>
-          <div id="merge-selected-preview" class="merge-selection-preview">
-            <div class="merge-preview-name" id="merge-preview-name"></div>
-            <div class="merge-preview-details">
-              <div class="merge-preview-detail">
-                <span class="icon">📁</span>
-                <span id="merge-preview-file"></span>
-              </div>
-              <div class="merge-preview-detail">
-                <span class="icon">📞</span>
-                <span id="merge-preview-phone"></span>
-              </div>
-            </div>
           </div>
         </div>
         <div class="form-group">
@@ -203,18 +210,19 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!input || !boxSame || !boxSearch) return;
 
   function setPreview(patient) {
-    if (!previewBox || !previewName || !previewFile || !previewPhone) return;
+    var card = document.getElementById('merge-target-card');
+    if (!previewName || !previewFile || !previewPhone) return;
     if (!patient) {
-      previewBox.classList.remove('visible');
-      previewName.textContent = '';
-      previewFile.textContent = '';
-      previewPhone.textContent = '';
+      if (card) card.classList.remove('target-selected');
+      previewName.textContent = '?';
+      previewFile.textContent = '—';
+      previewPhone.textContent = '—';
       return;
     }
     previewName.textContent = patient.full_name || '';
     previewFile.textContent = patient.short_id || '—';
     previewPhone.textContent = patient.phone || '—';
-    previewBox.classList.add('visible');
+    if (card) card.classList.add('target-selected');
   }
 
   function clearBox(box) {

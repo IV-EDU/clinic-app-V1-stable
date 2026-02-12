@@ -1,134 +1,256 @@
 :root {
-  /* Base brand palette (aligned with existing app.css) */
-  --primary-color: #3b82f6;
-  --primary-hover: #2563eb;
-  --accent-color: #0ea5e9;
-  --bg-primary: var(--bg, #f7f7f8);
-  /* Page background, very softly tinted by theme colors, horizontal 3‑stop (color → light → color) */
+  /* Dental Clinic Aesthetic: Professional Teal & Clean Blue */
+  --primary-color: #0d9488; /* Teal 600 */
+  --primary-hover: #0f766e; /* Teal 700 */
+  --accent-color: #0ea5e9;  /* Sky 500 */
+
+  --bg-primary: #f0f9f9;    /* Ultra light teal tint */
   --page-bg: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--primary-color, #3b82f6) 4%, #f9fafb) 0%,
-    #fdfdfd 52%,
-    color-mix(in srgb, var(--primary-color, #3b82f6) 4%, #f9fafb) 100%
+    135deg,
+    #f0f9f9 0%,
+    #ffffff 50%,
+    #f0f7ff 100%
   );
+
   --bg-surface: #ffffff;
-  --text-primary: var(--ink, #111827);
-  --text-secondary: #475569;
-  --text-muted: #6b7280;
-  --border-strong: var(--border, #e5e7eb);
-  --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.06);
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+
+  --border-strong: #e2e8f0;
+  --shadow-soft: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --card-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
   --radius-md: 12px;
   --radius-lg: 16px;
-  --card-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
-  --card-radius: var(--radius-lg, 16px);
-  --card-padding: var(--spacing-lg, 20px);
-  --spacing-sm: 10px;
+  --card-radius: 20px;
+  --card-padding: 24px;
+
+  --spacing-sm: 8px;
   --spacing-md: 16px;
   --spacing-lg: 24px;
+
   --font-arabic: 'Tajawal', 'Noto Sans Arabic', 'Segoe UI', Arial, sans-serif;
-  --font-latin: 'Segoe UI', Arial, sans-serif;
-  --success-color: var(--green, #16a34a);
-  --success-bg: var(--green-bg, #dcfce7);
-  --warning-color: var(--yellow, #b45309);
-  --warning-bg: var(--yellow-bg, #fef3c7);
-  --danger-color: var(--red, #b91c1c);
-  --danger-bg: var(--red-bg, #fee2e2);
-  --info-color: var(--accent-color, #0ea5e9);
-  --info-bg: #e0f2fe;
+  --font-latin: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
 }
 
-/* Unified, optional utility styles (prefix u- to avoid conflicts) */
-.u-card {
-  background: var(--bg-surface, var(--card, #fff));
-  border: 1px solid var(--border-strong, var(--border, #e5e7eb));
-  border-radius: var(--card-radius, var(--radius-lg, 16px));
-  box-shadow: var(--card-shadow, var(--shadow-soft));
-  padding: var(--card-padding, var(--spacing-lg));
+/* Base Styles */
+body {
+  background: var(--page-bg);
+  color: var(--text-primary);
+  font-family: var(--font-latin);
+  margin: 0;
+  line-height: 1.5;
 }
 
-.u-app-header {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--primary-color, #3b82f6) 18%, #f3f4ff) 0%,
-    #fdfdfd 52%,
-    color-mix(in srgb, var(--primary-color, #3b82f6) 18%, #f3f4ff) 100%
-  );
+html[lang="ar"] body {
+  font-family: var(--font-arabic);
+}
+
+/* Global Card Utility */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  padding: var(--card-padding);
+  margin-bottom: var(--spacing-lg);
+  transition: transform 0.2s ease;
+}
+
+/* Button Refinement */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  text-decoration: none;
+}
+
+.btn.primary {
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 14px 0 rgba(13, 148, 136, 0.39);
+}
+
+.btn.primary:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn.secondary {
+  background-color: white;
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+
+.btn.secondary:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+/* Form Elements */
+input, select, textarea {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
+}
+
+/* Navbar / Header */
+.app-header {
+  background: white;
   border-bottom: 1px solid var(--border-strong);
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-.u-app-header .btn.secondary,
-.u-app-header button.secondary,
-.u-app-header a.secondary {
-  background: var(--bg-surface, #ffffff);
-  color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 12%, #dbeafe);
-}
-
-.u-app-header .btn.secondary:hover,
-.u-app-header button.secondary:hover,
-.u-app-header a.secondary:hover {
-  background: color-mix(in srgb, var(--primary-color, #3b82f6) 4%, #f1f5f9);
-}
-
-.u-app-header .title {
-  color: var(--text-primary);
+.app-title {
+  font-size: 1.5rem;
   font-weight: 800;
+  color: var(--primary-color);
+  letter-spacing: -0.025em;
+}
+
+/* Patient List Table */
+.patient-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.patient-table th {
+  text-align: left;
+  padding: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.patient-table tr td {
+  padding: 16px 12px;
+  background: white;
+}
+
+.patient-table tr td:first-child {
+  border-start-start-radius: var(--radius-md);
+  border-end-start-radius: var(--radius-md);
+}
+.patient-table tr td:last-child {
+  border-start-end-radius: var(--radius-md);
+  border-end-end-radius: var(--radius-md);
+}
+
+/* Balance Box */
+.bal-box {
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  display: inline-block;
+}
+
+.bal-pos { background: #fee2e2; color: #991b1b; } /* Debt */
+.bal-0 { background: #f1f5f9; color: #475569; }   /* Clear */
+
+/* Custom Utilities & Regressions Fix */
+.u-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
 }
 
 .u-btn {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
+  padding: 8px 16px;
   border-radius: var(--radius-md);
-  font-weight: 700;
-  text-decoration: none;
+  font-weight: 600;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  transition: all 0.2s;
 }
+.u-btn.primary { background: var(--primary-color); color: white; }
+.u-btn.secondary { background: white; border-color: var(--border-strong); color: var(--text-primary); }
 
-.u-btn.primary {
-  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-  color: #fff;
-  border-color: var(--primary-color);
-  box-shadow: 0 10px 20px rgba(59, 130, 246, 0.25);
-}
-
-.u-btn.secondary {
-  background: #eef2f7;
-  color: var(--text-primary);
-  border-color: #dce3ed;
-}
-
-.u-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #eef4ff;
-  color: var(--text-primary);
-  border: 1px solid #d9e5ff;
-  font-weight: 700;
-}
-
-.u-field-label {
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-}
+.u-stack-sm > * + * { margin-top: var(--spacing-sm); }
+.u-stack-md > * + * { margin-top: var(--spacing-md); }
 
 .u-text-muted { color: var(--text-muted); }
+.u-text-danger { color: var(--danger-color); }
 .u-text-secondary { color: var(--text-secondary); }
 
-/* Arabic support helpers (optional) */
-html[lang="ar"] body, body.rtl {
-  font-family: var(--font-arabic);
+.u-app-header {
+  background: white;
+  border-bottom: 1px solid var(--border-strong);
+  padding: var(--spacing-md) var(--spacing-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-/* Minimal spacing helpers */
-.u-stack-sm > * + * { margin-top: 8px; }
-.u-stack-md > * + * { margin-top: 14px; }
-.u-stack-lg > * + * { margin-top: 20px; }
+/* Merge Modal Comparison */
+.merge-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.merge-card {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  background: #f8fafc;
+  opacity: 0.6;
+  transition: all 0.3s ease;
+}
+
+.merge-card.active {
+  opacity: 1;
+  background: white;
+  box-shadow: var(--shadow-soft);
+}
+
+.merge-card.target-selected {
+  background: #f0fdfa;
+  border-color: var(--primary-color);
+  opacity: 1;
+}
+
+.merge-direction {
+  grid-column: span 2;
+  text-align: center;
+  color: var(--primary-color);
+  font-weight: 800;
+  font-size: 1.5rem;
+  margin: -10px 0;
+}

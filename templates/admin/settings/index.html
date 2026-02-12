@@ -1567,22 +1567,18 @@
           <div class="modal-body">
             <div id="db-dup-merge-alert" class="alert alert-error" style="display:none;"></div>
 
-            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:0.5rem;">
-              <div class="card" style="flex:1 1 280px; margin:0;">
-                <div class="card-header" style="margin-bottom:0.5rem;">
-                  <h4 class="card-title" style="font-size:1rem;">{{ tf('left_file', 'Left file') }}</h4>
-                </div>
-                <div id="db-dup-merge-left" class="u-text-muted"></div>
+            <div class="merge-comparison">
+              <div class="merge-card active" id="merge-card-left">
+                <div class="u-text-muted" style="font-size: 0.75rem; text-transform: uppercase;">{{ tf('left_file', 'Left file') }}</div>
+                <div id="db-dup-merge-left"></div>
                 <label class="checkbox-item" style="margin-top:0.75rem;">
                   <input type="radio" name="db-dup-keep" id="db-dup-keep-left" value="left" checked>
                   <span>{{ tf('keep_file', 'Keep this file') }}</span>
                 </label>
               </div>
-              <div class="card" style="flex:1 1 280px; margin:0;">
-                <div class="card-header" style="margin-bottom:0.5rem;">
-                  <h4 class="card-title" style="font-size:1rem;">{{ tf('right_file', 'Right file') }}</h4>
-                </div>
-                <div id="db-dup-merge-right" class="u-text-muted"></div>
+              <div class="merge-card active" id="merge-card-right">
+                <div class="u-text-muted" style="font-size: 0.75rem; text-transform: uppercase;">{{ tf('right_file', 'Right file') }}</div>
+                <div id="db-dup-merge-right"></div>
                 <label class="checkbox-item" style="margin-top:0.75rem;">
                   <input type="radio" name="db-dup-keep" id="db-dup-keep-right" value="right">
                   <span>{{ tf('keep_file', 'Keep this file') }}</span>
@@ -4362,11 +4358,20 @@ function openDbDupMergeModal(left, right) {
   var keepLeft = document.getElementById('db-dup-keep-left');
   var keepRight = document.getElementById('db-dup-keep-right');
   var diag = document.getElementById('db-dup-merge-diag');
+  var cardLeft = document.getElementById('merge-card-left');
+  var cardRight = document.getElementById('merge-card-right');
 
   if (alert) alert.style.display = 'none';
   if (diag) diag.checked = false;
   if (keepLeft) keepLeft.checked = true;
   if (keepRight) keepRight.checked = false;
+
+  function updateCardSelection() {
+    if (cardLeft) cardLeft.classList.toggle('target-selected', keepLeft && keepLeft.checked);
+    if (cardRight) cardRight.classList.toggle('target-selected', keepRight && keepRight.checked);
+  }
+  if (keepLeft) keepLeft.onchange = updateCardSelection;
+  if (keepRight) keepRight.onchange = updateCardSelection;
 
   function render(box, c) {
     if (!box) return;
@@ -4375,17 +4380,18 @@ function openDbDupMergeModal(left, right) {
     var phone = (c && c.phone) ? c.phone : '';
     var pageNo = (c && c.primary_page_number) ? c.primary_page_number : '';
     var lines = [];
-    lines.push('<div style="font-weight:700;font-size:1rem">' + escapeHtml(name) + '</div>');
+    lines.push('<div style="font-weight:700;font-size:1.1rem;margin:4px 0;">' + escapeHtml(name) + '</div>');
     var meta = [];
-    if (fileNo) meta.push('{{ tf("file_number", "File number") }}: ' + fileNo);
-    if (pageNo) meta.push('{{ tf("page_number", "Page number") }}: ' + pageNo);
-    if (phone) meta.push('{{ tf("phone", "Phone") }}: ' + phone);
-    if (meta.length) lines.push('<div class="u-text-muted" style="margin-top:0.25rem;">' + escapeHtml(meta.join(' · ')) + '</div>');
+    if (fileNo) meta.push('📁 ' + fileNo);
+    if (pageNo) meta.push('📄 ' + pageNo);
+    if (phone) meta.push('📞 ' + phone);
+    if (meta.length) lines.push('<div class="u-text-muted">' + escapeHtml(meta.join(' · ')) + '</div>');
     box.innerHTML = lines.join('');
   }
 
   render(leftBox, __dbDupMergeLeft);
   render(rightBox, __dbDupMergeRight);
+  updateCardSelection();
 
   if (modal) modal.classList.add('active');
 }

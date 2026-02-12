@@ -1,4 +1,4 @@
-<div class="card patient-header-card" style="margin:0;">
+<div class="card patient-header-card" style="margin:0; border: 2px solid var(--border-strong);">
   <div class="patient-summary-grid">
     <div class="summary-item">
       <div class="summary-label">{{ t('file_no') }}</div>
@@ -14,16 +14,16 @@
     </div>
     <div class="summary-item">
       <div class="summary-label">{{ t('name') }}</div>
-      <div class="summary-value">{{ p['full_name'] }}</div>
+      <div class="summary-value" style="font-size: 1.1rem; font-weight: 800;">{{ p['full_name'] }}</div>
     </div>
     <div class="summary-item">
       <div class="summary-label">{{ t('phone') }}</div>
       <div class="summary-value">{{ p['phone'] or '—' }}</div>
     </div>
-    <div class="summary-item">
-      <div class="summary-label">{{ t('overall_balance') }}</div>
+    <div class="summary-item" style="background: {{ 'var(--success-bg)' if overall_fmt == '0.00' else 'var(--danger-bg)' }}; border-color: {{ 'var(--success-color)' if overall_fmt == '0.00' else 'var(--danger-color)' }};">
+      <div class="summary-label" style="color: {{ 'var(--success-color)' if overall_fmt == '0.00' else 'var(--danger-color)' }};">{{ t('overall_balance') }}</div>
       <div class="summary-value">
-        <div class="bal-box {{ overall_class }}">{{ overall_fmt }}</div>
+        <div class="bal-box {{ overall_class }}" style="border: none; background: transparent; font-weight: 800;">{{ overall_fmt }}</div>
       </div>
     </div>
   </div>
@@ -38,33 +38,47 @@
   </div>
 </div>
 
-{% if recent_payments %}
-<div class="card" style="margin-top:0.75rem;">
-  <div class="card-header">
-    <h4 class="card-title" style="font-size:1rem;">{{ t('payments') }}</h4>
+{% if treatments %}
+<div class="u-stack-sm" style="margin-top: 1rem;">
+  <h4 style="font-size: 1rem; font-weight: 800; color: var(--text-secondary); padding: 0 4px;">{{ t('recent_treatments', 'Recent Treatments') }}</h4>
+
+  {% for t in treatments %}
+  <div class="card" style="padding: 16px; border-left: 4px solid var(--primary-color);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+      <div>
+        <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary);">{{ t.treatment_type or t('treatment') }}</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">{{ t.created_at }} • {{ t.doctor_label or t('any_doctor') }}</div>
+      </div>
+      <div class="bal-box {{ 'bal-0' if t.remaining_cents == 0 else 'bal-pos' }}">
+        {{ t.remaining_fmt }}
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: var(--bg-strong); padding: 12px; border-radius: 12px;">
+      <div>
+        <div style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">{{ t('total') }}</div>
+        <div style="font-weight: 700;">{{ t.total_fmt }}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">{{ t('discount') }}</div>
+        <div style="font-weight: 700;">{{ t.discount_fmt }}</div>
+      </div>
+      <div>
+        <div style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">{{ t('remaining') }}</div>
+        <div style="font-weight: 700;">{{ t.remaining_fmt }}</div>
+      </div>
+    </div>
+
+    {% if t.notes %}
+    <div style="margin-top: 12px; font-size: 0.9rem; color: var(--text-secondary); border-top: 1px solid var(--border-strong); padding-top: 8px;">
+      {{ t.notes }}
+    </div>
+    {% endif %}
   </div>
-  <div style="overflow-x:auto;">
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th scope="col">{{ t('date') }}</th>
-          <th scope="col">{{ t('payment_method') }}</th>
-          <th scope="col">{{ t('total') }}</th>
-          <th scope="col">{{ t('remaining_amount') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for pay in recent_payments %}
-        <tr>
-          <td>{{ pay.paid_at or '—' }}</td>
-          <td>{{ pay.method or '—' }}</td>
-          <td>{{ pay.total_fmt or '—' }}</td>
-          <td>{{ pay.remaining_fmt or '—' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="u-text-muted" style="text-align: center; padding: 2rem;">
+  {{ t('no_treatments_recorded', 'No treatments recorded for this patient.') }}
 </div>
 {% endif %}
-

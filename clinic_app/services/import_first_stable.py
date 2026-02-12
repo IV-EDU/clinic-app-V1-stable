@@ -103,7 +103,12 @@ def normalize_name(raw: Optional[str]) -> str:
         return ""
     # Collapse whitespace and lower-case for safer comparison
     collapsed = " ".join(str(raw).split())
-    return collapsed.strip().lower()
+    s = collapsed.strip().lower()
+    # Arabic normalization
+    s = re.sub("[أإآ]", "ا", s)
+    s = s.replace("ى", "ي")
+    s = s.replace("ة", "ه")
+    return s
 
 
 def first_two_name_tokens(norm_name: str) -> str:

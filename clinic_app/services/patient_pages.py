@@ -98,9 +98,15 @@ class PatientPageService:
     @staticmethod
     def search_patients_by_page(query: str) -> List[Dict[str, Any]]:
         """Search patients by page number."""
+        from clinic_app.services.patients import normalize_arabic
         conn = db()
         try:
-            search_term = f"%{query.strip().lower()}%"
+            norm_query = normalize_arabic(query.strip().lower())
+            search_term = f"%{norm_query}%"
+
+            # For non-arabic fields or when normalization isn't needed
+            raw_search_term = f"%{query.strip().lower()}%"
+
             digits = "".join(ch for ch in str(query or "") if ch.isdigit())
             search_digits = f"%{digits}%" if digits else ""
             has_patient_phones = PatientPageService._table_exists(conn, "patient_phones")
@@ -113,9 +119,9 @@ class PatientPageService:
                           FROM patients p
                           LEFT JOIN patient_pages pg ON p.id = pg.patient_id
                      WHERE LOWER(pg.page_number) LIKE ?
-                        OR (LOWER(pg.notebook_name) LIKE ? AND LOWER(pg.notebook_name) NOT LIKE 'pc:%')
+                        OR (NORMALIZE_ARABIC(pg.notebook_name) LIKE ? AND pg.notebook_name NOT LIKE 'pc:%')
                         OR LOWER(p.short_id) LIKE ?
-                        OR LOWER(p.full_name) LIKE ?
+                        OR NORMALIZE_ARABIC(p.full_name) LIKE ?
                         OR LOWER(p.phone) LIKE ?
                             OR replace(replace(replace(replace(replace(p.phone,' ',''),'-',''),'+',''),'(',''),')','') LIKE ?
                             OR EXISTS (
@@ -134,13 +140,13 @@ class PatientPageService:
                          LIMIT 10
                         """,
                         (
+                            raw_search_term,
                             search_term,
+                            raw_search_term,
                             search_term,
-                            search_term,
-                            search_term,
-                            search_term,
+                            raw_search_term,
                             search_digits,
-                            search_term,
+                            raw_search_term,
                             search_digits,
                             search_digits,
                             search_digits,
@@ -154,9 +160,9 @@ class PatientPageService:
                           FROM patients p
                           LEFT JOIN patient_pages pg ON p.id = pg.patient_id
                      WHERE LOWER(pg.page_number) LIKE ?
-                       OR (LOWER(pg.notebook_name) LIKE ? AND LOWER(pg.notebook_name) NOT LIKE 'pc:%')
+                       OR (NORMALIZE_ARABIC(pg.notebook_name) LIKE ? AND pg.notebook_name NOT LIKE 'pc:%')
                        OR LOWER(p.short_id) LIKE ?
-                       OR LOWER(p.full_name) LIKE ?
+                       OR NORMALIZE_ARABIC(p.full_name) LIKE ?
                        OR LOWER(p.phone) LIKE ?
                             OR EXISTS (
                                 SELECT 1
@@ -169,12 +175,12 @@ class PatientPageService:
                          LIMIT 10
                         """,
                         (
+                            raw_search_term,
                             search_term,
+                            raw_search_term,
                             search_term,
-                            search_term,
-                            search_term,
-                            search_term,
-                            search_term,
+                            raw_search_term,
+                            raw_search_term,
                         ),
                     ).fetchall()
             else:
@@ -185,15 +191,15 @@ class PatientPageService:
                     FROM patients p
                     LEFT JOIN patient_pages pg ON p.id = pg.patient_id
                     WHERE LOWER(pg.page_number) LIKE ?
-                       OR LOWER(pg.notebook_name) LIKE ?
+                       OR NORMALIZE_ARABIC(pg.notebook_name) LIKE ?
                        OR LOWER(p.short_id) LIKE ?
-                       OR LOWER(p.full_name) LIKE ?
+                       OR NORMALIZE_ARABIC(p.full_name) LIKE ?
                        OR LOWER(p.phone) LIKE ?
                     GROUP BY p.id
                     ORDER BY p.full_name
                     LIMIT 10
                     """,
-                    (search_term, search_term, search_term, search_term, search_term),
+                    (raw_search_term, search_term, raw_search_term, search_term, raw_search_term),
                 ).fetchall()
             return [dict(row) for row in rows]
         finally:

@@ -65,8 +65,26 @@ def next_short_id(conn) -> str:
             return candidate
 
 
+def normalize_arabic(s: str) -> str:
+    """Normalize Arabic characters for fuzzy search.
+    - أ, إ, آ -> ا
+    - ى -> ي
+    - ة -> ه
+    """
+    if not s:
+        return ""
+    # أ إ آ -> ا
+    s = re.sub("[أإآ]", "ا", s)
+    # ى -> ي
+    s = s.replace("ى", "ي")
+    # ة -> ه
+    s = s.replace("ة", "ه")
+    return s
+
+
 def normalize_name(s: str) -> str:
-    return re.sub(r"\s+", " ", (s or "").strip().lower())
+    n = re.sub(r"\s+", " ", (s or "").strip().lower())
+    return normalize_arabic(n)
 
 
 def dup_by_name(conn, name: str, exclude_patient_id: Optional[str] = None) -> bool:

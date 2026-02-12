@@ -312,10 +312,14 @@ def edit_payment_post(pid, pay_id):
     doctor_options = _doctor_options()
     doctor_lookup = {opt["doctor_id"]: opt for opt in doctor_options}
     doctor_id_raw = (request.form.get("doctor_id") or "").strip()
-    # Safety default: never store a blank doctor. If missing/invalid, use Any Doctor.
+
+    doctor_error = None
+    if not doctor_id_raw:
+        doctor_error = T("doctor_required")
+
+    # Safety fallback for internal logic
     if not doctor_id_raw or doctor_id_raw not in doctor_lookup:
         doctor_id_raw = ANY_DOCTOR_ID
-    doctor_error = None
     is_modal = _is_modal_request()
 
     conn, cur, p, pay = get_payment_and_patient(pay_id)
@@ -416,6 +420,33 @@ def edit_payment_post(pid, pay_id):
         cur.execute("UPDATE payments SET remaining_cents=? WHERE id=?", (remaining_cents, treatment_id))
 
     conn.commit()
+
+    try:
+        actor = getattr(g, "current_user", None)
+        actor_id = getattr(actor, "id", None)
+        write_event(
+            actor_id,
+            "payment_update",
+            entity="payment",
+            entity_id=pay_id,
+            meta={
+                "patient_id": pid,
+                "paid_at": paid_at,
+                "amount_cents": amount_cents,
+                "method": method,
+                "doctor_id": doctor_id_raw,
+                "doctor_label": doctor_label,
+                "remaining_cents": remaining_cents,
+                "prev_paid_at": pay["paid_at"],
+                "prev_amount_cents": pay["amount_cents"],
+                "prev_method": pay["method"],
+                "prev_doctor_id": pay["doctor_id"],
+                "prev_doctor_label": pay["doctor_label"],
+            },
+        )
+    except Exception:
+        pass
+
     migrate_patients_drop_unique_short_id(conn)
     conn.close()
     if is_modal:
@@ -540,6 +571,33 @@ def create_treatment(pid: str):
             ),
         )
         conn.commit()
+
+        try:
+            actor = getattr(g, "current_user", None)
+            actor_id = getattr(actor, "id", None)
+            write_event(
+                actor_id,
+                "treatment_create",
+                entity="payment",
+                entity_id=treatment_id,
+                meta={
+                    "patient_id": pid,
+                    "paid_at": paid_at,
+                    "amount_cents": down_cents,
+                    "method": method,
+                    "doctor_id": doctor_id_raw,
+                    "doctor_label": doctor_label,
+                    "remaining_cents": rem_cents,
+                    "total_amount_cents": total_cents,
+                    "discount_cents": discount_cents,
+                    "treatment_type": treatment_name,
+                    "visit_type": "exam" if exam else ("followup" if follow else "none"),
+                },
+            )
+        except Exception:
+            pass
+
+
     finally:
         migrate_patients_drop_unique_short_id(conn)
         conn.close()
@@ -711,6 +769,37 @@ def edit_treatment_post(pid: str, treatment_id: str):
             ),
         )
         conn.commit()
+
+        try:
+            actor = getattr(g, "current_user", None)
+            actor_id = getattr(actor, "id", None)
+            write_event(
+                actor_id,
+                "treatment_update",
+                entity="payment",
+                entity_id=treatment_id,
+                meta={
+                    "patient_id": pid,
+                    "paid_at": paid_at,
+                    "amount_cents": down_cents,
+                    "method": method,
+                    "doctor_id": doctor_id_raw,
+                    "doctor_label": doctor_label,
+                    "remaining_cents": remaining_cents,
+                    "total_amount_cents": total_cents,
+                    "discount_cents": discount_cents,
+                    "treatment_type": treatment_name,
+                    "visit_type": "exam" if exam else ("followup" if follow else "none"),
+                    "prev_paid_at": treatment["paid_at"],
+                    "prev_amount_cents": treatment["amount_cents"],
+                    "prev_method": treatment["method"],
+                    "prev_doctor_id": treatment["doctor_id"],
+                    "prev_doctor_label": treatment["doctor_label"],
+                },
+            )
+        except Exception:
+            pass
+
     finally:
         migrate_patients_drop_unique_short_id(conn)
         conn.close()

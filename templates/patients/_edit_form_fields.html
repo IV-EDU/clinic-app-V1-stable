@@ -1,16 +1,18 @@
-<form method="post" class="row" action="{{ action }}">
+<form method="post" class="admin-form u-stack-lg" action="{{ action }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   {% set primary_phone = (phone_rows[0].phone if phone_rows and phone_rows|length > 0 else (p['phone'] or '')) %}
   {% set primary_page = (page_rows[0].page_number if page_rows and page_rows|length > 0 else (p['primary_page_number'] or '')) %}
   {% set primary_notebook = (page_rows[0].notebook_name if page_rows and page_rows|length > 0 else '') %}
   {% set primary_color = (page_rows[0].notebook_color if page_rows and page_rows|length > 0 else '') %}
-  <div class="row" style="flex-basis:100%">
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
     {{ macros.labeled_input('short_id', t('file_no'), value=p['short_id'] or '', placeholder=t('file_no_hint')) }}
+
     {% if show_file_numbers %}
-      <div style="flex:1;min-width:220px">
-        <label class="h">{{ t('page_numbers') }}</label>
+      <div class="form-group">
+        <label class="form-label">{{ t('page_numbers') }}</label>
         <div class="page-number-input-wrap">
-          <input class="form-input page-number-input" name="primary_page_number" value="{{ primary_page or '' }}" placeholder="{{ t('page_number_placeholder') }}">
+          <input class="form-control page-number-input" name="primary_page_number" value="{{ primary_page or '' }}" placeholder="{{ t('page_number_placeholder') }}" style="padding-right: 44px;">
           <input type="hidden" name="primary_notebook_name" value="{{ primary_notebook or '' }}">
           <input type="hidden" name="primary_notebook_color" data-color-hidden value="{{ primary_color or '' }}">
           <input
@@ -20,23 +22,27 @@
             value="{{ primary_color or '#e5e7eb' }}"
             aria-label="{{ t('notebook_color') }}"
             title="{{ t('notebook_color') }}"
+            style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border: 1px solid var(--border-strong); border-radius: 50%;"
           >
         </div>
       </div>
     {% endif %}
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
     {{ macros.labeled_input('full_name', t('name'), value=p['full_name'], required=True) }}
     {{ macros.labeled_input('phone', t('phone'), value=primary_phone or '', placeholder=t('optional')) }}
   </div>
 
-  <div style="flex-basis:100%;margin-top:6px">
-    <div class="h" style="margin-bottom:6px">{{ t('additional_phones') }}</div>
-    <div id="extra-phone-rows-edit" style="display:flex;flex-direction:column;gap:8px">
+  <div style="background: var(--bg-strong); padding: 20px; border-radius: 20px;">
+    <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">{{ t('additional_phones') }}</div>
+    <div id="extra-phone-rows-edit" class="u-stack-sm">
       {% if phone_rows %}
         {% for phone_row in phone_rows %}
           {% if not loop.first %}
-            <div class="row extra-phone-row" data-repeater-row>
-              <input class="form-input" style="flex:1;min-width:220px" name="extra_phone_number" value="{{ phone_row.phone or '' }}" placeholder="{{ t('phone') }}">
-              <button type="button" class="btn secondary repeater-remove-btn" data-repeater-remove aria-label="{{ t('remove') }}" title="{{ t('remove') }}">&times;</button>
+            <div style="display: flex; gap: 8px;" data-repeater-row>
+              <input class="form-control" style="flex: 1;" name="extra_phone_number" value="{{ phone_row.phone or '' }}" placeholder="{{ t('phone') }}">
+              <button type="button" class="u-btn ghost sm danger" style="padding: 8px 12px;" data-repeater-remove title="{{ t('remove') }}">&times;</button>
             </div>
           {% endif %}
         {% endfor %}
@@ -44,38 +50,35 @@
     </div>
     <button
       type="button"
-      class="btn secondary"
-      style="margin-top:8px"
+      class="u-btn ghost sm"
+      style="margin-top: 12px; font-weight: 700;"
       data-repeater-add="phone"
       data-container-id="extra-phone-rows-edit"
       data-template-id="phone-row-template-edit"
-    >{{ t('add_phone') }}</button>
+    ><i class="fa fa-plus"></i> {{ t('add_phone') }}</button>
   </div>
 
   {% if show_file_numbers %}
-  <div style="flex-basis:100%;margin-top:10px">
-    <div class="h" style="margin-bottom:6px">{{ t('additional_pages') }}</div>
-    <div id="extra-page-rows-edit" style="display:flex;flex-direction:column;gap:8px">
+  <div style="background: var(--bg-strong); padding: 20px; border-radius: 20px;">
+    <div style="font-size: 0.85rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">{{ t('additional_pages') }}</div>
+    <div id="extra-page-rows-edit" class="u-stack-sm">
       {% if page_rows %}
         {% for page_row in page_rows %}
           {% if not loop.first %}
-            <div class="row extra-page-row" data-repeater-row>
-              <div style="flex:2;min-width:220px">
-                <div class="page-number-input-wrap">
-                  <input class="form-input page-number-input" name="extra_page_number" value="{{ page_row.page_number or '' }}" placeholder="{{ t('page_number_placeholder') }}">
-                  <input type="hidden" name="extra_notebook_name" value="{{ page_row.notebook_name or '' }}">
-                  <input type="hidden" name="extra_notebook_color" data-color-hidden value="{{ page_row.notebook_color or '' }}">
-                  <input
-                    type="color"
-                    class="page-color-picker"
-                    data-color-picker
-                    value="{{ page_row.notebook_color or '#e5e7eb' }}"
-                    aria-label="{{ t('notebook_color') }}"
-                    title="{{ t('notebook_color') }}"
-                  >
-                </div>
+            <div style="display: flex; gap: 8px;" data-repeater-row>
+              <div style="flex: 1; position: relative;">
+                <input class="form-control" name="extra_page_number" value="{{ page_row.page_number or '' }}" placeholder="{{ t('page_number_placeholder') }}" style="padding-right: 44px; width: 100%;">
+                <input type="hidden" name="extra_notebook_name" value="{{ page_row.notebook_name or '' }}">
+                <input type="hidden" name="extra_notebook_color" data-color-hidden value="{{ page_row.notebook_color or '' }}">
+                <input
+                  type="color"
+                  class="page-color-picker"
+                  data-color-picker
+                  value="{{ page_row.notebook_color or '#e5e7eb' }}"
+                  style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border: 1px solid var(--border-strong); border-radius: 50%;"
+                >
               </div>
-              <button type="button" class="btn secondary repeater-remove-btn" data-repeater-remove aria-label="{{ t('remove') }}" title="{{ t('remove') }}">&times;</button>
+              <button type="button" class="u-btn ghost sm danger" style="padding: 8px 12px;" data-repeater-remove title="{{ t('remove') }}">&times;</button>
             </div>
           {% endif %}
         {% endfor %}
@@ -83,19 +86,24 @@
     </div>
     <button
       type="button"
-      class="btn secondary"
-      style="margin-top:8px"
+      class="u-btn ghost sm"
+      style="margin-top: 12px; font-weight: 700;"
       data-repeater-add="page"
       data-container-id="extra-page-rows-edit"
       data-template-id="page-row-template-edit"
-    >{{ t('add_page_number') }}</button>
+    ><i class="fa fa-plus"></i> {{ t('add_page_number') }}</button>
   </div>
   {% endif %}
 
   {{ macros.labeled_textarea('notes', t('notes'), value=p['notes'] or '', placeholder=t('optional')) }}
-  <div style="flex-basis:100%;display:flex;gap:8px;justify-content:center">
-    <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=p['id']) }}">{{ t('back_to_patient') }}</a>
-    <button class="btn">{{ t('update') }}</button>
+
+  <div class="form-actions" style="display: flex; gap: 16px; margin-top: 16px; padding-top: 32px; border-top: 1px solid var(--border-strong);">
+    <button type="submit" class="u-btn primary" style="flex: 2; height: 56px; font-size: 1.1rem; border-radius: 16px;">
+      <i class="fa fa-save"></i> {{ t('update') }}
+    </button>
+    <a class="u-btn ghost" href="{{ url_for('patients.patient_detail', pid=p['id']) }}" style="flex: 1; height: 56px; font-size: 1.1rem; border-radius: 16px; justify-content: center;">
+      {{ t('cancel') }}
+    </a>
   </div>
 </form>
 

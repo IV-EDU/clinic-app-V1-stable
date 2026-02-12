@@ -18,6 +18,7 @@ from clinic_app.services.payments import (  # noqa: F401 - re-exported for tests
 )
 from clinic_app.services.ui import render_page  # noqa: F401 - re-exported for tests
 from clinic_app.services.database import db
+from clinic_app.services.patients import normalize_arabic
 from clinic_app.services.security import require_permission
 from clinic_app.services.csrf import ensure_csrf_token
 
@@ -36,6 +37,87 @@ PAYMENT_FORM = "payments/form.html"
 @bp.route("/", endpoint="index")
 @require_permission("patients:view")
 def index():
+    """Modern Home Dashboard."""
+    conn = db()
+    cur = conn.cursor()
+
+    today = date.today().isoformat()
+    now = datetime.now()
+    current_time = now.strftime("%H:%M")
+
+    # Clinic Pulse
+    has_appts_table = bool(cur.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='appointments'").fetchone())
+
+    seen_today = 0
+    remaining_today = 0
+    if has_appts_table:
+        stats = cur.execute(
+            """
+            SELECT
+                SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as seen,
+                SUM(CASE WHEN status = 'scheduled' AND starts_at > ? THEN 1 ELSE 0 END) as remaining
+            FROM appointments
+            WHERE substr(starts_at, 1, 10) = ?
+            """,
+            (today + ' ' + current_time, today)
+        ).fetchone()
+        seen_today = stats[0] or 0
+        remaining_today = stats[1] or 0
+
+    total_patients = cur.execute("SELECT COUNT(*) FROM patients").fetchone()[0] or 0
+    today_received = today_collected(conn)
+
+    # Recent activity for timeline
+    recent_activity = []
+    # Recent patients
+    recent_patients = cur.execute(
+        "SELECT id, full_name, created_at FROM patients ORDER BY created_at DESC LIMIT 5"
+    ).fetchall()
+    for p in recent_patients:
+        recent_activity.append({
+            "type": "new_patient",
+            "name": p["full_name"],
+            "id": p["id"],
+            "ts": p["created_at"],
+            "icon": "👤"
+        })
+
+    # Recent payments
+    recent_payments = cur.execute(
+        """
+        SELECT pay.id, pay.amount_cents, p.full_name, p.id as pid, pay.paid_at
+        FROM payments pay
+        JOIN patients p ON p.id = pay.patient_id
+        ORDER BY pay.created_at DESC LIMIT 5
+        """
+    ).fetchall()
+    for pay in recent_payments:
+        recent_activity.append({
+            "type": "payment",
+            "name": pay["full_name"],
+            "id": pay["pid"],
+            "amount": money(pay["amount_cents"]),
+            "ts": pay["paid_at"],
+            "icon": "💰"
+        })
+
+    recent_activity.sort(key=lambda x: x["ts"], reverse=True)
+
+    conn.close()
+    return render_page(
+        "core/dashboard.html",
+        seen_today=seen_today,
+        remaining_today=remaining_today,
+        total_patients=total_patients,
+        today_total=money(today_received),
+        recent_activity=recent_activity[:8],
+        show_back=False,
+    )
+
+
+@bp.route("/patients", endpoint="patient_list")
+@require_permission("patients:view")
+def patient_list():
     q = (request.args.get("q") or "").strip()
     sort_param_present = "sort" in request.args
     raw_sort = (request.args.get("sort") or "").strip().lower()
@@ -75,23 +157,25 @@ def index():
     where_sql = ""
     where_params: tuple[str, ...] = ()
     if q:
-        like = f"%{q}%"
+        norm_q = normalize_arabic(q.lower())
+        like = f"%{norm_q}%"
+        raw_like = f"%{q.lower()}%"
         digits = "".join(ch for ch in q if ch.isdigit())
         digits_like = f"%{digits}%" if digits else ""
         if has_pages_table and has_patient_phones_table:
             if digits:
                 where_sql = """
-                WHERE p.full_name LIKE ?
+                WHERE NORMALIZE_ARABIC(p.full_name) LIKE ?
                    OR p.phone LIKE ?
                    OR replace(replace(replace(replace(replace(p.phone,' ',''),'-',''),'+',''),'(',''),')','') LIKE ?
-                   OR p.short_id LIKE ?
+                   OR LOWER(p.short_id) LIKE ?
                    OR EXISTS (
                        SELECT 1
                        FROM patient_pages pg
                        WHERE pg.patient_id = p.id
                          AND (
-                              pg.page_number LIKE ?
-                              OR (pg.notebook_name LIKE ? AND pg.notebook_name NOT LIKE 'pc:%')
+                              LOWER(pg.page_number) LIKE ?
+                              OR (NORMALIZE_ARABIC(pg.notebook_name) LIKE ? AND pg.notebook_name NOT LIKE 'pc:%')
                          )
                    )
                    OR EXISTS (
@@ -108,61 +192,61 @@ def index():
                 """
                 where_params = (
                     like,
-                    like,
+                    raw_like,
                     digits_like,
+                    raw_like,
+                    raw_like,
                     like,
-                    like,
-                    like,
-                    like,
+                    raw_like,
                     digits_like,
                     digits_like,
                     digits_like,
                 )
             else:
                 where_sql = """
-                WHERE p.full_name LIKE ?
+                WHERE NORMALIZE_ARABIC(p.full_name) LIKE ?
                    OR p.phone LIKE ?
-                   OR p.short_id LIKE ?
+                   OR LOWER(p.short_id) LIKE ?
                    OR EXISTS (
                        SELECT 1
                        FROM patient_pages pg
                        WHERE pg.patient_id = p.id
                          AND (
-                              pg.page_number LIKE ?
-                              OR (pg.notebook_name LIKE ? AND pg.notebook_name NOT LIKE 'pc:%')
+                              LOWER(pg.page_number) LIKE ?
+                              OR (NORMALIZE_ARABIC(pg.notebook_name) LIKE ? AND pg.notebook_name NOT LIKE 'pc:%')
                          )
                    )
                    OR EXISTS (
                        SELECT 1
                        FROM patient_phones ph
                        WHERE ph.patient_id = p.id
-                         AND (ph.phone LIKE ?)
+                         AND (LOWER(ph.phone) LIKE ?)
                    )
                 """
-                where_params = (like, like, like, like, like, like)
+                where_params = (like, raw_like, raw_like, raw_like, like, raw_like)
         elif has_pages_table:
             where_sql = """
-            WHERE p.full_name LIKE ?
+            WHERE NORMALIZE_ARABIC(p.full_name) LIKE ?
                OR p.phone LIKE ?
-               OR p.short_id LIKE ?
+               OR LOWER(p.short_id) LIKE ?
                OR EXISTS (
                    SELECT 1
                    FROM patient_pages pg
                    WHERE pg.patient_id = p.id
                      AND (
-                          pg.page_number LIKE ?
-                          OR (pg.notebook_name LIKE ? AND pg.notebook_name NOT LIKE 'pc:%')
+                          LOWER(pg.page_number) LIKE ?
+                          OR (NORMALIZE_ARABIC(pg.notebook_name) LIKE ? AND pg.notebook_name NOT LIKE 'pc:%')
                      )
                )
             """
-            where_params = (like, like, like, like, like)
+            where_params = (like, raw_like, raw_like, raw_like, like)
         elif has_patient_phones_table:
             if digits:
                 where_sql = """
-                WHERE p.full_name LIKE ?
+                WHERE NORMALIZE_ARABIC(p.full_name) LIKE ?
                    OR p.phone LIKE ?
                    OR replace(replace(replace(replace(replace(p.phone,' ',''),'-',''),'+',''),'(',''),')','') LIKE ?
-                   OR p.short_id LIKE ?
+                   OR LOWER(p.short_id) LIKE ?
                    OR EXISTS (
                        SELECT 1
                        FROM patient_phones ph
@@ -177,34 +261,34 @@ def index():
                 """
                 where_params = (
                     like,
-                    like,
+                    raw_like,
                     digits_like,
-                    like,
-                    like,
+                    raw_like,
+                    raw_like,
                     digits_like,
                     digits_like,
                     digits_like,
                 )
             else:
                 where_sql = """
-                WHERE p.full_name LIKE ?
+                WHERE NORMALIZE_ARABIC(p.full_name) LIKE ?
                    OR p.phone LIKE ?
-                   OR p.short_id LIKE ?
+                   OR LOWER(p.short_id) LIKE ?
                    OR EXISTS (
                        SELECT 1
                        FROM patient_phones ph
                        WHERE ph.patient_id = p.id
-                         AND (ph.phone LIKE ?)
+                         AND (LOWER(ph.phone) LIKE ?)
                    )
                 """
-                where_params = (like, like, like, like)
+                where_params = (like, raw_like, raw_like, raw_like)
         else:
             where_sql = """
-            WHERE p.full_name LIKE ?
+            WHERE NORMALIZE_ARABIC(p.full_name) LIKE ?
                OR p.phone LIKE ?
-               OR p.short_id LIKE ?
+               OR LOWER(p.short_id) LIKE ?
             """
-            where_params = (like, like, like)
+            where_params = (like, raw_like, raw_like)
 
     if sort == "old":
         order_sql = """
@@ -228,7 +312,9 @@ def index():
     if q:
         # Show why a patient matched (extra phone/page) without changing the table layout.
         # Only compute this when searching to avoid extra work on normal browsing.
-        like_for_match = f"%{q}%"
+        norm_q_for_match = normalize_arabic(q.lower())
+        like_for_match = f"%{norm_q_for_match}%"
+        raw_like_for_match = f"%{q.lower()}%"
         digits = "".join(ch for ch in q if ch.isdigit())
         digits_like = f"%{digits}%" if digits else ""
 
@@ -250,7 +336,7 @@ def index():
                    LIMIT 1
                 ) AS matched_extra_phone
                 """
-                select_params.extend([like_for_match, digits_like, digits_like, digits_like])
+                select_params.extend([raw_like_for_match, digits_like, digits_like, digits_like])
             else:
                 select_matched_sql += """
                 ,
@@ -259,11 +345,11 @@ def index():
                     FROM patient_phones ph
                    WHERE ph.patient_id = p.id
                      AND ph.is_primary = 0
-                     AND (ph.phone LIKE ?)
+                     AND (LOWER(ph.phone) LIKE ?)
                    LIMIT 1
                 ) AS matched_extra_phone
                 """
-                select_params.append(like_for_match)
+                select_params.append(raw_like_for_match)
         else:
             select_matched_sql += ", NULL AS matched_extra_phone"
 
@@ -275,23 +361,24 @@ def index():
               SELECT pg.page_number
                FROM patient_pages pg
                WHERE pg.patient_id = p.id
-                 AND (p.primary_page_number IS NULL OR lower(pg.page_number) <> lower(p.primary_page_number))
+                 AND (p.primary_page_number IS NULL OR LOWER(pg.page_number) <> LOWER(p.primary_page_number))
                  AND (
-                      pg.page_number LIKE ?
-                      OR (pg.notebook_name LIKE ? AND pg.notebook_name NOT LIKE 'pc:%')
+                      LOWER(pg.page_number) LIKE ?
+                      OR (NORMALIZE_ARABIC(pg.notebook_name) LIKE ? AND pg.notebook_name NOT LIKE 'pc:%')
                  )
                LIMIT 1
             ) AS matched_extra_page
             """
-            select_params.extend([like_for_match, like_for_match])
+            select_params.extend([raw_like_for_match, like_for_match])
         else:
             select_matched_sql += ", NULL AS matched_extra_page"
     else:
         select_matched_sql = ", NULL AS matched_extra_phone, NULL AS matched_extra_page"
 
+    today_iso = date.today().isoformat()
     rows = cur.execute(
         f"""
-        SELECT p.*, pay.last_paid_at, pay.first_paid_at
+        SELECT p.*, pay.last_paid_at, pay.first_paid_at, appt.has_appt_today
         {select_matched_sql}
         FROM patients p
         LEFT JOIN (
@@ -299,11 +386,17 @@ def index():
             FROM payments
             GROUP BY patient_id
         ) pay ON pay.patient_id = p.id
+        LEFT JOIN (
+            SELECT patient_id, COUNT(*) as has_appt_today
+            FROM appointments
+            WHERE substr(starts_at, 1, 10) = ?
+            GROUP BY patient_id
+        ) appt ON appt.patient_id = p.id
         {where_sql}
         {order_sql}
         LIMIT ? OFFSET ?
         """,
-        (*select_params, *where_params, per_page, offset),
+        (today_iso, *select_params, *where_params, per_page, offset),
     ).fetchall()
     filtered_total = (
         cur.execute(
@@ -333,6 +426,7 @@ def index():
                 "primary_page_number": primary_page,
                 "matched_extra_phone": r["matched_extra_phone"],
                 "matched_extra_page": r["matched_extra_page"],
+                "has_appt_today": bool(r["has_appt_today"]),
             }
         )
     total_patients = filtered_total
@@ -388,7 +482,7 @@ def index():
 
     conn.close()
     return render_page(
-        "core/index.html",
+        "patients/list.html",
         patients=patients,
         q=q,
         total_patients=total_patients,

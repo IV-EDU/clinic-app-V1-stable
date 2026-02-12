@@ -1,127 +1,102 @@
-{% macro kv_row(label, value) -%}
-  <div class="kv-line">
-    <span class="kv-label">{{ label }}</span>
-    <strong class="kv-value">{{ value }}</strong>
+{% macro kv_row(label, value, is_bold=false) -%}
+  <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px;">
+    <span style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 600;">{{ label }}</span>
+    <span style="{% if is_bold %}font-weight: 800; color: var(--primary-color);{% else %}font-weight: 700; color: var(--text-primary);{% endif %}">{{ value }}</span>
   </div>
 {%- endmacro %}
 
-<div class="receipt-modal-host">
-  <div class="receipt-card" dir="{{ dir|default('ltr') }}">
+<div class="receipt-modal-host" style="background: var(--bg-surface);">
+  <div class="receipt-card" dir="{{ dir|default('ltr') }}" style="border: none; box-shadow: none; padding: 0;">
     {% set receipt_scope = scope|default('payment_only') %}
     {% set show_snapshot = (receipt_scope == 'payment_snapshot') %}
     {% set clinic_title = clinic.name or t('payment_summary') %}
-    <header class="receipt-header">
-      {% if (dir|default('ltr')) == 'rtl' %}
-        <div class="receipt-meta">
-          {{ kv_row(t('receipt_number_label'), receipt.number) }}
-          {{ kv_row(t('receipt_date_label'), receipt.date) }}
-          {{ kv_row(t('payment_method'), receipt.method or t('method_cash')) }}
+
+    <header class="receipt-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px dashed var(--border-strong); padding-bottom: 24px; margin-bottom: 24px; gap: 24px;">
+      <div class="clinic-block" style="flex: 1;">
+        <div class="clinic-brand">
+          {% if pdf_logo_url %}
+            <div class="clinic-logo-wrapper" style="margin-bottom: 8px;">
+              <img
+                src="{{ pdf_logo_url }}"
+                alt="{{ clinic_title }}"
+                style="max-height: 50px; width: auto; object-fit: contain;"
+                onerror="this.closest('.clinic-logo-wrapper').style.display='none';this.closest('.clinic-brand').querySelector('.clinic-name-fallback').style.display='block';"
+              >
+            </div>
+            <div class="clinic-name clinic-name-fallback" style="display:none; font-weight: 800; font-size: 1.25rem;">{{ clinic_title }}</div>
+          {% else %}
+            <div class="clinic-name" style="font-weight: 800; font-size: 1.25rem;">{{ clinic_title }}</div>
+          {% endif %}
         </div>
-        <div class="clinic-block">
-          <div class="clinic-brand">
-            {% if pdf_logo_url %}
-              <div class="clinic-logo-wrapper">
-                <img
-                  src="{{ pdf_logo_url }}"
-                  alt="{{ clinic_title }}"
-                  class="clinic-logo-img"
-                  onerror="this.closest('.clinic-logo-wrapper').style.display='none';this.closest('.clinic-brand').querySelector('.clinic-name-fallback').style.display='block';"
-                >
-              </div>
-              <div class="clinic-name clinic-name-fallback" style="display:none">{{ clinic_title }}</div>
-            {% else %}
-              <div class="clinic-name">{{ clinic_title }}</div>
-            {% endif %}
-          </div>
-          {% if clinic.address %}<div class="clinic-meta">{{ clinic.address }}</div>{% endif %}
-          {% if clinic.phone %}<div class="clinic-meta">{{ clinic.phone }}</div>{% endif %}
-        </div>
-      {% else %}
-        <div class="clinic-block">
-          <div class="clinic-brand">
-            {% if pdf_logo_url %}
-              <div class="clinic-logo-wrapper">
-                <img
-                  src="{{ pdf_logo_url }}"
-                  alt="{{ clinic_title }}"
-                  class="clinic-logo-img"
-                  onerror="this.closest('.clinic-logo-wrapper').style.display='none';this.closest('.clinic-brand').querySelector('.clinic-name-fallback').style.display='block';"
-                >
-              </div>
-              <div class="clinic-name clinic-name-fallback" style="display:none">{{ clinic_title }}</div>
-            {% else %}
-              <div class="clinic-name">{{ clinic_title }}</div>
-            {% endif %}
-          </div>
-          {% if clinic.address %}<div class="clinic-meta">{{ clinic.address }}</div>{% endif %}
-          {% if clinic.phone %}<div class="clinic-meta">{{ clinic.phone }}</div>{% endif %}
-        </div>
-        <div class="receipt-meta">
-          {{ kv_row(t('receipt_number_label'), receipt.number) }}
-          {{ kv_row(t('receipt_date_label'), receipt.date) }}
-          {{ kv_row(t('payment_method'), receipt.method or t('method_cash')) }}
-        </div>
-      {% endif %}
+        {% if clinic.address %}<div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">{{ clinic.address }}</div>{% endif %}
+        {% if clinic.phone %}<div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">{{ clinic.phone }}</div>{% endif %}
+      </div>
+
+      <div class="receipt-meta" style="flex: 0 0 auto; text-align: {{ 'left' if dir == 'rtl' else 'right' }};">
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">{{ t('receipt_number_label') }}</div>
+        <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary);">#{{ receipt.number }}</div>
+        <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-top: 4px;">{{ receipt.date }}</div>
+      </div>
     </header>
 
-    <section class="info-grid">
-      {% if (dir|default('ltr')) == 'rtl' %}
-        <div class="info-block">
-          <div class="block-title">{{ t('payment') }}</div>
-          {{ kv_row(t('amount'), receipt.paid) }}
-          {{ kv_row(t('doctor'), receipt.doctor) }}
-          {{ kv_row(t('payment_method'), receipt.method or t('method_cash')) }}
-        </div>
-        <div class="info-block">
-          <div class="block-title">{{ t('receipt_patient_label') }}</div>
-          {{ kv_row(t('name'), patient.name) }}
-          {{ kv_row(t('file_no'), patient.file_no) }}
-          {{ kv_row(t('phone'), patient.phone or '—') }}
-        </div>
-      {% else %}
-        <div class="info-block">
-          <div class="block-title">{{ t('receipt_patient_label') }}</div>
-          {{ kv_row(t('name'), patient.name) }}
-          {{ kv_row(t('file_no'), patient.file_no) }}
-          {{ kv_row(t('phone'), patient.phone or '—') }}
-        </div>
-        <div class="info-block">
-          <div class="block-title">{{ t('payment') }}</div>
-          {{ kv_row(t('amount'), receipt.paid) }}
-          {{ kv_row(t('doctor'), receipt.doctor) }}
-          {{ kv_row(t('payment_method'), receipt.method or t('method_cash')) }}
-        </div>
-      {% endif %}
-    </section>
+    <div class="info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+      <div class="info-block" style="background: var(--bg-strong); padding: 16px; border-radius: 16px;">
+        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted); margin-bottom: 12px; letter-spacing: 0.05em;">{{ t('receipt_patient_label') }}</div>
+        {{ kv_row(t('name'), patient.name) }}
+        {{ kv_row(t('file_no'), patient.file_no) }}
+        {{ kv_row(t('phone'), patient.phone or '—') }}
+      </div>
+
+      <div class="info-block" style="background: var(--bg-strong); padding: 16px; border-radius: 16px; border: 2px solid var(--primary-color);">
+        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--primary-color); margin-bottom: 12px; letter-spacing: 0.05em;">{{ t('payment') }}</div>
+        {{ kv_row(t('amount'), receipt.paid, is_bold=true) }}
+        {{ kv_row(t('doctor'), receipt.doctor) }}
+        {{ kv_row(t('payment_method'), receipt.method or t('method_cash')) }}
+      </div>
+    </div>
 
     {% if show_snapshot and snapshot %}
-      <section class="note-block" data-section="snapshot">
-        <div class="block-title">{{ t('payment_snapshot') }}</div>
-        <div class="info-block">
-          {{ kv_row(t('summary_total'), snapshot.total) }}
-          {{ kv_row(t('summary_discount'), snapshot.discount) }}
-          {{ kv_row(t('summary_paid'), snapshot.paid_so_far) }}
-          {{ kv_row(t('summary_remaining'), snapshot.remaining) }}
+      <section style="background: var(--primary-color); color: white; padding: 20px; border-radius: 20px; margin-bottom: 24px; box-shadow: var(--shadow-soft);">
+        <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; opacity: 0.8; margin-bottom: 16px; letter-spacing: 0.05em;">{{ t('payment_snapshot') }}</div>
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 0.8rem; opacity: 0.7; font-weight: 600;">{{ t('summary_total') }}</span>
+            <span style="font-weight: 700;">{{ snapshot.total }}</span>
+          </div>
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 0.8rem; opacity: 0.7; font-weight: 600;">{{ t('summary_discount') }}</span>
+            <span style="font-weight: 700;">{{ snapshot.discount }}</span>
+          </div>
+          <div style="display: flex; flex-direction: column;">
+            <span style="font-size: 0.8rem; opacity: 0.7; font-weight: 600;">{{ t('summary_paid') }}</span>
+            <span style="font-weight: 700;">{{ snapshot.paid_so_far }}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; background: rgba(255,255,255,0.2); padding: 8px 12px; border-radius: 12px;">
+            <span style="font-size: 0.8rem; opacity: 0.9; font-weight: 800;">{{ t('summary_remaining') }}</span>
+            <span style="font-weight: 800; font-size: 1.1rem;">{{ snapshot.remaining }}</span>
+          </div>
         </div>
       </section>
     {% endif %}
 
-    {% if receipt.treatment %}
-      <section class="note-block" data-section="treatment">
-        <div class="block-title">{{ t('treatment_notes') }}</div>
-        <p class="note-text" dir="auto">{{ receipt.treatment }}</p>
-      </section>
-    {% endif %}
+    <div style="display: grid; gap: 16px; margin-bottom: 24px;">
+      {% if receipt.treatment %}
+        <div style="border: 1px solid var(--border-strong); border-radius: 16px; padding: 16px;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.05em;">{{ t('treatment_notes') }}</div>
+          <p style="margin: 0; font-weight: 600; color: var(--text-primary); line-height: 1.5;" dir="auto">{{ receipt.treatment }}</p>
+        </div>
+      {% endif %}
 
-    {% if receipt.notes %}
-      <section class="note-block" data-section="notes">
-        <div class="block-title">{{ t('payment_notes') }}</div>
-        <p class="note-text" dir="auto">{{ receipt.notes }}</p>
-      </section>
-    {% endif %}
+      {% if receipt.notes %}
+        <div style="border: 1px solid var(--border-strong); border-radius: 16px; padding: 16px;">
+          <div style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.05em;">{{ t('payment_notes') }}</div>
+          <p style="margin: 0; font-weight: 500; color: var(--text-secondary); line-height: 1.5;" dir="auto">{{ receipt.notes }}</p>
+        </div>
+      {% endif %}
+    </div>
 
-    <footer class="receipt-footer">
-      <div class="thanks">{{ t('thank_you_message') }}</div>
+    <footer style="text-align: center; padding-top: 24px; border-top: 1px solid var(--border-strong);">
+      <div style="font-family: 'Tajawal', sans-serif; font-weight: 800; color: var(--primary-color); font-size: 1.1rem;">{{ t('thank_you_message') }}</div>
     </footer>
   </div>
 </div>

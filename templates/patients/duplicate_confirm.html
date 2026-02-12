@@ -1,38 +1,62 @@
 {% extends '_base.html' %}
 {% block content %}
-<div class="card" style="text-align:center;color:#b45309;background:#fef3c7;padding:12px;border-radius:10px;border:1px solid #f59e0b">
-  <div style="font-weight:700;margin-bottom:6px">{{ t('dup_found_title') }}</div>
-  <div style="margin-bottom:10px">
-    {{ t('dup_found_msg') }}
-    {% for dup in duplicates %}
-      <a href="{{ url_for('patients.patient_detail', pid=dup['id']) }}" target="_blank">#{{ dup['short_id'] or '' }} {{ dup['full_name'] }}</a>{% if not loop.last %} {% endif %}
-    {% endfor %}
+<div class="patient-duplicate-page u-stack-lg" style="max-width: 600px; margin: 0 auto; text-align: center;">
+  <div class="page-header">
+    <div style="font-size: 4rem; margin-bottom: 24px;">🤔</div>
+    <h1 class="page-title" style="margin: 0; font-weight: 800; font-size: 2.5rem; color: var(--warning-color);">{{ t('dup_found_title') }}</h1>
   </div>
-  <form method="post" class="row" style="justify-content:center;gap:8px">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input type="hidden" name="short_id" value="{{ form_values.short_id }}">
-    <input type="hidden" name="full_name" value="{{ form_values.full_name }}">
-    <input type="hidden" name="phone" value="{{ form_values.phone }}">
-    <input type="hidden" name="primary_page_number" value="{{ form_values.primary_page_number or '' }}">
-    <input type="hidden" name="primary_notebook_name" value="{{ form_values.primary_notebook_name or '' }}">
-    <input type="hidden" name="primary_notebook_color" value="{{ form_values.primary_notebook_color or '' }}">
-    <input type="hidden" name="notes" value="{{ form_values.notes }}">
-    {% for phone_row in phone_rows or [] %}
-      {% if not loop.first %}
-        <input type="hidden" name="extra_phone_label" value="{{ phone_row.label or '' }}">
-        <input type="hidden" name="extra_phone_number" value="{{ phone_row.phone or '' }}">
-      {% endif %}
-    {% endfor %}
-    {% for page_row in page_rows or [] %}
-      {% if not loop.first %}
-        <input type="hidden" name="extra_page_number" value="{{ page_row.page_number or '' }}">
-        <input type="hidden" name="extra_notebook_name" value="{{ page_row.notebook_name or '' }}">
-        <input type="hidden" name="extra_notebook_color" value="{{ page_row.notebook_color or '' }}">
-      {% endif %}
-    {% endfor %}
-    <input type="hidden" name="confirm_dup" value="1">
-    <button class="btn" type="submit">{{ t('save_anyway') }}</button>
-    <a class="btn secondary" href="{{ url_for('patients.new_patient') }}">{{ t('try_again') }}</a>
-  </form>
+
+  <div class="card" style="background: var(--bg-surface); border: 2px solid var(--warning-color); border-radius: 32px; padding: 40px; box-shadow: var(--shadow-strong);">
+    <div style="background: var(--warning-bg); color: var(--warning-color); padding: 16px; border-radius: 12px; margin-bottom: 24px; font-weight: 700;">
+      {{ t('dup_found_msg') }}
+    </div>
+
+    <div class="duplicate-list u-stack-sm" style="margin-bottom: 32px;">
+      {% for dup in duplicates %}
+        <a href="{{ url_for('patients.patient_detail', pid=dup['id']) }}" target="_blank"
+           style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; background: var(--bg-strong); border-radius: 16px; text-decoration: none; border: 1px solid var(--border-strong); transition: all var(--transition-fast);">
+          <div style="text-align: left;">
+            <div style="font-weight: 800; color: var(--text-primary);">{{ dup['full_name'] }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600; margin-top: 2px;">#{{ dup['short_id'] or '—' }}</div>
+          </div>
+          <span class="u-btn ghost sm" style="background: var(--bg-surface);">{{ t('view_profile') or 'View' }}</span>
+        </a>
+      {% endfor %}
+    </div>
+
+    <form method="post" class="u-stack-md">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="short_id" value="{{ form_values.short_id }}">
+      <input type="hidden" name="full_name" value="{{ form_values.full_name }}">
+      <input type="hidden" name="phone" value="{{ form_values.phone }}">
+      <input type="hidden" name="primary_page_number" value="{{ form_values.primary_page_number or '' }}">
+      <input type="hidden" name="primary_notebook_name" value="{{ form_values.primary_notebook_name or '' }}">
+      <input type="hidden" name="primary_notebook_color" value="{{ form_values.primary_notebook_color or '' }}">
+      <input type="hidden" name="notes" value="{{ form_values.notes }}">
+      {% for phone_row in phone_rows or [] %}
+        {% if not loop.first %}
+          <input type="hidden" name="extra_phone_label" value="{{ phone_row.label or '' }}">
+          <input type="hidden" name="extra_phone_number" value="{{ phone_row.phone or '' }}">
+        {% endif %}
+      {% endfor %}
+      {% for page_row in page_rows or [] %}
+        {% if not loop.first %}
+          <input type="hidden" name="extra_page_number" value="{{ page_row.page_number or '' }}">
+          <input type="hidden" name="extra_notebook_name" value="{{ page_row.notebook_name or '' }}">
+          <input type="hidden" name="extra_notebook_color" value="{{ page_row.notebook_color or '' }}">
+        {% endif %}
+      {% endfor %}
+      <input type="hidden" name="confirm_dup" value="1">
+
+      <div style="display: flex; gap: 16px;">
+        <button class="u-btn primary" type="submit" style="flex: 2; height: 56px; font-size: 1.1rem; border-radius: 16px; justify-content: center;">
+          {{ t('save_anyway') }}
+        </button>
+        <a class="u-btn ghost" href="{{ url_for('patients.new_patient') }}" style="flex: 1; height: 56px; font-size: 1.1rem; border-radius: 16px; justify-content: center;">
+          {{ t('try_again') }}
+        </a>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

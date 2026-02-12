@@ -17,6 +17,8 @@ from clinic_app.services.patients import (
     next_short_id,
     merge_patient_records,
     MergeConflict,
+    normalize_name,
+    normalize_arabic,
 )
 from clinic_app.services.patient_pages import PatientPageService, AdminSettingsService
 from clinic_app.extensions import csrf
@@ -266,11 +268,12 @@ def _load_patient_phones(conn, patient_id: str, primary_phone: str | None) -> li
     return ([{"phone": primary_phone, "label": None, "is_primary": 1}] if primary_phone else [])
 
 
-@bp.route("/", methods=["GET"])
+@bp.route("/list", methods=["GET"])
 @require_permission("patients:view")
-def index():
-    """Redirect to patients list (main dashboard)."""
-    return redirect(url_for("index"))
+def patient_list():
+    """Redirect to the main dashboard search which now lives in core."""
+    # We forward all parameters to the new search page
+    return redirect(url_for("core.index", **request.args))
 
 
 @bp.route("/patients/new", methods=["GET", "POST"])
@@ -312,12 +315,12 @@ def new_patient():
             )
         conn = db()
         confirm_dup = (request.form.get("confirm_dup") or "") == "1"
-        n_name = re.sub(r"\s+", " ", full).strip().lower()
+        n_name = normalize_name(full)
         cur = conn.cursor()
         dups = cur.execute(
             """
             SELECT id, full_name, phone, short_id FROM patients
-            WHERE lower(trim(replace(full_name,'  ',' '))) = ?
+            WHERE NORMALIZE_ARABIC(full_name) = ?
                OR (phone IS NOT NULL AND phone = ?)
                OR (short_id IS NOT NULL AND short_id = ?)
             LIMIT 5
@@ -373,10 +376,11 @@ def new_patient():
 def patient_detail(pid):
     conn = db()
     cur = conn.cursor()
-    p = cur.execute("SELECT * FROM patients WHERE id=?", (pid,)).fetchone()
-    if not p:
+    p_row = cur.execute("SELECT * FROM patients WHERE id=?", (pid,)).fetchone()
+    if not p_row:
         conn.close()
         return "Patient not found", 404
+    p = dict(p_row)
     
     # Get treatments with grouped payments
     treatments = get_treatments_for_patient(conn, pid)
@@ -459,11 +463,75 @@ def patient_detail(pid):
     overall_fmt = money(overall_cents)
     overall_class = bal_class_nonneg(overall_cents)
     
+    # Critical Medical Alerts
+    medical_alerts = []
+    try:
+        from clinic_app.blueprints.images.images import _fetch_medical, _parse_flags
+        med = _fetch_medical(conn, pid)
+        if med.get("allergies_flag"):
+            medical_alerts.append({"type": "allergy", "text": med.get("allergies") or T("allergy")})
+
+        flags = _parse_flags(med.get("vitals", "{}"))
+        critical_keys = {
+            "pregnancy": "Pregnancy",
+            "bleeding_disorder": "Bleeding Disorder",
+            "dm_uncontrolled": "Uncontrolled DM",
+            "prosthetic_valve": "Prosthetic Valve",
+            "pacemaker_icd": "Pacemaker/ICD"
+        }
+        for k, label in critical_keys.items():
+            if flags.get(k):
+                medical_alerts.append({"type": "critical", "text": T(k) if T(k) != k else label})
+    except Exception:
+        pass
+
+    # Patient Timeline
+    timeline = []
+    # 1. Appointments
+    try:
+        appts = cur.execute(
+            "SELECT id, title, doctor_label, starts_at, status FROM appointments WHERE patient_id=? ORDER BY starts_at DESC",
+            (pid,)
+        ).fetchall()
+        for a in appts:
+            timeline.append({
+                "type": "appointment",
+                "ts": a["starts_at"],
+                "title": a["title"],
+                "meta": a["doctor_label"],
+                "status": a["status"],
+                "icon": "🗓️"
+            })
+    except Exception:
+        pass
+
+    # 2. Payments
+    for t in treatments_fmt:
+        timeline.append({
+            "type": "treatment",
+            "ts": t["paid_at"],
+            "title": t["treatment"] or T("treatment"),
+            "amount": t["total_amount_fmt"],
+            "meta": t["doctor_label"],
+            "icon": "🦷"
+        })
+        for pay in t.get("payments", []):
+            timeline.append({
+                "type": "payment",
+                "ts": pay["paid_at"],
+                "title": T("payment"),
+                "amount": pay["amount_fmt"],
+                "meta": pay["doctor_label"],
+                "icon": "💰"
+            })
+
+    timeline.sort(key=lambda x: x["ts"], reverse=True)
+
     # Suggested merge targets based on similar names (first 2 parts).
     merge_suggestions = []
     try:
         full_name = p["full_name"] or ""
-        n = re.sub(r"\s+", " ", full_name.strip().lower())
+        n = normalize_arabic(full_name)
         parts = n.split(" ")
         first_two = " ".join(parts[:2]).strip()
         if first_two:
@@ -472,7 +540,7 @@ def patient_detail(pid):
                 """
                 SELECT id, short_id, full_name, phone
                   FROM patients
-                 WHERE id<>? AND lower(full_name) LIKE ?
+                 WHERE id<>? AND NORMALIZE_ARABIC(full_name) LIKE ?
                  ORDER BY full_name
                  LIMIT 10
                 """,
@@ -487,10 +555,12 @@ def patient_detail(pid):
         pages = PatientPageService.get_patient_pages(pid)
     except Exception:
         pages = []
+
+    p_phone = p.get("phone")
     try:
-        phone_rows = _load_patient_phones(conn, pid, p["phone"])
+        phone_rows = _load_patient_phones(conn, pid, p_phone)
     except Exception:
-        phone_rows = ([{"phone": p["phone"], "label": None, "is_primary": 1}] if p["phone"] else [])
+        phone_rows = ([{"phone": p_phone, "label": None, "is_primary": 1}] if p_phone else [])
 
     # Primary page number (may not exist on very old databases).
     try:
@@ -505,12 +575,15 @@ def patient_detail(pid):
         pays=treatments_fmt,  # Backwards compatibility
         doctor_options=doctor_options,
         today=date.today().isoformat(),
+        overall_cents=overall_cents,
         overall_fmt=overall_fmt,
         overall_class=overall_class,
         page_numbers=pages,
         phone_numbers=phone_rows,
         primary_page_number=primary_page,
         merge_suggestions=merge_suggestions,
+        medical_alerts=medical_alerts,
+        timeline=timeline,
         show_back=True,
     )
     conn.close()
@@ -538,19 +611,28 @@ def patient_quickview(pid):
     overall_fmt = money(overall_cents)
     overall_class = bal_class_nonneg(overall_cents)
 
-    recent = []
+    treatments = []
     try:
-        pays = cur.execute(
-            "SELECT paid_at, method, total_amount_cents, remaining_cents FROM payments WHERE patient_id=? ORDER BY paid_at DESC LIMIT 6",
+        # Fetch last 5 treatments
+        rows = cur.execute(
+            """
+            SELECT t.*, d.doctor_label
+            FROM treatments t
+            LEFT JOIN doctors d ON t.doctor_id = d.doctor_id
+            WHERE t.patient_id = ?
+            ORDER BY t.created_at DESC
+            LIMIT 5
+            """,
             (pid,),
         ).fetchall()
-        for r in pays or []:
-            d = dict(r)
-            d["total_fmt"] = money(d.get("total_amount_cents") or 0)
-            d["remaining_fmt"] = money(d.get("remaining_cents") or 0)
-            recent.append(d)
+        for row in rows:
+            t_dict = dict(row)
+            t_dict["total_fmt"] = money(t_dict["total_amount_cents"])
+            t_dict["remaining_fmt"] = money(t_dict["remaining_cents"])
+            t_dict["discount_fmt"] = money(t_dict["discount_cents"])
+            treatments.append(t_dict)
     except Exception:
-        recent = []
+        treatments = []
 
     html = render_template(
         "patients/quickview_fragment.html",
@@ -558,7 +640,7 @@ def patient_quickview(pid):
         primary_page_number=primary_page,
         overall_fmt=overall_fmt,
         overall_class=overall_class,
-        recent_payments=recent,
+        treatments=treatments,
     )
     conn.close()
     return html
@@ -1046,18 +1128,20 @@ def search_patients():
         # Fallback to original search if page number service fails
         conn = db()
         try:
-            search_term = f"%{query.lower()}%"
+            norm_q = normalize_arabic(query.lower())
+            search_term = f"%{norm_q}%"
+            raw_search_term = f"%{query.lower()}%"
             digits = _normalize_phone_digits(query)
             search_digits = f"%{digits}%" if digits else ""
             has_pages = _table_exists(conn, "patient_pages")
             has_phones = _table_exists(conn, "patient_phones")
 
             where_parts = [
-                "lower(p.full_name) LIKE ?",
-                "lower(p.phone) LIKE ?",
-                "lower(p.short_id) LIKE ?",
+                "NORMALIZE_ARABIC(p.full_name) LIKE ?",
+                "LOWER(p.phone) LIKE ?",
+                "LOWER(p.short_id) LIKE ?",
             ]
-            params: list[str] = [search_term, search_term, search_term]
+            params: list[str] = [search_term, raw_search_term, raw_search_term]
             if digits:
                 where_parts.append(
                     "replace(replace(replace(replace(replace(p.phone,' ',''),'-',''),'+',''),'(',''),')','') LIKE ?"
@@ -1247,51 +1331,41 @@ def delete_patient_page_form(pid):
 @require_permission("patients:merge")
 def merge_patient(pid):
     """Merge this patient's records into another patient file."""
-    target_short_id = (request.form.get("target_short_id") or "").strip()
+    target_id = (request.form.get("target_id") or "").strip()
+    keep_id = (request.form.get("keep_patient_id") or "").strip()
     merge_diag_flag = bool(request.form.get("merge_diag_images"))
 
-    if not target_short_id:
-        flash(T("merge_target_required") if T else "Please enter a target file number.", "err")
+    if not target_id:
+        flash(T("merge_target_required") if T else "Please select a target patient.", "err")
         return redirect(url_for("patients.patient_detail", pid=pid))
 
     conn = db()
     cur = conn.cursor()
     try:
-        src = cur.execute(
+        p1 = cur.execute(
             "SELECT id, short_id, full_name, phone FROM patients WHERE id=?", (pid,)
         ).fetchone()
-        if not src:
-            flash("Source patient not found.", "err")
-            return redirect(url_for("index"))
+        p2 = cur.execute(
+            "SELECT id, short_id, full_name, phone FROM patients WHERE id=?", (target_id,)
+        ).fetchone()
 
-        tgt = cur.execute(
-            "SELECT id, short_id, full_name, phone FROM patients WHERE short_id=?",
-            (target_short_id,),
-        ).fetchall()
-        if not tgt:
-            flash(
-                T("merge_target_not_found") if T else "Target file number not found.",
-                "err",
-            )
-            return redirect(url_for("patients.patient_detail", pid=pid))
-        if len(tgt) > 1:
-            flash(
-                T("merge_target_ambiguous") if T else "More than one patient has this file number. Please make the file number unique first.",
-                "err",
-            )
+        if not p1 or not p2:
+            flash("Patient records not found.", "err")
             return redirect(url_for("patients.patient_detail", pid=pid))
 
-        target_row = tgt[0]
-        if target_row["id"] == src["id"]:
-            flash(
-                T("merge_same_patient") if T else "Cannot merge a patient into itself.",
-                "err",
-            )
+        if p1["id"] == p2["id"]:
+            flash(T("merge_same_patient"), "err")
             return redirect(url_for("patients.patient_detail", pid=pid))
+
+        # Decide source and target based on "keep" selection
+        if keep_id == p1["id"]:
+            src, tgt = p2, p1
+        else:
+            src, tgt = p1, p2
 
         try:
             # Perform the merge inside a transaction.
-            merge_patient_records(conn, dict(src), dict(target_row), merge_diag=merge_diag_flag)
+            merge_patient_records(conn, dict(src), dict(tgt), merge_diag=merge_diag_flag)
 
             # After a successful merge, remove any remaining diagnosis/medical
             # rows for the source (if they were not moved) and delete the
@@ -1309,22 +1383,18 @@ def merge_patient(pid):
         except MergeConflict as mc:
             conn.rollback()
             if mc.code == "target_has_diagnosis":
-                msg = (
-                    T("merge_target_has_diag")
-                    if T
-                    else "Cannot merge diagnosis/medical/images because the target patient already has diagnosis or medical data."
-                )
+                msg = T("merge_target_has_diag")
             else:
-                msg = T("merge_conflict") if T else "Merge could not be completed safely."
+                msg = T("merge_conflict")
             flash(msg, "err")
             return redirect(url_for("patients.patient_detail", pid=pid))
         except Exception:
             conn.rollback()
-            flash(T("merge_unexpected_error") if T else "Unexpected error while merging patients.", "err")
+            flash(T("merge_unexpected_error"), "err")
             return redirect(url_for("patients.patient_detail", pid=pid))
 
-        flash(T("merge_patient_ok") if T else "Patient records merged successfully.", "ok")
-        return redirect(url_for("patients.patient_detail", pid=target_row["id"]))
+        flash(T("merge_patient_ok"), "ok")
+        return redirect(url_for("patients.patient_detail", pid=tgt["id"]))
     finally:
         conn.close()
 

@@ -20,7 +20,7 @@ def test_edit_child_payment_modal_requires_doctor(logged_in_client, get_csrf_tok
                 id, patient_id, parent_payment_id, paid_at, amount_cents, method, note, treatment,
                 doctor_id, doctor_label,
                 remaining_cents, total_amount_cents, examination_flag, followup_flag, discount_cents
-            ) VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 0, 0)
+            ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 0, 0)
             """,
             (
                 treatment_id,

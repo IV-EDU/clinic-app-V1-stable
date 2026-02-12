@@ -62,24 +62,101 @@
   </p>
 </div>
 
-<div class="card reports-summary-card">
-  <div class="reports-summary-grid">
-    <div class="summary-box">
-      <div class="box-label">{{ t('collections_total') }}</div>
-      <div class="box-value">{{ summary_total_fmt }} EGP</div>
+<style>
+  .analytics-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+  }
+
+  .metric-item {
+    background: color-mix(in srgb, var(--primary-color) 4%, var(--bg-surface));
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: transform var(--transition-fast);
+  }
+
+  .metric-item:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-color);
+  }
+
+  .metric-label {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  .metric-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    line-height: 1;
+  }
+
+  .metric-subtext {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .visual-row {
+    height: 8px;
+    background: var(--border-strong);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+
+  .visual-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+    border-radius: 4px;
+  }
+</style>
+
+<div class="analytics-card" style="margin-bottom: 24px;">
+  <div class="metric-grid">
+    <div class="metric-item">
+      <div class="metric-label">{{ t('collections_total') }}</div>
+      <div class="metric-value">{{ summary_total_fmt }} <span style="font-size: 1rem; font-weight: 600;">EGP</span></div>
+      <div class="metric-subtext">{{ t('total_revenue_period') or 'Total revenue in this period' }}</div>
+      <div class="visual-row"><div class="visual-bar" style="width: 100%;"></div></div>
     </div>
-    <div class="summary-box">
-      <div class="box-label">{{ t('payments') }}</div>
-      <div class="box-value">{{ summary_payments_count }}</div>
+
+    <div class="metric-item">
+      <div class="metric-label">{{ t('payments') }}</div>
+      <div class="metric-value">{{ summary_payments_count }}</div>
+      <div class="metric-subtext">{{ t('transactions_period') or 'Total transactions processed' }}</div>
+      <div class="visual-row"><div class="visual-bar" style="width: 75%; opacity: 0.8;"></div></div>
     </div>
-    <div class="summary-box">
-      <div class="box-label">{{ t('patients') }}</div>
-      <div class="box-value">{{ summary_unique_patients }}</div>
+
+    <div class="metric-item">
+      <div class="metric-label">{{ t('patients') }}</div>
+      <div class="metric-value">{{ summary_unique_patients }}</div>
+      <div class="metric-subtext">{{ t('unique_patients_period') or 'Unique patients seen' }}</div>
+      <div class="visual-row"><div class="visual-bar" style="width: 60%; opacity: 0.6;"></div></div>
     </div>
   </div>
 </div>
 
-<div class="card reports-table-card">
+<div class="card reports-table-card" style="border-radius: 20px; padding: 0; overflow: hidden;">
   {% if tab=='daily' %}
     {% if rows %}
       <table class="reports-table">

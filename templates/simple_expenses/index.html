@@ -7,43 +7,126 @@
     {%- set val = t(key) if t else default_text -%}
     {{ default_text if val == key else val }}
   {%- endmacro %}
-  <div class="expense-page u-stack-md">
-    <div class="page-header u-card">
+<style>
+  .expense-dashboard {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 24px;
+  }
+
+  .expense-hero {
+    background: linear-gradient(135deg, #1e293b, #334155);
+    color: #fff;
+    padding: 32px;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  }
+
+  .expense-hero .eyebrow {
+    color: #94a3b8;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    font-size: 0.8rem;
+  }
+
+  .expense-hero .amount {
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .expense-form-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .expense-item {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all var(--transition-fast);
+  }
+
+  .expense-item:hover {
+    transform: translateX(4px);
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .expense-date {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .expense-desc {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 1.05rem;
+  }
+
+  .expense-amt {
+    font-weight: 800;
+    color: var(--primary-color);
+    font-size: 1.25rem;
+  }
+
+  .month-picker-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg-surface);
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+  }
+
+  @media (max-width: 1000px) {
+    .expense-dashboard {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+  <div class="expense-page u-stack-lg">
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 20px;">
       <div>
-        <p class="eyebrow">{{ tf('clinic_spending', 'Clinic spending') }}</p>
-        <h1 class="page-title">{{ tf('expenses', 'Expenses') }}</h1>
-        <p class="subtext">{{ tf('expenses_intro', 'Log what you bought and how much. We keep a clean total for the month.') }}</p>
+        <h1 class="page-title" style="margin: 0; font-weight: 800; font-size: 2.5rem;">{{ tf('expenses', 'Expenses') }}</h1>
+        <p style="color: var(--text-secondary); margin-top: 4px; font-weight: 500;">{{ tf('expenses_intro', 'Manage your clinic spending efficiently.') }}</p>
       </div>
-      <form method="get" class="month-switcher">
-        <label for="month">
-          <i class="fa fa-calendar"></i>
-          <span>{{ month_label }}</span>
-        </label>
-        <input type="month" id="month" name="month" value="{{ selected_month }}">
+
+      <form method="get" class="month-picker-form">
+        <div class="month-picker-wrap">
+          <span style="font-weight: 700; color: var(--text-secondary);">{{ month_label }}</span>
+          <input type="month" id="month" name="month" value="{{ selected_month }}" onchange="this.form.submit()" style="border: none; background: transparent; font-weight: 700; color: var(--primary-color); cursor: pointer;">
+        </div>
       </form>
     </div>
 
-    <div class="main-grid">
-      <section class="panel hero u-card">
-        <div class="hero-top">
-          <div>
-            <p class="eyebrow">{{ tf('total_this_month', 'Total this month') }}</p>
-            <div class="hero-amount">{{ monthly_total_fmt }} EGP</div>
+    <div class="expense-dashboard">
+      <div class="dashboard-side u-stack-md">
+        <section class="expense-hero">
+          <div class="eyebrow">{{ tf('total_this_month', 'Monthly Total') }}</div>
+          <div class="amount">{{ monthly_total_fmt }} <span style="font-size: 1.25rem; opacity: 0.7;">EGP</span></div>
+          <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.9rem; color: #94a3b8;">
+            {{ tf('expenses_hint', 'Keep track of all materials and utility bills.') }}
           </div>
-          <div class="pill">{{ tf('running_total', 'Running total') }}</div>
-        </div>
-        <p class="muted">{{ tf('expenses_hint', 'Keep every receipt in one place. Description + price is all you need.') }}</p>
-      </section>
+        </section>
 
-      <section class="panel form-panel u-card">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">{{ tf('add_expense', 'Add expense') }}</p>
-            <h2>{{ tf('materials_receipts', 'Materials / receipts') }}</h2>
-          </div>
-          <i class="fa fa-plus-circle"></i>
-        </div>
-        <form method="POST" action="{{ url_for('simple_expenses.new_expense') }}" class="expense-form">
+        <section class="expense-form-card">
+          <h3 style="margin-top: 0; margin-bottom: 24px; font-weight: 700;">{{ tf('add_expense', 'Log New Expense') }}</h3>
+          <form method="POST" action="{{ url_for('simple_expenses.new_expense') }}" class="expense-form u-stack-md">
           {{ form.hidden_tag() }}
           <input type="hidden" name="selected_month" value="{{ selected_month }}">
 
@@ -81,36 +164,40 @@
         </form>
       </section>
 
-      <section class="panel list-panel u-card">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">{{ tf('this_month', 'This month') }}</p>
-            <h2>{{ recent_expenses|length }} {{ tf('expense', 'expense') }}{% if recent_expenses|length != 1 %}{{ tf('s_suffix', 's') }}{% endif %}</h2>
-          </div>
+      <section class="expense-list-container u-stack-md">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h2 style="margin: 0; font-weight: 800;">{{ tf('this_month', 'Activity') }}</h2>
+          <span class="pill" style="background: var(--bg-strong); color: var(--text-secondary); font-weight: 700; padding: 4px 12px; border-radius: 999px;">
+            {{ recent_expenses|length }} {{ tf('entries', 'Entries') }}
+          </span>
         </div>
 
         {% if recent_expenses %}
-          <div class="expense-list">
+          <div class="expense-list u-stack-sm">
             {% for expense in recent_expenses %}
               {% set lines = expense.description.splitlines() %}
-              <div class="expense-row">
-                <div class="expense-info">
-                  <div class="row-top">
-                    <div class="date-chip"><i class="fa fa-calendar-o"></i> {{ expense.receipt_date }}</div>
-                    <span class="amount">{{ expense.amount_fmt }} EGP</span>
-                  </div>
-                  <div class="row-actions">
+              <div class="expense-item">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                  <span class="expense-date">{{ expense.receipt_date }}</span>
+                  <span class="expense-desc">{{ lines[0][:40] }}{% if lines[0]|length > 40 %}...{% endif %}</span>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 20px;">
+                  <span class="expense-amt">{{ expense.amount_fmt }}</span>
+
+                  <div style="display: flex; gap: 8px;">
                     <button type="button"
-                            class="ghost-btn view-btn"
+                            class="u-btn ghost sm view-btn"
                             data-date="{{ expense.receipt_date }}"
                             data-amount="{{ expense.amount_fmt }} EGP"
-                            data-desc="{{ '\n'.join(lines)|e }}">
-                      <i class="fa fa-eye"></i> {{ tf('view_details', 'View details') }}
+                            data-desc="{{ '\n'.join(lines)|e }}"
+                            style="padding: 8px; border-radius: 12px;">
+                      <i class="fa fa-eye"></i>
                     </button>
                     <form method="POST" action="{{ url_for('simple_expenses.delete_expense', expense_id=expense.id, month=selected_month) }}" onsubmit="return confirm('{{ tf('delete_expense_confirm', 'Delete this expense?') }}');">
                       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                      <button type="submit" class="icon-btn danger" title="{{ tf('delete', 'Delete') }}">
-                        🗑️
+                      <button type="submit" class="u-btn ghost sm danger" style="padding: 8px; border-radius: 12px;">
+                        <i class="fa fa-trash"></i>
                       </button>
                     </form>
                   </div>
@@ -119,10 +206,10 @@
             {% endfor %}
           </div>
         {% else %}
-          <div class="empty-state">
-            <i class="fa fa-receipt-o"></i>
-            <p>{{ tf('no_expenses', 'No expenses for') }} {{ month_label }} {{ tf('yet', 'yet.') }}</p>
-            <p class="muted">{{ tf('expenses_hint', 'Add the first one to start the monthly total.') }}</p>
+          <div class="empty-state" style="text-align: center; padding: 60px 20px; background: var(--bg-surface); border: 2px dashed var(--border-strong); border-radius: 24px;">
+            <div style="font-size: 3rem; margin-bottom: 16px; opacity: 0.3;">💸</div>
+            <h3 style="margin: 0; font-weight: 700;">{{ tf('no_expenses', 'No expenses found') }}</h3>
+            <p style="color: var(--text-muted);">{{ tf('expenses_hint', 'Log your first expense for this month to see it here.') }}</p>
           </div>
         {% endif %}
       </section>
@@ -133,22 +220,25 @@
   <div class="modal" id="expenseModal" aria-hidden="true">
     <div class="modal-backdrop"></div>
     <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <p class="eyebrow">{{ tf('expense_details', 'Expense details') }}</p>
-            <h3 id="modalAmount"></h3>
+      <div class="modal-content" style="border-radius: 24px; overflow: hidden; border: none;">
+        <div class="modal-header" style="background: var(--bg-strong); padding: 24px;">
+          <div style="flex-grow: 1;">
+            <p class="eyebrow" style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 4px;">{{ tf('expense_details', 'Expense details') }}</p>
+            <h3 id="modalAmount" style="margin: 0; font-weight: 800; font-size: 1.75rem; color: var(--primary-color);"></h3>
           </div>
-          <button type="button" class="icon-btn close-btn" id="closeModal" title="{{ tf('close', 'Close') }}">
+          <button type="button" class="close-btn" id="closeModal" style="background: var(--bg-surface); border: 1px solid var(--border-strong); width: 40px; height: 40px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold;">
             ✕
           </button>
         </div>
-        <div class="modal-body">
-          <div class="date-chip" id="modalDate"></div>
-          <ul class="desc-list" id="modalDesc"></ul>
+        <div class="modal-body" style="padding: 24px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px; font-weight: 700; color: var(--text-secondary);">
+            <i class="fa fa-calendar"></i>
+            <span id="modalDate"></span>
+          </div>
+          <div id="modalDesc" style="line-height: 1.6; color: var(--text-primary); background: var(--bg-strong); padding: 16px; border-radius: 16px; min-height: 100px;"></div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="u-btn primary" id="closeModalBottom">{{ tf('close', 'Close') }}</button>
+        <div class="modal-footer" style="padding: 24px; border-top: 1px solid var(--border-strong);">
+          <button type="button" class="u-btn primary w-full" id="closeModalBottom" style="width: 100%; justify-content: center;">{{ tf('close', 'Close') }}</button>
         </div>
       </div>
     </div>

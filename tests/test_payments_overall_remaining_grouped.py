@@ -21,7 +21,7 @@ def test_overall_remaining_uses_grouped_treatment_math(app):
                 id, patient_id, parent_payment_id, paid_at, amount_cents, method, note, treatment,
                 doctor_id, doctor_label,
                 remaining_cents, total_amount_cents, examination_flag, followup_flag, discount_cents
-            ) VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 0, 0)
+            ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 0, 0)
             """,
             (
                 treatment_id,

@@ -1,13 +1,13 @@
 {% macro labeled_input(name, label, value='', placeholder='', required=False, type='text') -%}
-  <div>
-    <label class="h">{{ label }}</label>
-    <input type="{{ type }}" name="{{ name }}" value="{{ value }}" placeholder="{{ placeholder }}" {% if required %}required{% endif %} style="width:100%">
+  <div class="form-group">
+    <label class="form-label" for="{{ name }}">{{ label }}</label>
+    <input type="{{ type }}" id="{{ name }}" name="{{ name }}" class="form-control" value="{{ value }}" placeholder="{{ placeholder }}" {% if required %}required{% endif %} style="width:100%">
   </div>
 {%- endmacro %}
 
 {% macro labeled_textarea(name, label, value='', placeholder='', rows=3) -%}
-  <div>
-    <label class="h">{{ label }}</label>
-    <textarea name="{{ name }}" rows="{{ rows }}" placeholder="{{ placeholder }}" style="width:100%">{{ value }}</textarea>
+  <div class="form-group">
+    <label class="form-label" for="{{ name }}">{{ label }}</label>
+    <textarea id="{{ name }}" name="{{ name }}" class="form-control" rows="{{ rows }}" placeholder="{{ placeholder }}" style="width:100%">{{ value }}</textarea>
   </div>
 {%- endmacro %}

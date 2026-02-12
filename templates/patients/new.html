@@ -1,22 +1,54 @@
 {% extends '_base.html' %}
 {% import '_macros.html' as macros %}
 {% block content %}
-<div class="card">
-  <h3 style="text-align:center">{{ t('new_patient') }}</h3>
-  <form method="post" class="row">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="row" style="flex-basis:100%">
-      {{ macros.labeled_input('short_id', t('file_no'), placeholder=t('file_no_hint')) }}
-      {% if show_file_numbers %}
-        {{ macros.labeled_input('primary_page_number', t('page_numbers'), placeholder=t('page_number_placeholder')) }}
-      {% endif %}
-      {{ macros.labeled_input('full_name', t('name'), required=True) }}
-      {{ macros.labeled_input('phone', t('phone'), placeholder=t('optional')) }}
-    </div>
-    {{ macros.labeled_textarea('notes', t('notes'), placeholder=t('optional')) }}
-    <div style="flex-basis:100%;display:flex;gap:8px;justify-content:center">
-      <a class="btn secondary" href="{{ url_for('index') }}">{{ t('cancel') }}</a><button>{{ t('save') }}</button>
-    </div>
-  </form>
+<div class="patient-form-page u-stack-lg" style="max-width: 800px; margin: 0 auto;">
+  <div class="page-header" style="text-align: center; margin-bottom: 32px;">
+    <h1 class="page-title" style="margin: 0; font-weight: 800; font-size: 2.5rem; color: var(--text-primary);">{{ t('new_patient') }}</h1>
+    <p style="color: var(--text-secondary); margin-top: 8px; font-weight: 500;">{{ t('add_patient_intro') or 'Create a new patient record in your database.' }}</p>
+  </div>
+
+  <div class="card" style="background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: 32px; padding: 40px; box-shadow: var(--shadow-strong);">
+    <form method="post" class="admin-form u-stack-lg">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div class="form-group">
+          <label class="form-label">{{ t('file_no') }}</label>
+          <input name="short_id" class="form-control" style="font-weight: 700; font-size: 1.1rem;" placeholder="{{ t('file_no_hint') }}">
+        </div>
+
+        {% if show_file_numbers %}
+          <div class="form-group">
+            <label class="form-label">{{ t('page_numbers') }}</label>
+            <input name="primary_page_number" class="form-control" style="font-weight: 700; font-size: 1.1rem;" placeholder="{{ t('page_number_placeholder') }}">
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{{ t('name') }} *</label>
+        <input name="full_name" class="form-control" style="font-weight: 800; font-size: 1.25rem;" required placeholder="{{ t('name_placeholder') }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{{ t('phone') }}</label>
+        <input name="phone" class="form-control" style="font-weight: 700; font-size: 1.1rem;" placeholder="{{ t('phone_placeholder') }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{{ t('notes') }}</label>
+        <textarea name="notes" class="form-control" rows="3" placeholder="{{ t('optional') }}"></textarea>
+      </div>
+
+      <div class="form-actions" style="display: flex; gap: 16px; margin-top: 16px; padding-top: 32px; border-top: 1px solid var(--border-strong);">
+        <button type="submit" class="u-btn primary" style="flex: 2; height: 56px; font-size: 1.1rem; border-radius: 16px;">
+          <i class="fa fa-save"></i> {{ t('save') }}
+        </button>
+        <a class="u-btn ghost" href="{{ url_for('core.patient_list') }}" style="flex: 1; height: 56px; font-size: 1.1rem; border-radius: 16px; justify-content: center;">
+          {{ t('cancel') }}
+        </a>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

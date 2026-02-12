@@ -1,41 +1,50 @@
 {% extends '_base.html' %}
 {% block content %}
-<div class="card reports-header-card">
-  <div class="reports-header-main">
-    <div class="reports-header-left">
-      <a class="btn secondary" href="{{ back_href or back_url() }}">← {{ t('back') }}</a>
+<div class="reports-page u-stack-lg">
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 24px;">
+    <div style="display: flex; align-items: center; gap: 20px;">
+      <a class="u-btn ghost sm" href="{{ back_href or back_url() }}" style="width: 40px; height: 40px; border-radius: 12px; padding: 0; justify-content: center;">
+        <i class="fa fa-arrow-left"></i>
+      </a>
+      <h1 class="page-title" style="margin: 0; font-weight: 800; font-size: 2.5rem;">{{ title }}</h1>
     </div>
-    <div class="reports-header-title">
-      <h1 class="reports-title">{{ title }}</h1>
-    </div>
-    <div class="reports-header-right">
-      <a class="btn secondary" href="{{ export_url }}">{{ t('export') }}</a>
+    <div class="header-actions">
+      <a class="u-btn primary" href="{{ export_url }}">
+        <i class="fa fa-download"></i> {{ t('export') }}
+      </a>
     </div>
   </div>
-</div>
 
-<div class="card reports-table-card">
-  {% if rows %}
-    <table class="reports-table">
-      <thead>
-        <tr>
-          <th>{{ t('date') }}</th>
-          <th>{{ t('patient') }}</th>
-          <th class="numeric">{{ t('amount') }}</th>
-          <th>{{ t('method') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for r in rows %}
-        <tr>
-          <td class="c">{{ r['paid_at'] }}</td>
-          <td class="c">{{ r['full_name'] }}</td>
-          <td class="c numeric">{{ '{:.2f}'.format((r['amount_cents'] or 0)/100) }}</td>
-          <td class="c">{{ r['method'] or '' }}</td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  {% else %}<div class="reports-empty">{{ t('no_rows') }}</div>{% endif %}
+  <div class="card" style="background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: 24px; padding: 0; box-shadow: var(--shadow-soft); overflow: hidden;">
+    {% if rows %}
+      <table class="u-table">
+        <thead>
+          <tr style="background: var(--bg-strong);">
+            <th style="padding: 16px 24px;">{{ t('date') }}</th>
+            <th style="padding: 16px 24px;">{{ t('patient') }}</th>
+            <th class="numeric" style="padding: 16px 24px;">{{ t('amount') }}</th>
+            <th style="padding: 16px 24px;">{{ t('method') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for r in rows %}
+          <tr style="border-bottom: 1px solid var(--border-strong);">
+            <td style="padding: 16px 24px; font-weight: 600; color: var(--text-secondary);">{{ r['paid_at'] }}</td>
+            <td style="padding: 16px 24px; font-weight: 700; color: var(--text-primary);">{{ r['full_name'] }}</td>
+            <td class="numeric" style="padding: 16px 24px; font-weight: 800; color: var(--primary-color);">{{ '{:,.2f}'.format((r['amount_cents'] or 0)/100) }} <span style="font-size: 0.75rem; opacity: 0.6;">EGP</span></td>
+            <td style="padding: 16px 24px;">
+              <span class="pill sm" style="background: var(--bg-strong); color: var(--text-secondary);">{{ r['method'] or '—' }}</span>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div style="text-align: center; padding: 80px 24px;">
+        <div style="font-size: 4rem; margin-bottom: 24px; opacity: 0.2;">📄</div>
+        <h3 style="margin: 0; font-weight: 700; color: var(--text-primary);">{{ t('no_rows') }}</h3>
+      </div>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

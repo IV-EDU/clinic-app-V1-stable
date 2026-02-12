@@ -37,6 +37,7 @@ from clinic_app.extensions import csrf, db
 from clinic_app.services.csrf import ensure_csrf_token
 from flask_wtf.csrf import validate_csrf
 from clinic_app.models import Appointment as AppointmentModel, Patient as PatientModel, Doctor as DoctorModel
+from clinic_app.services.patients import normalize_arabic
 bp = Blueprint("appointments", __name__)
 DEFAULT_DOCTOR_COLOR = "#2563EB"
 
@@ -792,10 +793,11 @@ def api_patients_search():
     if not query:
         return jsonify([])
 
+    norm_q = normalize_arabic(query.lower())
     # Search patients by name, phone, or short_id
     patients = PatientModel.query.filter(
         or_(
-            PatientModel.full_name.ilike(f"%{query}%"),
+            func.NORMALIZE_ARABIC(PatientModel.full_name).like(f"%{norm_q}%"),
             PatientModel.phone.ilike(f"%{query}%"),
             PatientModel.short_id.ilike(f"%{query}%"),
         )

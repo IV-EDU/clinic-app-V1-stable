@@ -31,6 +31,18 @@ class SQLAlchemyEngine:
 
         @event.listens_for(self._engine, "connect")
         def _set_pragmas(dbapi_connection, connection_record) -> None:  # type: ignore[override]
+            # Register custom Arabic normalization function for SQL queries
+            import re
+            def _sql_normalize_arabic(s):
+                if s is None: return None
+                s = str(s)
+                s = re.sub("[أإآ]", "ا", s)
+                s = s.replace("ى", "ي")
+                s = s.replace("ة", "ه")
+                return s.lower()
+
+            dbapi_connection.create_function("NORMALIZE_ARABIC", 1, _sql_normalize_arabic)
+
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA busy_timeout=5000")

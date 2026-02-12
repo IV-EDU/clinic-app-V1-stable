@@ -70,7 +70,13 @@ from clinic_app.services.import_first_stable import (
 )
 from clinic_app.services.i18n import T
 from clinic_app.services.payments import money
-from clinic_app.services.patients import MergeConflict, merge_patient_records, migrate_patients_drop_unique_short_id, next_short_id
+from clinic_app.services.patients import (
+    MergeConflict,
+    merge_patient_records,
+    migrate_patients_drop_unique_short_id,
+    next_short_id,
+    normalize_arabic,
+)
 
 bp = Blueprint("admin_settings", __name__, url_prefix="/admin")
 csrf.exempt(bp)
@@ -2157,7 +2163,7 @@ def _admin_setting_bool(conn: sqlite3.Connection, key: str, default: bool) -> bo
         return default
 
 def _normalize_db_name(raw: str) -> str:
-    return " ".join((raw or "").split()).strip().lower()
+    return normalize_arabic(" ".join((raw or "").split()).strip().lower())
 
 
 def _first_two_tokens(raw: str) -> str:
@@ -4115,12 +4121,23 @@ def get_page_number_settings():
 
 
 def _audit_payments_filters() -> tuple[dict[str, object], str]:
-    """Build SQL WHERE filters for payments audit log."""
+    """Build SQL WHERE filters for payments and treatments audit log."""
     params: dict[str, object] = {}
-    where = ["a.entity='payment'", "a.action IN ('payment_create','payment_update','payment_delete')"]
+    valid_actions = {
+        "payment_create",
+        "payment_update",
+        "payment_delete",
+        "payment_add_to_treatment",
+        "treatment_create",
+        "treatment_update",
+    }
+    where = [
+        "(a.entity='payment' OR a.entity='treatment')",
+        f"a.action IN ({', '.join(f"'{a}'" for a in valid_actions)})"
+    ]
 
     action = (request.args.get("action") or "").strip()
-    if action in {"payment_create", "payment_update", "payment_delete"}:
+    if action in valid_actions:
         where.append("a.action = :action")
         params["action"] = action
 
@@ -4450,7 +4467,7 @@ def audit_payments_json():
             rows = session.execute(
                 text(
                     f"""
-                    SELECT a.id AS audit_log_id, a.ts, a.action, a.entity_id, a.actor_user_id,
+                    SELECT a.id AS audit_log_id, a.ts, a.action, a.entity, a.entity_id, a.actor_user_id,
                            COALESCE(u.username, '') AS actor_username,
                            {meta_expr} AS meta_json
                       FROM audit_log a
@@ -4472,7 +4489,7 @@ def audit_payments_json():
                     rows = session.execute(
                         text(
                             f"""
-                            SELECT a.id AS audit_log_id, a.ts, a.action, a.entity_id, a.actor_user_id,
+                            SELECT a.id AS audit_log_id, a.ts, a.action, a.entity, a.entity_id, a.actor_user_id,
                                    COALESCE(u.username, '') AS actor_username,
                                    COALESCE(a.meta_json, '{{}}') AS meta_json
                               FROM audit_log a
@@ -4524,6 +4541,7 @@ def audit_payments_json():
                     "ts": r.get("ts") or "",
                     "ts_display": _audit_ts_display(r.get("ts") or ""),
                     "action": (str(r.get("action") or "").strip()),
+                    "entity": r.get("entity") or "",
                     "entity_id": entity_id,
                     "actor_user_id": r.get("actor_user_id") or "",
                     "actor_username": r.get("actor_username") or "",
@@ -4599,7 +4617,7 @@ def audit_payments_csv():
         rows = session.execute(
             text(
                 f"""
-                SELECT a.id AS audit_log_id, a.ts, a.action, a.entity_id,
+                SELECT a.id AS audit_log_id, a.ts, a.action, a.entity, a.entity_id,
                        COALESCE(u.username, '') AS actor_username,
                        {meta_expr} AS meta_json
                   FROM audit_log a
@@ -4649,7 +4667,7 @@ def audit_payments_csv():
 
         buf = io.StringIO()
         w = csv.writer(buf)
-        w.writerow(["ts", "user", "action", "payment_id", "patient", "file_no", "page_no", "paid_at", "amount", "method", "doctor"])
+        w.writerow(["ts", "user", "action", "entity", "entity_id", "patient", "file_no", "page_no", "paid_at", "amount", "method", "doctor"])
         for idx, r in enumerate(rows):
             meta = metas[idx] if idx < len(metas) else {}
             pid = (meta.get("patient_id") or "").strip() if isinstance(meta, dict) else ""
@@ -4664,6 +4682,7 @@ def audit_payments_csv():
                     _audit_ts_display(r.get("ts") or "") or (r.get("ts") or ""),
                     r.get("actor_username") or "",
                     r.get("action") or "",
+                    r.get("entity") or "",
                     r.get("entity_id") or "",
                     (prow.get("full_name") if prow else (snap.get("patient_full_name") if snap else "")) or "",
                     (prow.get("short_id") if prow else (snap.get("patient_short_id") if snap else "")) or "",
@@ -4803,8 +4822,8 @@ def audit_payments_privacy_backfill():
                 SELECT a.id AS audit_log_id, a.ts, COALESCE(a.meta_json_redacted, '{}') AS meta_json
                   FROM audit_log a
                   LEFT JOIN audit_patient_snapshots s ON s.audit_log_id = a.id
-                 WHERE a.entity = 'payment'
-                   AND a.action IN ('payment_create','payment_update','payment_delete')
+                 WHERE (a.entity = 'payment' OR a.entity = 'treatment')
+                   AND a.action IN ('payment_create','payment_update','payment_delete','payment_add_to_treatment','treatment_create','treatment_update')
                    AND s.audit_log_id IS NULL
                  ORDER BY a.id DESC
                  LIMIT 5000
@@ -4884,10 +4903,12 @@ def audit_payments_snapshots_json():
 
         q = (request.args.get("q") or "").strip()
         if q:
-            params["q"] = f"%{q}%"
+            norm_q = normalize_arabic(q.lower())
+            params["q"] = f"%{norm_q}%"
+            params["raw_q"] = f"%{q.lower()}%"
             where_sql = (
                 where_sql
-                + " AND (s.patient_full_name LIKE :q OR s.patient_short_id LIKE :q OR s.patient_primary_page_number LIKE :q)"
+                + " AND (NORMALIZE_ARABIC(s.patient_full_name) LIKE :q OR LOWER(s.patient_short_id) LIKE :raw_q OR LOWER(s.patient_primary_page_number) LIKE :raw_q)"
             )
 
         try:

@@ -1,0 +1,179 @@
+{% extends '_base.html' %}
+{% block content %}
+<style>
+  .smart-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .smart-badge.debt {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+  }
+
+  .smart-badge.appt {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+  }
+
+  .patient-name-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .patient-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+</style>
+
+<div class="patient-list-page u-stack-lg">
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 24px;">
+    <div>
+      <h1 class="page-title" style="margin: 0; font-weight: 800; font-size: 2.5rem;">{{ t('patient_files') }}</h1>
+      <p style="color: var(--text-secondary); margin-top: 4px; font-weight: 500;">{{ t('patient_files_intro') or 'Manage and search your patient database.' }}</p>
+    </div>
+
+    <div class="header-actions">
+      {% if current_user.is_authenticated and current_user.has_permission('patients:edit') %}
+        <a class="u-btn primary" href="{{ url_for('patients.new_patient') }}" style="padding: 12px 24px; font-size: 1rem;">
+          <i class="fa fa-plus"></i> {{ t('add_patient') }}
+        </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="search-and-stats" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <div class="card search-card" style="background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: 24px; padding: 24px; box-shadow: var(--shadow-soft);">
+      <form method="get" class="search-form" style="display: flex; gap: 12px;">
+        <input type="hidden" name="sort" value="{{ sort or 'new' }}">
+        <div style="flex-grow: 1; position: relative;">
+          <i class="fa fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+          <input name="q" class="form-control" style="width: 100%; padding-left: 44px; border-radius: 16px; height: 50px; font-size: 1.05rem;" placeholder="{{ t('search_placeholder') }}" value="{{ q or '' }}" autocomplete="off">
+        </div>
+        <button class="u-btn primary" type="submit" style="height: 50px; padding: 0 24px;">{{ t('search') }}</button>
+        <a class="u-btn ghost" href="{{ url_for('core.patient_list', sort=sort or 'new') }}" style="height: 50px; padding: 0 20px;">{{ t('clear') }}</a>
+      </form>
+    </div>
+
+    <div class="stats-mini-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div class="card" style="margin: 0; background: var(--bg-strong); border: 1px solid var(--border-strong); border-radius: 20px; padding: 16px; text-align: center;">
+        <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">{{ t('total_patients') or 'Total' }}</div>
+        <div style="font-size: 1.75rem; font-weight: 800; color: var(--primary-color); margin-top: 4px;">{{ total_patients }}</div>
+      </div>
+      <div class="card" style="margin: 0; background: var(--bg-strong); border: 1px solid var(--border-strong); border-radius: 20px; padding: 16px; text-align: center;">
+        <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">{{ t('sort') }}</div>
+        <a href="{{ url_for('core.patient_list', q=q or '', sort='old' if (sort or 'new') == 'new' else 'new') }}"
+           style="display: block; font-size: 0.9rem; font-weight: 700; color: var(--text-primary); text-decoration: none; margin-top: 8px; background: var(--bg-surface); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-strong);">
+          <i class="fa fa-sort"></i> {{ t('sort_oldest_first') if (sort or 'new') == 'new' else t('sort_newest_first') }}
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: 24px; padding: 0; box-shadow: var(--shadow-soft); overflow: hidden;">
+  {% set home_return_to = request.full_path if request.query_string else request.path %}
+  {% if patients %}
+  <div class="overflow-x-auto">
+    <table class="patient-table">
+      <thead>
+        <tr>
+          <th scope="col" class="file-col">{{ t('file_no') }}</th>
+          {% if show_file_numbers %}
+          <th scope="col" class="page-col">{{ t('page_numbers') }}</th>
+          {% endif %}
+          <th scope="col">{{ t('name') }}</th>
+          <th scope="col">{{ t('phone') }}</th>
+          <th scope="col" class="balance-col">{{ t('balance') }}</th>
+          <th scope="col" class="actions-col">{{ t('actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in patients %}
+        <tr>
+          <td class="file-col">{{ p.short_id or '—' }}</td>
+          {% if show_file_numbers %}
+          <td class="page-col wrap-text">
+            {{ p.primary_page_number or '—' }}
+            {% if q and p.matched_extra_page and (p.primary_page_number or '') != p.matched_extra_page %}
+              <div class="matched-hint">{{ t('matched') }}: {{ p.matched_extra_page }}</div>
+            {% endif %}
+          </td>
+          {% endif %}
+          <td class="wrap-text">
+            <div class="patient-name-cell">
+              <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-primary);">{{ p.full_name }}</div>
+              <div class="patient-badges">
+                {% if p.balance_cents > 0 %}
+                  <span class="smart-badge debt" title="{{ t('outstanding_balance') }}">💸 {{ t('debt_badge') or 'Debt' }}</span>
+                {% endif %}
+                {% if p.has_appt_today %}
+                  <span class="smart-badge appt" title="{{ t('appointment_today') }}">🕒 {{ t('today_badge') or 'Today' }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="wrap-text">
+            {{ p.phone or '—' }}
+            {% if q and p.matched_extra_phone and (p.phone or '') != p.matched_extra_phone %}
+              <div class="matched-hint">{{ t('matched') }}: {{ p.matched_extra_phone }}</div>
+            {% endif %}
+          </td>
+          <td class="balance-col">
+            <div class="bal-box {{ 'bal-0' if p.balance_cents==0 else 'bal-pos' }}">{{ '{:.2f}'.format(p.balance_cents/100) }}</div>
+          </td>
+          <td class="actions">
+            <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=p.id, return_to=home_return_to) }}">{{ t('open') }}</a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div style="padding: 24px; display: flex; justify-content: space-between; align-items: center; background: var(--bg-strong);">
+    <div style="font-weight: 700; color: var(--text-secondary); font-size: 0.9rem;">
+      {{ t('page') }} {{ page }} / {{ total_pages }}
+    </div>
+    <div style="display: flex; gap: 8px;">
+      {% if has_prev %}
+        <a class="u-btn ghost sm" href="{{ url_for('core.patient_list', page=page-1, q=q, sort=sort or 'new') }}">
+          <i class="fa fa-chevron-left"></i>
+        </a>
+      {% endif %}
+
+      {% for pnum in range(1, total_pages + 1) %}
+        {% if pnum == page %}
+          <span class="u-btn primary sm" style="min-width: 40px; justify-content: center;">{{ pnum }}</span>
+        {% elif pnum <= 3 or pnum > total_pages - 2 or (pnum >= page - 1 and pnum <= page + 1) %}
+           <a class="u-btn ghost sm" style="min-width: 40px; justify-content: center;" href="{{ url_for('core.patient_list', page=pnum, q=q, sort=sort or 'new') }}">{{ pnum }}</a>
+        {% elif pnum == 4 or pnum == total_pages - 2 %}
+          <span style="padding: 8px;">...</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if has_next %}
+        <a class="u-btn ghost sm" href="{{ url_for('core.patient_list', page=page+1, q=q, sort=sort or 'new') }}">
+          <i class="fa fa-chevron-right"></i>
+        </a>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+    <div style="text-align: center; padding: 80px 24px;">
+      <div style="font-size: 4rem; margin-bottom: 24px; opacity: 0.2;">👥</div>
+      <h3 style="margin: 0; font-weight: 700; color: var(--text-primary);">{{ t('no_patients') }}</h3>
+      <p style="color: var(--text-muted); margin-top: 8px;">{{ t('no_patients_hint') or 'Try adjusting your search or add a new patient.' }}</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

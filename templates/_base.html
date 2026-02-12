@@ -17,7 +17,7 @@
   {% endblock %}
   
 </head>
-<body class="{{ 'rtl' if lang == 'ar' else '' }}">
+<body class="{{ 'rtl' if lang == 'ar' else '' }} {{ 'dark-mode' if dark_mode else '' }}">
   {% include '_nav.html' %}
   <div class="wrap">
     {% include '_flash.html' %}

@@ -1,6 +1,6 @@
-<div class="payment-patient-header">
-  <div class="payment-patient-name">{{ p['full_name'] }}</div>
-  <div class="payment-patient-details">
+<div class="payment-patient-header" style="background: var(--bg-strong); padding: 16px 24px; border-radius: 16px; margin-bottom: 24px;">
+  <div class="payment-patient-name" style="font-weight: 800; font-size: 1.25rem; color: var(--text-primary);">{{ p['full_name'] }}</div>
+  <div class="payment-patient-details" style="display: flex; gap: 16px; margin-top: 4px; color: var(--text-secondary); font-weight: 600; font-size: 0.9rem;">
     <span>📁 {{ p['short_id'] or '—' }}</span>
     <span>📞 {{ p['phone'] or '—' }}</span>
   </div>

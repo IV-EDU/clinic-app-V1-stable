@@ -20,7 +20,7 @@ def test_remove_initial_payment_keeps_child_payments(logged_in_client, get_csrf_
                 id, patient_id, parent_payment_id, paid_at, amount_cents, method, note, treatment,
                 doctor_id, doctor_label,
                 remaining_cents, total_amount_cents, examination_flag, followup_flag, discount_cents
-            ) VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)
+            ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0)
             """,
             (
                 treatment_id,

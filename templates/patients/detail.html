@@ -1,94 +1,318 @@
 {% extends '_base.html' %}
 {% block content %}
-<div class="card patient-header-card">
-  <div class="patient-summary-grid">
-    <div class="summary-item">
-      <div class="summary-label">{{ t('file_no') }}</div>
-      <div class="summary-value">
-        <span class="page-chip">{{ p['short_id'] or '—' }}</span>
-      </div>
+<style>
+  .medical-alerts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .medical-alert-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1rem;
+    animation: alertPulse 2s infinite;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .medical-alert-badge.allergy {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 2px solid #ef4444;
+  }
+
+  .medical-alert-badge.critical {
+    background: #fef3c7;
+    color: #92400e;
+    border: 2px solid #f59e0b;
+  }
+
+  @keyframes alertPulse {
+    0% { transform: scale(1); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+    50% { transform: scale(1.02); box-shadow: 0 6px 20px rgba(239, 68, 68, 0.2); }
+    100% { transform: scale(1); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+  }
+
+  .detail-layout {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 24px;
+  }
+
+  .timeline-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+    padding-left: 20px;
+    margin-top: 10px;
+  }
+
+  .timeline-container::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border-strong);
+  }
+
+  .timeline-item {
+    position: relative;
+    padding-bottom: 24px;
+    padding-left: 20px;
+  }
+
+  .timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -25px;
+    top: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--bg-surface);
+    border: 2px solid var(--primary-color);
+    z-index: 1;
+  }
+
+  .timeline-icon {
+    position: absolute;
+    left: -38px;
+    top: -4px;
+    width: 32px;
+    height: 32px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    font-size: 1rem;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .timeline-content {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 12px 16px;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+
+  .timeline-title {
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .timeline-date {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  .timeline-meta {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+  }
+
+  .debt-highlight {
+    background: var(--danger-bg);
+    border: 2px solid var(--danger-color);
+    padding: 16px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .debt-info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .debt-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--danger-color);
+  }
+
+  .debt-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--danger-color);
+  }
+
+  @media (max-width: 1000px) {
+    .detail-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+{% if medical_alerts %}
+<div class="medical-alerts">
+  {% for alert in medical_alerts %}
+    <div class="medical-alert-badge {{ alert.type }}">
+      <span>⚠️</span>
+      <span>{{ alert.text }}</span>
     </div>
-    {% if show_file_numbers %}
-    <div class="summary-item">
-      <div class="summary-label">{{ t('page_numbers') }}</div>
-      <div class="summary-value">
-        {% if page_numbers %}
-          <div class="page-chip-row">
-            {% for pg in page_numbers %}
-              <span class="page-chip">
-                {% if pg.notebook_color %}
-                  <span class="page-color-dot" style="background:{{ pg.notebook_color }}"></span>
-                {% endif %}
-                <span>{{ pg.page_number or '—' }}</span>
-              </span>
-            {% endfor %}
-          </div>
-        {% else %}
-          <span class="page-chip">📄 <span class="page-chip-notebook">{{ primary_page_number or '—' }}</span></span>
-        {% endif %}
-      </div>
-    </div>
-    {% endif %}
-    <div class="summary-item">
-      <div class="summary-label">{{ t('name') }}</div>
-      <div class="summary-value">{{ p['full_name'] }}</div>
-    </div>
-    <div class="summary-item">
-      <div class="summary-label">{{ t('phone') }}</div>
-      <div class="summary-value">
-        {% if phone_numbers %}
-          <div class="page-chip-row">
-            {% for ph in phone_numbers %}
-              <span class="page-chip">
-                <span>{{ ph.phone or '—' }}</span>
-                {% if ph.label %}
-                  <span class="page-chip-notebook">{{ ph.label }}</span>
-                {% elif ph.is_primary %}
-                  <span class="page-chip-notebook">{{ t('primary_phone') }}</span>
-                {% endif %}
-              </span>
-            {% endfor %}
-          </div>
-        {% else %}
-          {{ p['phone'] or '—' }}
-        {% endif %}
-      </div>
-    </div>
-    <div class="summary-item">
-      <div class="summary-label">{{ t('overall_balance') }}</div>
-      <div class="summary-value">
-        <div class="bal-box {{ overall_class }}">{{ overall_fmt }}</div>
-      </div>
-    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if overall_cents > 0 %}
+<div class="debt-highlight">
+  <div class="debt-info">
+    <div class="debt-label">{{ t('outstanding_balance') or 'Outstanding Balance' }}</div>
+    <div class="debt-value">{{ overall_fmt }}</div>
   </div>
-  <div class="patient-notes">
-    <div class="summary-label">{{ t('sheet_notes') }}</div>
-    <div class="summary-value wrap-text">{{ p['notes'] or '—' }}</div>
-  </div>
+  <div style="font-size: 2rem;">💸</div>
+</div>
+{% endif %}
+
+<div class="detail-layout">
+  <div class="detail-main">
+    <div class="card patient-header-card">
+      <div class="patient-summary-grid">
+        <div class="summary-item">
+          <div class="summary-label">{{ t('file_no') }}</div>
+          <div class="summary-value">
+            <span class="page-chip">{{ p['short_id'] or '—' }}</span>
+          </div>
+        </div>
+        {% if show_file_numbers %}
+        <div class="summary-item">
+          <div class="summary-label">{{ t('page_numbers') }}</div>
+          <div class="summary-value">
+            {% if page_numbers %}
+              <div class="page-chip-row">
+                {% for pg in page_numbers %}
+                  <span class="page-chip">
+                    {% if pg.notebook_color %}
+                      <span class="page-color-dot" style="background:{{ pg.notebook_color }}"></span>
+                    {% endif %}
+                    <span>{{ pg.page_number or '—' }}</span>
+                  </span>
+                {% endfor %}
+              </div>
+            {% else %}
+              <span class="page-chip">📄 <span class="page-chip-notebook">{{ primary_page_number or '—' }}</span></span>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+        <div class="summary-item">
+          <div class="summary-label">{{ t('name') }}</div>
+          <div class="summary-value" style="font-size: 1.25rem;">{{ p['full_name'] }}</div>
+        </div>
+        <div class="summary-item">
+          <div class="summary-label">{{ t('phone') }}</div>
+          <div class="summary-value">
+            {% if phone_numbers %}
+              <div class="page-chip-row">
+                {% for ph in phone_numbers %}
+                  <span class="page-chip">
+                    <span>{{ ph.phone or '—' }}</span>
+                    {% if ph.label %}
+                      <span class="page-chip-notebook">{{ ph.label }}</span>
+                    {% elif ph.is_primary %}
+                      <span class="page-chip-notebook">{{ t('primary_phone') }}</span>
+                    {% endif %}
+                  </span>
+                {% endfor %}
+              </div>
+            {% else %}
+              {{ p['phone'] or '—' }}
+            {% endif %}
+          </div>
+        </div>
+        <div class="summary-item" style="border-color: {{ 'var(--success-color)' if overall_cents == 0 else 'var(--danger-color)' }}; background: {{ 'var(--success-bg)' if overall_cents == 0 else 'var(--danger-bg)' }};">
+          <div class="summary-label" style="color: {{ 'var(--success-color)' if overall_cents == 0 else 'var(--danger-color)' }};">{{ t('overall_balance') }}</div>
+          <div class="summary-value">
+            <div class="bal-box {{ overall_class }}" style="border: none; background: transparent; font-size: 1.25rem;">{{ overall_fmt }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="patient-notes">
+        <div class="summary-label">{{ t('sheet_notes') }}</div>
+        <div class="summary-value wrap-text">{{ p['notes'] or '—' }}</div>
+      </div>
   {% set can_diagnose = current_user.is_authenticated and current_user.has_permission('diagnostics:view') %}
   {% set can_edit_patient = current_user.is_authenticated and current_user.has_permission('patients:edit') %}
   {% set can_merge_patient = current_user.is_authenticated and current_user.has_permission('patients:merge') %}
   {% set can_delete_patient = current_user.is_authenticated and current_user.has_permission('patients:delete') %}
-  {% if can_diagnose or can_edit_patient or can_merge_patient or can_delete_patient %}
-    <div class="patient-actions">
-      <div class="actions-group">
-        {% if can_diagnose %}
-        <a class="btn primary" href="{{ url_for('palmer_plus.diag_page', pid=p['id']) }}">{{ t('diagnosis') }}</a>
-        {% endif %}
-        {% if can_edit_patient %}
-        <a class="btn secondary edit-patient-btn" href="{{ url_for('patients.edit_patient', pid=p['id']) }}">{{ t('edit_patient') }}</a>
-        {% endif %}
-        {% if can_merge_patient %}
-        <button class="btn secondary" type="button" onclick="showMergePatientModal()">{{ t('merge_patient') }}</button>
-        {% endif %}
-        {% if can_delete_patient %}
-        <a class="btn danger" href="{{ url_for('patients.delete_patient_confirm', pid=p['id']) }}">{{ t('delete_patient') }}</a>
+      {% if can_diagnose or can_edit_patient or can_merge_patient or can_delete_patient %}
+        <div class="patient-actions" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border-strong);">
+          <div class="actions-group" style="display: flex; gap: 12px; flex-wrap: wrap;">
+            {% if can_diagnose %}
+            <a class="u-btn primary" href="{{ url_for('palmer_plus.diag_page', pid=p['id']) }}">{{ t('diagnosis') }}</a>
+            {% endif %}
+            {% if can_edit_patient %}
+            <a class="u-btn ghost edit-patient-btn" href="{{ url_for('patients.edit_patient', pid=p['id']) }}">{{ t('edit_patient') }}</a>
+            {% endif %}
+            {% if can_merge_patient %}
+            <button class="u-btn ghost" type="button" onclick="showMergePatientModal()">{{ t('merge_patient') }}</button>
+            {% endif %}
+            {% if can_delete_patient %}
+            <a class="u-btn danger" href="{{ url_for('patients.delete_patient_confirm', pid=p['id']) }}">{{ t('delete_patient') }}</a>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    {% include 'payments/_list.html' %}
+  </div>
+
+  <div class="detail-sidebar">
+    <div class="u-card">
+      <h3 style="margin-top: 0; margin-bottom: 20px; font-weight: 700;">{{ t('patient_timeline') or 'Patient Timeline' }}</h3>
+      <div class="timeline-container">
+        {% for item in timeline %}
+          <div class="timeline-item">
+            <div class="timeline-icon">{{ item.icon }}</div>
+            <div class="timeline-content">
+              <div class="timeline-header">
+                <div class="timeline-title">{{ item.title }}</div>
+                <div class="timeline-date">{{ item.ts }}</div>
+              </div>
+              <div class="timeline-meta">
+                {{ item.meta }}
+                {% if item.amount %} · <strong>{{ item.amount }}</strong>{% endif %}
+                {% if item.status %} · <span class="status-badge">{{ t('appointment_status_' + item.status) }}</span>{% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+        {% if not timeline %}
+          <div style="text-align: center; color: var(--text-muted); padding: 20px;">{{ t('no_activity_recorded') or 'No activity recorded yet.' }}</div>
         {% endif %}
       </div>
     </div>
-  {% endif %}
+
+    <div class="u-card" style="margin-top: 24px;">
+      <h3 style="margin-top: 0; margin-bottom: 16px;">{{ t('medical_info') or 'Medical Info' }}</h3>
+      <a href="{{ url_for('palmer_plus.med_page', pid=p['id']) }}" class="u-btn ghost" style="width: 100%; justify-content: flex-start;">🏥 {{ t('view_medical_file') or 'View Medical File' }}</a>
+      <a href="{{ url_for('palmer_plus.images_page', pid=p['id']) }}" class="u-btn ghost" style="width: 100%; justify-content: flex-start; margin-top: 12px;">🖼️ {{ t('patient_images') or 'Patient Images' }}</a>
+    </div>
+  </div>
 </div>
-{% include 'payments/_list.html' %}
 
 <div id="viewReceiptModal" class="modal">
   <div class="modal-content">
@@ -123,36 +347,65 @@
 
 {% if current_user.is_authenticated and current_user.has_permission('patients:merge') %}
 <div id="mergePatientModal" class="modal">
-  <div class="modal-content">
+  <div class="modal-content" style="max-width: 600px;">
     <form method="post" action="{{ url_for('patients.merge_patient', pid=p['id']) }}" class="admin-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="target_id" id="merge-target-id">
+
       <div class="modal-header">
         <h3 class="modal-title">{{ t('merge_patient') }}</h3>
         <button class="modal-close" type="button" onclick="hideMergePatientModal()">&times;</button>
       </div>
+
       <div class="modal-body">
+        <!-- Two Card Layout -->
+        <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+          <!-- Current Patient Card -->
+          <div class="u-card" style="flex: 1; padding: 16px; border: 2px solid var(--border-strong);">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">{{ t('current_patient') or 'Current Patient' }}</div>
+            <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 8px;">{{ p['full_name'] }}</div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text-secondary);">
+              <span>📁</span> {{ p['short_id'] or '—' }}
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px;">
+              <span>📞</span> {{ p['phone'] or '—' }}
+            </div>
+
+            <label class="checkbox-item" style="margin-top: 16px; padding: 8px; background: color-mix(in srgb, var(--primary-color) 5%, var(--bg-surface)); border-radius: 8px;">
+              <input type="radio" name="keep_patient_id" value="{{ p['id'] }}">
+              <span style="font-weight: 600; font-size: 0.85rem;">{{ t('keep_this_file') or 'Keep this file' }}</span>
+            </label>
+          </div>
+
+          <!-- Target Patient Card -->
+          <div class="u-card" id="target-patient-card" style="flex: 1; padding: 16px; border: 2px solid var(--border-strong); opacity: 0.6;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">{{ t('merge_target') or 'Merge Target' }}</div>
+            <div id="target-preview-name" style="font-weight: 700; font-size: 1.1rem; margin-bottom: 8px;">?</div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text-secondary);">
+              <span>📁</span> <span id="target-preview-file">—</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px;">
+              <span>📞</span> <span id="target-preview-phone">—</span>
+            </div>
+
+            <label class="checkbox-item" id="target-keep-label" style="margin-top: 16px; padding: 8px; background: color-mix(in srgb, var(--primary-color) 5%, var(--bg-surface)); border-radius: 8px; display: none;">
+              <input type="radio" name="keep_patient_id" id="target-keep-radio" value="" checked>
+              <span style="font-weight: 600; font-size: 0.85rem;">{{ t('keep_this_file') or 'Keep this file' }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 16px; color: var(--primary-color); font-size: 1.5rem;">↓</div>
+
         <div class="form-group">
           <label class="form-label" for="merge-target-short-id">
-            {{ t('merge_target_short_id') }}
+            {{ t('target_file_label') or 'Target file (file no, name, or phone)' }}
           </label>
           <input id="merge-target-short-id" name="target_short_id" class="form-input" autocomplete="off" required
                  placeholder="{{ t('merge_target_placeholder') }}">
           <div class="merge-suggestions-group">
             <div id="merge-suggestions-same" class="merge-suggestions"></div>
             <div id="merge-suggestions-search" class="merge-suggestions"></div>
-          </div>
-          <div id="merge-selected-preview" class="merge-selection-preview">
-            <div class="merge-preview-name" id="merge-preview-name"></div>
-            <div class="merge-preview-details">
-              <div class="merge-preview-detail">
-                <span class="icon">📁</span>
-                <span id="merge-preview-file"></span>
-              </div>
-              <div class="merge-preview-detail">
-                <span class="icon">📞</span>
-                <span id="merge-preview-phone"></span>
-              </div>
-            </div>
           </div>
         </div>
         <div class="form-group">
@@ -165,9 +418,9 @@
           {{ t('merge_patient_warning') }}
         </p>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn secondary" onclick="hideMergePatientModal()">{{ t('cancel') }}</button>
-        <button type="submit" class="btn primary">{{ t('merge_now') }}</button>
+      <div class="modal-footer" style="padding: 24px 0 0 0; margin-top: 12px; border-top: 1px solid var(--border-strong); display: flex; justify-content: flex-end; gap: 12px;">
+        <button type="button" class="u-btn ghost" onclick="hideMergePatientModal()">{{ t('cancel') }}</button>
+        <button type="submit" class="u-btn primary">{{ t('merge_now') }}</button>
       </div>
     </form>
   </div>
@@ -196,25 +449,37 @@ document.addEventListener('DOMContentLoaded', function() {
   var input = document.getElementById('merge-target-short-id');
   var boxSame = document.getElementById('merge-suggestions-same');
   var boxSearch = document.getElementById('merge-suggestions-search');
-  var previewBox = document.getElementById('merge-selected-preview');
-  var previewName = document.getElementById('merge-preview-name');
-  var previewFile = document.getElementById('merge-preview-file');
-  var previewPhone = document.getElementById('merge-preview-phone');
+
+  var targetCard = document.getElementById('target-patient-card');
+  var targetName = document.getElementById('target-preview-name');
+  var targetFile = document.getElementById('target-preview-file');
+  var targetPhone = document.getElementById('target-preview-phone');
+  var targetIdInput = document.getElementById('merge-target-id');
+  var targetKeepLabel = document.getElementById('target-keep-label');
+  var targetKeepRadio = document.getElementById('target-keep-radio');
+
   if (!input || !boxSame || !boxSearch) return;
 
   function setPreview(patient) {
-    if (!previewBox || !previewName || !previewFile || !previewPhone) return;
+    if (!targetCard || !targetName || !targetFile || !targetPhone) return;
     if (!patient) {
-      previewBox.classList.remove('visible');
-      previewName.textContent = '';
-      previewFile.textContent = '';
-      previewPhone.textContent = '';
+      targetCard.style.opacity = '0.6';
+      targetName.textContent = '?';
+      targetFile.textContent = '—';
+      targetPhone.textContent = '—';
+      targetIdInput.value = '';
+      targetKeepLabel.style.display = 'none';
       return;
     }
-    previewName.textContent = patient.full_name || '';
-    previewFile.textContent = patient.short_id || '—';
-    previewPhone.textContent = patient.phone || '—';
-    previewBox.classList.add('visible');
+    targetCard.style.opacity = '1';
+    targetName.textContent = patient.full_name || patient.name || '';
+    targetFile.textContent = patient.short_id || patient.file_number || '—';
+    targetPhone.textContent = patient.phone || patient.phone_number || '—';
+    targetIdInput.value = patient.id || '';
+
+    targetKeepRadio.value = patient.id || '';
+    targetKeepRadio.checked = true; // Default to keeping the target file
+    targetKeepLabel.style.display = 'flex';
   }
 
   function clearBox(box) {

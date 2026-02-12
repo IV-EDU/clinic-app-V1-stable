@@ -1,4 +1,4 @@
-<form method="post" action="{{ action }}" class="admin-form" id="editTreatmentModalForm">
+<form method="post" action="{{ action }}" class="admin-form u-stack-md" id="editTreatmentModalForm">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
   <div class="form-group">
@@ -7,24 +7,26 @@
       type="text"
       name="treatment_type"
       class="form-control"
+      style="font-size: 1.1rem; font-weight: 700;"
       required
+      placeholder="{{ t('treatment_type_placeholder') }}"
       value="{{ form.treatment_type|default('') }}"
     >
   </div>
 
-  <div class="form-group">
+  <div class="form-group" style="background: var(--bg-strong); padding: 12px; border-radius: 12px;">
     {% set is_consultation = form.is_consultation_visit|default('') %}
-    <label class="checkbox-label">
+    <label class="checkbox-item" style="margin: 0; cursor: pointer; font-weight: 600;">
       <input type="checkbox" name="is_consultation_visit" value="1" {{ 'checked' if is_consultation else '' }}>
-      {{ t('this_is_consultation_visit') }}
+      <span>{{ t('this_is_consultation_visit') }}</span>
     </label>
   </div>
 
-  <div class="form-row">
+  <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
     <div class="form-group">
       <label class="form-label">{{ t('visit_type') }}</label>
       {% set vt = form.visit_type|default('none') %}
-      <select name="visit_type" class="form-control">
+      <select name="visit_type" class="form-control" style="width: 100%;">
         <option value="none" {{ 'selected' if vt == 'none' else '' }}>{{ t('vt_none') }}</option>
         <option value="exam" {{ 'selected' if vt == 'exam' else '' }}>{{ t('vt_exam') }}</option>
         <option value="followup" {{ 'selected' if vt == 'followup' else '' }}>{{ t('vt_follow') }}</option>
@@ -33,7 +35,7 @@
     <div class="form-group">
       <label class="form-label">{{ t('doctor') }} *</label>
       {% set selected_doctor = form.doctor_id|default('') %}
-      <select name="doctor_id" class="form-control" required>
+      <select name="doctor_id" class="form-control" style="width: 100%;" required>
         <option value="">{{ t('select_doctor') }}</option>
         {% for doctor in doctor_options or [] %}
           <option value="{{ doctor['doctor_id'] }}" {{ 'selected' if selected_doctor == doctor['doctor_id'] else '' }}>
@@ -42,18 +44,19 @@
         {% endfor %}
       </select>
       {% if doctor_error %}
-        <div class="field-error doctor-error">{{ doctor_error }}</div>
+        <div class="field-error doctor-error" style="color: var(--danger-color); font-size: 0.85rem; margin-top: 4px;">{{ doctor_error }}</div>
       {% endif %}
     </div>
   </div>
 
-  <div class="form-row">
+  <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
     <div class="form-group">
-      <label class="form-label">{{ t('total_amount') }} *</label>
+      <label class="form-label">{{ t('total_amount') }} (EGP) *</label>
       <input
         type="number"
         name="total_amount"
         class="form-control"
+        style="font-weight: 800; color: var(--primary-color);"
         required
         min="0"
         step="0.01"
@@ -61,11 +64,12 @@
       >
     </div>
     <div class="form-group">
-      <label class="form-label">{{ t('discount') }}</label>
+      <label class="form-label">{{ t('discount') }} (EGP)</label>
       <input
         type="number"
         name="discount"
         class="form-control"
+        style="font-weight: 700; color: var(--danger-color);"
         min="0"
         step="0.01"
         value="{{ form.discount|default('0') }}"
@@ -73,23 +77,21 @@
     </div>
   </div>
 
-  <div class="form-row">
+  <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
     <div class="form-group">
       <label class="form-label">{{ t('date') }}</label>
       <input
         type="date"
         name="paid_at"
         class="form-control"
+        style="width: 100%;"
         value="{{ form.paid_at|default(today) }}"
       >
     </div>
-  </div>
-
-  <div class="form-row">
     <div class="form-group">
       <label class="form-label">{{ t('method') }}</label>
       {% set method = form.method|default('cash') %}
-      <select name="method" class="form-control">
+      <select name="method" class="form-control" style="width: 100%;">
         <option value="cash" {{ 'selected' if method == 'cash' else '' }}>{{ t('cash') }}</option>
         <option value="card" {{ 'selected' if method == 'card' else '' }}>{{ t('card') }}</option>
         <option value="transfer" {{ 'selected' if method == 'transfer' else '' }}>{{ t('transfer') }}</option>
@@ -99,11 +101,11 @@
 
   <div class="form-group">
     <label class="form-label">{{ t('notes') }}</label>
-    <textarea name="notes" class="form-control" rows="2">{{ form.notes|default('') }}</textarea>
+    <textarea name="notes" class="form-control" rows="2" placeholder="{{ t('notes_placeholder') }}">{{ form.notes|default('') }}</textarea>
   </div>
 
-  <div class="modal-footer">
-    <button type="button" class="btn secondary" onclick="hideFormModal()">{{ t('close') }}</button>
-    <button type="submit" class="btn primary">{{ submit_label|default(t('update')) }}</button>
+  <div class="modal-footer" style="padding: 24px 0 0 0; margin-top: 12px; border-top: 1px solid var(--border-strong); display: flex; justify-content: flex-end; gap: 12px;">
+    <button type="button" class="u-btn ghost" onclick="hideFormModal()">{{ t('cancel') }}</button>
+    <button type="submit" class="u-btn primary">{{ submit_label|default(t('update')) }}</button>
   </div>
 </form>

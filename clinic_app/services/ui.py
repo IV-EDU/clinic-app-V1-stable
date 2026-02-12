@@ -103,6 +103,10 @@ def render_page(template_name: str, **ctx: Any):
     show_back = ctx.pop("show_back", False)
     theme_vars = get_theme_variables()
 
+    dark_mode = False
+    if theme_vars:
+        dark_mode = str(theme_vars.get("dark_mode", "false")).lower() in {"1", "true", "yes", "on"}
+
     # Global toggle: whether file number + page number fields are shown.
     try:
         settings = AdminSettingsService.get_all_settings()
@@ -265,6 +269,7 @@ def render_page(template_name: str, **ctx: Any):
         logo_scale=logo_scale,
         pdf_logo_url=pdf_logo_url,
         show_file_numbers=show_file_numbers,
+        dark_mode=dark_mode,
         **ctx,
     )
 

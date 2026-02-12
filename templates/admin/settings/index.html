@@ -23,74 +23,73 @@
 }
 
 .admin-settings-header {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--primary-color, #3b82f6) 20%, #eff6ff) 0%,
-    #fdfdfd 52%,
-    color-mix(in srgb, var(--primary-color, #3b82f6) 20%, #eff6ff) 100%
-  );
-  color: var(--text-primary, var(--ink, #1f2937));
-  padding: 2rem;
-  border-radius: 12px;
+  background: var(--bg-surface);
+  padding: 2.5rem;
+  border-radius: 24px;
   margin-bottom: 2rem;
-  text-align: center;
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-soft);
 }
 
 .admin-settings-header h1 {
   margin: 0;
-  font-size: 2.5rem;
-  font-weight: 700;
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .admin-settings-header p {
   margin: 0.5rem 0 0 0;
-  opacity: 0.85;
   font-size: 1.1rem;
-  color: var(--text-secondary, #475569);
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 /* Tab Navigation */
 .admin-tabs {
   display: flex;
-  background: white;
-  border-radius: 12px 12px 0 0;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  margin-bottom: 0;
+  background: var(--bg-surface);
+  border-radius: 20px;
+  padding: 8px;
+  border: 1px solid var(--border-strong);
+  gap: 8px;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow-soft);
+  flex-wrap: wrap;
 }
 
 .admin-tab {
-  flex: 1;
-  padding: 1rem 1.5rem;
+  padding: 12px 24px;
   text-align: center;
-  background: #f8fafc;
+  background: transparent;
   border: none;
-  border-bottom: 3px solid transparent;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  font-weight: 600;
-  color: #64748b;
+  transition: all var(--transition-fast);
+  font-weight: 700;
+  color: var(--text-secondary);
   text-decoration: none;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .admin-tab:hover {
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--bg-strong);
+  color: var(--text-primary);
 }
 
 .admin-tab.active {
-  background: white;
-  color: #1e293b;
-  border-bottom-color: var(--primary-color, #3b82f6);
+  background: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-color) 30%, transparent);
 }
 
 /* Tab Content */
 .admin-tab-content {
-  background: white;
-  border-radius: 0 0 12px 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  padding: 2rem;
+  background: transparent;
+  padding: 0;
   min-height: 600px;
 }
 
@@ -103,31 +102,38 @@
 }
 
 /* Common Styles */
+.admin-settings-container .card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 24px;
+}
+
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .card-title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2937;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
 .btn-sm {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
 }
 
 .actions-row {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   flex-wrap: wrap;
   align-items: center;
 }
@@ -142,38 +148,46 @@
 .admin-table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0 8px;
-  margin-top: 1rem;
+  border-spacing: 0 12px;
 }
 
 .admin-table th,
 .admin-table td {
-  padding: 0.75rem 0.9rem;
+  padding: 16px 20px;
   text-align: start;
   vertical-align: middle;
 }
 
 .admin-table th {
-  background: #f9fafb;
-  font-weight: 600;
-  color: #374151;
+  background: var(--bg-strong);
+  font-weight: 700;
+  color: var(--text-secondary);
   font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
+  border: none;
 }
 
+.admin-table th:first-child { border-radius: 12px 0 0 12px; }
+.admin-table th:last-child { border-radius: 0 12px 12px 0; }
+
 .admin-table tbody td {
-  background: #ffffff;
-  border: 1px solid var(--border, #e5e7eb);
-  font-size: 0.9rem;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 .admin-table tbody td:first-child {
-  border-radius: 999px 0 0 999px;
+  border-left: 1px solid var(--border-strong);
+  border-radius: 16px 0 0 16px;
 }
 
 .admin-table tbody td:last-child {
-  border-radius: 0 999px 999px 0;
+  border-right: 1px solid var(--border-strong);
+  border-radius: 0 16px 16px 0;
 }
 
 .admin-table th:last-child,
@@ -206,41 +220,44 @@
 .status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
+  border: 1px solid transparent;
 }
 
 .status-badge.active {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--success-bg);
+  color: var(--success-color);
 }
 
 .status-badge.inactive {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--danger-bg);
+  color: var(--danger-color);
 }
 
 .status-badge.admin {
-  background: #fef3c7;
-  color: #92400e;
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #ffedd5;
 }
 
 .status-badge.permission {
-  background: #dbeafe;
-  color: #1e3a8a;
+  background: var(--bg-strong);
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
 }
 
 .status-badge.more {
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--bg-strong);
+  color: var(--text-muted);
 }
 
 .permission-badge-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 6px;
   max-width: 420px;
 }
 
@@ -300,9 +317,10 @@
   display: none !important;
 }
 .data-subtab-btn-active {
-  background: color-mix(in srgb, var(--primary-color, #3b82f6) 10%, #ffffff) !important;
-  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 30%, var(--border, #e5e7eb)) !important;
-  color: var(--text-primary, var(--ink, #1f2937)) !important;
+  background: var(--primary-color) !important;
+  color: white !important;
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-color) 25%, transparent);
 }
 .data-step {
   display: inline-flex;
@@ -379,33 +397,36 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
   z-index: 1000;
   align-items: center;
   justify-content: center;
 }
 
 .modal-wide .modal-content {
-  max-width: 980px;
+  max-width: 1200px;
 }
 
 .table-compact {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .table-compact th,
 .table-compact td {
-  padding: 0.6rem 0.75rem;
-  border-bottom: 1px solid var(--border, #e5e7eb);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-strong);
   text-align: start;
   vertical-align: top;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .table-compact th {
-  background: #f9fafb;
-  font-weight: 700;
+  background: var(--bg-strong);
+  font-weight: 800;
+  color: var(--text-secondary);
 }
 
 .modal.active {
@@ -413,21 +434,23 @@
 }
 
 .modal-content {
-  background: white;
-  border-radius: 12px;
+  background: var(--bg-surface);
+  border-radius: 24px;
   width: 90%;
-  max-width: 600px;
+  max-width: 700px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-strong);
+  border: 1px solid var(--border-strong);
 }
 
 .modal-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border-strong);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: var(--bg-strong);
 }
 
 .modal-title {
@@ -468,45 +491,48 @@
 /* Form Styles */
 .admin-form {
   display: grid;
-  gap: 1rem;
+  gap: 20px;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 8px;
 }
 
 .form-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .form-input,
 .form-select {
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  transition: border-color 0.2s ease;
+  padding: 12px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  font-size: 1rem;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
 }
 
 .form-input:focus,
 .form-select:focus {
   outline: none;
-  border-color: var(--primary-color, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 15%, transparent);
 }
 
 .form-checkbox-group {
   display: grid;
-  gap: 0.5rem;
-  max-height: 200px;
+  gap: 10px;
+  max-height: 250px;
   overflow-y: auto;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 0.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 16px;
+  background: var(--bg-strong);
 }
 
 .checkbox-item {
@@ -752,7 +778,7 @@
         👤 {{ tf('patients_tab', 'Patients') }}
       </button>
       <button class="admin-tab" onclick="switchTab(event, 'theme')">
-        🎨 {{ tf('theme', 'Theme') }}
+        🎨 {{ tf('branding_center', 'Branding Center') }}
       </button>
       <button class="admin-tab" onclick="switchTab(event, 'data')">
         📦 {{ tf('data_tab_title', 'Data') }}
@@ -973,94 +999,149 @@
 
     <!-- Theme Tab -->
     <div id="theme-tab" class="admin-tab-pane">
-      <div class="theme-grid">
-        <div class="card theme-card">
-          <div class="card-header">
-            <h2 class="card-title">{{ tf('colors', 'Colors') }}</h2>
+      <div style="display: grid; grid-template-columns: 1fr 350px; gap: 32px;">
+        <div class="theme-main u-stack-lg">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">{{ tf('color_palette', 'Color Palette') }}</h2>
+            </div>
+
+            <div class="admin-form">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px;">
+                <div class="form-group">
+                  <label class="form-label" for="theme-primary">{{ tf('primary_color', 'Primary Color') }}</label>
+                  <div class="color-row">
+                    <input type="color" id="theme-primary" class="form-input color-input" value="{{ theme_settings.get('primary_color', '#3b82f6') }}">
+                    <code style="font-size: 0.8rem;">{{ theme_settings.get('primary_color', '#3b82f6') }}</code>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="theme-accent">{{ tf('accent_color', 'Accent Color') }}</label>
+                  <div class="color-row">
+                    <input type="color" id="theme-accent" class="form-input color-input" value="{{ theme_settings.get('accent_color', '#0ea5e9') }}">
+                    <code style="font-size: 0.8rem;">{{ theme_settings.get('accent_color', '#0ea5e9') }}</code>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 24px; margin-top: 12px;">
+                <div class="form-group">
+                  <label class="form-label" for="theme-text-color">{{ tf('text_color', 'Base Text Color') }}</label>
+                  <div class="color-row">
+                    <input type="color" id="theme-text-color" class="form-input color-input" value="{{ theme_settings.get('text_color', '#111827') }}">
+                    <code style="font-size: 0.8rem;">{{ theme_settings.get('text_color', '#111827') }}</code>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="theme-btn-text-color">{{ tf('button_text_color', 'Button Text Color') }}</label>
+                  <div class="color-row">
+                    <input type="color" id="theme-btn-text-color" class="form-input color-input" value="{{ theme_settings.get('btn_text_color', '') or '#ffffff' }}">
+                    <code style="font-size: 0.8rem;">{{ theme_settings.get('btn_text_color', '') or '#ffffff' }}</code>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group" style="background: var(--bg-strong); padding: 20px; border-radius: 16px; margin-top: 12px;">
+                <label class="form-label" style="margin-bottom: 12px;">{{ tf('theme_presets', 'Professional Theme Presets') }}</label>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                  <button type="button" class="u-btn ghost sm" onclick="applyThemePreset('clinical')" style="background: white; border-color: #3b82f6; color: #3b82f6;">
+                    <span style="width: 12px; height: 12px; border-radius: 50%; background: #3b82f6;"></span> Clinical Blue
+                  </button>
+                  <button type="button" class="u-btn ghost sm" onclick="applyThemePreset('oceanic')" style="background: white; border-color: #0d9488; color: #0d9488;">
+                    <span style="width: 12px; height: 12px; border-radius: 50%; background: #0d9488;"></span> Oceanic Teal
+                  </button>
+                  <button type="button" class="u-btn ghost sm" onclick="applyThemePreset('rosewood')" style="background: white; border-color: #be123c; color: #be123c;">
+                    <span style="width: 12px; height: 12px; border-radius: 50%; background: #be123c;"></span> Rosewood
+                  </button>
+                  <button type="button" class="u-btn ghost sm" onclick="applyThemePreset('midnight')" style="background: white; border-color: #1e293b; color: #1e293b;">
+                    <span style="width: 12px; height: 12px; border-radius: 50%; background: #1e293b;"></span> Midnight
+                  </button>
+                  <button type="button" class="u-btn ghost sm" onclick="applyThemePreset('emerald')" style="background: white; border-color: #059669; color: #059669;">
+                    <span style="width: 12px; height: 12px; border-radius: 50%; background: #059669;"></span> Emerald
+                  </button>
+                </div>
+              </div>
+
+              <div id="theme-status-colors" class="alert" style="display:none;"></div>
+
+              <div class="actions-row" style="padding-top: 20px; border-top: 1px solid var(--border-strong);">
+                <button class="u-btn primary" type="button" onclick="saveThemeColors()">
+                  <i class="fa fa-save"></i> {{ tf('apply_theme', 'Apply Changes') }}
+                </button>
+                <button class="u-btn ghost" type="button" onclick="resetThemeDefaults()">{{ tf('reset', 'Reset') }}</button>
+                <button class="u-btn ghost" type="button" onclick="pickColorsFromLogo()">
+                  <i class="fa fa-magic"></i> {{ tf('match_logo', 'Match Logo Colors') }}
+                </button>
+              </div>
+            </div>
           </div>
-          <div class="admin-form">
-            <div class="form-group">
-              <label class="form-label" for="theme-primary">{{ tf('primary_color', 'Primary color') }}</label>
-              <div class="color-row">
-                <input type="color" id="theme-primary" class="form-input color-input" value="{{ theme_settings.get('primary_color', '#3b82f6') }}">
-                <div id="theme-primary-preview" class="color-preview chip" style="background: {{ theme_settings.get('primary_color', '#3b82f6') }}"></div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">{{ tf('preferences', 'UI Preferences') }}</h2>
+            </div>
+            <div class="admin-form">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <div class="form-group">
+                  <label class="form-label">{{ tf('dark_mode', 'Dark Mode') }}</label>
+                  <div style="display: flex; align-items: center; gap: 12px; background: var(--bg-strong); padding: 12px 16px; border-radius: 12px;">
+                    <input type="checkbox" id="theme-dark-mode" {% if theme_settings.get('dark_mode') == '1' %}checked{% endif %} style="width: 20px; height: 20px;">
+                    <span style="font-weight: 600;">{{ tf('enable_dark_mode', 'Always use dark theme') }}</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="theme-font">{{ tf('font_size', 'Interface Scale (Base px)') }}</label>
+                  <input type="number" id="theme-font" class="form-control" min="14" max="18" step="1" value="{{ theme_settings.get('base_font_size', '16') }}">
+                  <small class="u-text-muted">{{ tf('font_hint', 'Recommended: 16px') }}</small>
+                </div>
               </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="theme-accent">{{ tf('accent_color', 'Accent color') }}</label>
-              <div class="color-row">
-                <input type="color" id="theme-accent" class="form-input color-input" value="{{ theme_settings.get('accent_color', '#0ea5e9') }}">
-                <div id="theme-accent-preview" class="color-preview chip" style="background: {{ theme_settings.get('accent_color', '#0ea5e9') }}"></div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="theme-font">{{ tf('base_font_size', 'Base font size (px)') }}</label>
-              <input type="number" id="theme-font" class="form-input" min="14" max="18" step="1" value="{{ theme_settings.get('base_font_size', '16') }}">
-              <small class="text-muted">{{ tf('font_clamp_hint', 'Clamped to 14–18px to protect layout.') }}</small>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="theme-text-color">{{ tf('theme_text_color', 'Text color') }}</label>
-              <div class="color-row">
-                <input type="color" id="theme-text-color" class="form-input color-input" value="{{ theme_settings.get('text_color', '#111827') }}">
-                <div id="theme-text-preview" class="color-preview chip" style="background: {{ theme_settings.get('text_color', '#111827') }}"></div>
-              </div>
-              <small class="text-muted">{{ tf('theme_text_color_hint', 'Used for main text and labels.') }}</small>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="theme-btn-text-color">{{ tf('theme_btn_text_color', 'Button text color') }}</label>
-              <div class="color-row">
-                <input type="color" id="theme-btn-text-color" class="form-input color-input" value="{{ theme_settings.get('btn_text_color', '') or '#ffffff' }}">
-                <div id="theme-btn-text-preview" class="color-preview chip" style="background: {{ theme_settings.get('btn_text_color', '') or '#ffffff' }}"></div>
-              </div>
-              <small class="text-muted">{{ tf('theme_btn_text_color_hint', 'Used for text on primary themed buttons and big numbers.') }}</small>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="theme-metric-color">{{ tf('theme_metric_color', 'Highlight numbers color') }}</label>
-              <div class="color-row">
-                <input type="color" id="theme-metric-color" class="form-input color-input" value="{{ theme_settings.get('metric_text_color', '') or theme_settings.get('primary_color', '#2563eb') }}">
-                <div id="theme-metric-preview" class="color-preview chip" style="background: {{ theme_settings.get('metric_text_color', '') or theme_settings.get('primary_color', '#2563eb') }}"></div>
-              </div>
-              <small class="text-muted">{{ tf('theme_metric_color_hint', 'Used for big numbers like patient count and totals.') }}</small>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="theme-page-bg">{{ tf('theme_page_bg_tint', 'Page background tint') }}</label>
-              <div class="color-row">
-                <input type="color" id="theme-page-bg" class="form-input color-input" value="{{ theme_settings.get('page_bg_tint', '') or '#f7f7f8' }}">
-                <div id="theme-page-bg-preview" class="color-preview chip" style="background: {{ theme_settings.get('page_bg_tint', '') or '#f7f7f8' }}"></div>
-              </div>
-              <small class="text-muted">{{ tf('theme_page_bg_tint_hint', 'Very light color mixed into the page background.') }}</small>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="theme-card-bg">{{ tf('theme_card_bg_tint', 'Card accent tint') }}</label>
-              <div class="color-row">
-                <input type="color" id="theme-card-bg" class="form-input color-input" value="{{ theme_settings.get('card_bg_tint', '') or '#ffffff' }}">
-                <div id="theme-card-bg-preview" class="color-preview chip" style="background: {{ theme_settings.get('card_bg_tint', '') or '#ffffff' }}"></div>
-              </div>
-              <small class="text-muted">{{ tf('theme_card_bg_tint_hint', 'Optional soft tint for special header cards. Regular cards stay mostly white.') }}</small>
-            </div>
-            <div class="theme-preview" id="theme-preview">
-              <span class="status-badge" id="theme-chip">Aa</span>
-              <div class="theme-preview-body">
-                <div id="theme-preview-title" class="theme-preview-title">{{ tf('theme_preview_title', 'Theme Preview') }}</div>
-                <div id="theme-preview-text" class="u-text-secondary">{{ tf('theme_preview_hint', 'Primary and accent applied here.') }}</div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">{{ tf('theme_presets', 'Theme presets') }}</label>
-              <div class="actions-row" style="gap:6px;flex-wrap:wrap;">
-                <button type="button" class="btn secondary" onclick="applyThemePreset('calm')">{{ tf('theme_preset_calm', 'Calm blue') }}</button>
-                <button type="button" class="btn secondary" onclick="applyThemePreset('warm')">{{ tf('theme_preset_warm', 'Warm gold') }}</button>
-                <button type="button" class="btn secondary" onclick="applyThemePreset('mint')">{{ tf('theme_preset_mint', 'Soft mint') }}</button>
-              </div>
-            </div>
-            <div id="theme-status-colors" class="alert" style="display:none;"></div>
-            <div class="actions-row" style="margin-top:12px;">
-              <button class="btn btn-secondary" type="button" onclick="resetThemeDefaults()">{{ tf('reset_theme_defaults', 'Reset to default') }}</button>
-              <button class="btn btn-secondary" type="button" onclick="pickColorsFromLogo()">{{ tf('theme_pick_from_logo', 'Use colors from logo') }}</button>
-              <button class="btn btn-primary" type="button" onclick="saveThemeColors()">{{ tf('save_theme', 'Save Theme') }}</button>
             </div>
           </div>
         </div>
+
+        <div class="theme-sidebar u-stack-lg">
+          <div class="card" style="position: sticky; top: 24px; border-color: var(--primary-color); border-width: 2px;">
+            <div class="card-header">
+              <h3 class="card-title" style="font-size: 1.1rem;">{{ tf('live_preview', 'Real-time Preview') }}</h3>
+            </div>
+
+            <div id="realtime-preview" style="display: flex; flex-direction: column; gap: 20px; padding: 10px;">
+              <div class="preview-component">
+                <p style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Buttons</p>
+                <div style="display: flex; gap: 8px;">
+                  <button class="u-btn primary sm" style="pointer-events: none;">Primary</button>
+                  <button class="u-btn ghost sm" style="pointer-events: none;">Ghost</button>
+                </div>
+              </div>
+
+              <div class="preview-component">
+                <p style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Status Badges</p>
+                <div style="display: flex; gap: 8px;">
+                  <span class="status-badge active" style="pointer-events: none;">Active</span>
+                  <span class="status-badge" id="preview-accent-chip" style="background: var(--accent-color); color: white; border: none; pointer-events: none;">Accent</span>
+                </div>
+              </div>
+
+              <div class="preview-component">
+                <p style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Analytics Card</p>
+                <div style="background: var(--bg-strong); padding: 16px; border-radius: 16px; border-left: 4px solid var(--primary-color);">
+                  <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">TODAY</div>
+                  <div style="font-size: 1.5rem; font-weight: 800; color: var(--primary-color);">1,250 <span style="font-size: 0.8rem; opacity: 0.6;">EGP</span></div>
+                </div>
+              </div>
+
+              <div class="preview-component">
+                <p style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px;">Alerts</p>
+                <div class="alert alert-info" style="margin: 0; padding: 8px 12px; font-size: 0.85rem; border-color: var(--accent-color);">
+                  Theme colors applied live.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="theme-grid" style="margin-top: 32px;">
 
         <div class="card theme-card">
           <div class="card-header">
@@ -1185,38 +1266,34 @@
           <h2 class="card-title">{{ tf('data_tab_title', 'Data') }}</h2>
         </div>
         <div class="admin-form">
-          <div class="card" style="padding:0.75rem;border:1px solid var(--border, #e5e7eb);background:rgba(255,255,255,0.7);">
-            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
-              <div class="actions-row" style="margin:0;gap:6px;">
-                <button type="button" class="btn btn-secondary btn-sm" data-data-subtab-btn="import" onclick="switchDataSubtab('import')">
+          <div class="card" style="padding:16px; border-radius: 20px; background: var(--bg-strong);">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+              <div class="sub-tabs-pills" style="display:flex; gap:8px; background: var(--bg-surface); padding: 6px; border-radius: 14px; border: 1px solid var(--border-strong);">
+                <button type="button" class="u-btn ghost sm" data-data-subtab-btn="import" onclick="switchDataSubtab('import')" style="border-radius: 10px;">
                   {{ tf('data_sub_import', 'Import') }}
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm" data-data-subtab-btn="analyze" onclick="switchDataSubtab('analyze')">
+                <button type="button" class="u-btn ghost sm" data-data-subtab-btn="analyze" onclick="switchDataSubtab('analyze')" style="border-radius: 10px;">
                   {{ tf('data_sub_analyze', 'Analyze') }}
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm" data-data-subtab-btn="duplicates" onclick="switchDataSubtab('duplicates')">
+                <button type="button" class="u-btn ghost sm" data-data-subtab-btn="duplicates" onclick="switchDataSubtab('duplicates')" style="border-radius: 10px;">
                   {{ tf('data_sub_duplicates', 'Duplicates') }}
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm" data-data-subtab-btn="export" onclick="switchDataSubtab('export')">
+                <button type="button" class="u-btn ghost sm" data-data-subtab-btn="export" onclick="switchDataSubtab('export')" style="border-radius: 10px;">
                   {{ tf('data_sub_export', 'Export') }}
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm data-advanced" data-data-subtab-btn="reports" onclick="switchDataSubtab('reports')">
+                <button type="button" class="u-btn ghost sm data-advanced" data-data-subtab-btn="reports" onclick="switchDataSubtab('reports')" style="border-radius: 10px;">
                   {{ tf('data_sub_reports', 'Reports') }}
                 </button>
-                <button type="button" class="btn btn-secondary btn-sm data-advanced" data-data-subtab-btn="backups" onclick="switchDataSubtab('backups')">
+                <button type="button" class="u-btn ghost sm data-advanced" data-data-subtab-btn="backups" onclick="switchDataSubtab('backups')" style="border-radius: 10px;">
                   {{ tf('data_sub_backups', 'Backups') }}
                 </button>
               </div>
 
-              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                <div class="u-text-muted" style="font-size:0.9rem;">
-                  {{ tf('data_tab_mode_hint', 'Use Advanced only when needed.') }}
-                </div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <span class="u-text-muted" style="font-size:0.9rem;">{{ tf('data_tab_simple', 'Simple') }}</span>
-                  <label class="checkbox-item" style="margin:0;">
-                    <input type="checkbox" id="data-advanced-toggle">
-                    <span>{{ tf('data_tab_advanced', 'Advanced') }}</span>
+              <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+                <div style="display:flex;align-items:center;gap:10px; background: var(--bg-surface); padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border-strong);">
+                  <span style="font-size:0.85rem; font-weight: 700; color: var(--text-secondary);">{{ tf('data_tab_advanced', 'Advanced Mode') }}</span>
+                  <label class="u-switch" style="margin:0; display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="data-advanced-toggle" style="width: 40px; height: 20px;">
                   </label>
                 </div>
               </div>
@@ -1669,10 +1746,13 @@
           <div style="min-width: 220px;">
             <label class="form-label">{{ tf('action', 'Action') }}</label>
             <select id="audit-action" class="form-input">
-              <option value="">{{ tf('all', 'All') }}</option>
+              <option value="">{{ tf('all', 'All Actions') }}</option>
+              <option value="treatment_create">{{ tf('audit_treatment_create', 'Treatment created') }}</option>
+              <option value="treatment_update">{{ tf('audit_treatment_update', 'Treatment updated') }}</option>
               <option value="payment_create">{{ tf('audit_payment_create', 'Payment added') }}</option>
               <option value="payment_update">{{ tf('audit_payment_update', 'Payment updated') }}</option>
               <option value="payment_delete">{{ tf('audit_payment_delete', 'Payment deleted') }}</option>
+              <option value="payment_add_to_treatment">{{ tf('audit_payment_add', 'Add payment to treatment') }}</option>
             </select>
           </div>
           <div>
@@ -1693,7 +1773,8 @@
                 <th scope="col">{{ tf('patient', 'Patient') }}</th>
                 <th scope="col">{{ tf('amount', 'Amount') }}</th>
                 <th scope="col">{{ tf('method', 'Method') }}</th>
-                <th scope="col">{{ tf('payment_id', 'Payment ID') }}</th>
+                <th scope="col">{{ tf('entity', 'Entity') }}</th>
+                <th scope="col">{{ tf('id', 'ID') }}</th>
                 <th scope="col">{{ tf('view', 'View') }}</th>
               </tr>
             </thead>
@@ -1703,65 +1784,56 @@
           </table>
         </div>
 
-        <details class="u-card" style="margin-top:14px;">
-          <summary style="cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div class="card" style="margin-top: 24px; border: 1px dashed var(--border-strong);">
+          <div class="card-header" style="border: none; margin-bottom: 8px;">
             <div>
-              <div class="u-text-muted" style="font-size:12px; text-transform:uppercase; letter-spacing:.08em;">
-                {{ tf('audit_privacy_title', 'Audit privacy') }}
-              </div>
-              <div style="font-weight:700; font-size:18px;">
-                {{ tf('audit_snapshots_title', 'Patient snapshots') }}
-              </div>
+              <h3 class="card-title" style="font-size: 1.1rem;">🛡️ {{ tf('audit_privacy_title', 'Audit Privacy & Snapshots') }}</h3>
+              <p class="u-text-muted" id="audit-privacy-summary" style="font-size: 0.85rem; margin-top: 4px;">{{ tf('loading', 'Loading...') }}</p>
             </div>
-            <div class="u-text-muted" id="audit-privacy-summary" style="font-weight:600;">
-              {{ tf('loading', 'Loading...') }}
-            </div>
-          </summary>
+          </div>
 
-          <div style="margin-top:10px;">
-            <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
-              <button class="btn btn-secondary" type="button" onclick="auditSnapshotsOpen()">
-                {{ tf('audit_snapshots_view', 'View snapshots') }}
-              </button>
-              <button class="btn btn-secondary" type="button" onclick="auditPrivacyBackfillConfirm()">
-                {{ tf('audit_snapshots_backfill', 'Backfill') }}
-              </button>
-              <button class="btn btn-secondary" type="button" onclick="auditPrivacyPurgeExpiredConfirm()">
-                {{ tf('audit_snapshots_purge_expired', 'Purge expired') }}
-              </button>
-              <button class="btn btn-danger" type="button" onclick="auditPrivacyPurgeAllConfirm()">
-                {{ tf('audit_snapshots_purge_all', 'Purge all') }}
-              </button>
-            </div>
-
-            <div id="audit-privacy-status" class="alert" style="display:none; margin-top:10px;"></div>
-
-            <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; margin-top:10px;">
-              <label style="display:flex; gap:8px; align-items:center;">
-                <input id="audit-snapshots-enabled" type="checkbox" />
-                <span>{{ tf('audit_snapshots_enabled', 'Store patient snapshots (name + file/page)') }}</span>
+          <div class="admin-form">
+            <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center; background: var(--bg-strong); padding: 16px; border-radius: 16px;">
+              <label style="display: flex; gap: 10px; align-items: center; cursor: pointer;">
+                <input id="audit-snapshots-enabled" type="checkbox" style="width: 20px; height: 20px;">
+                <span style="font-weight: 600;">{{ tf('audit_snapshots_enabled', 'Store patient snapshots') }}</span>
               </label>
-              <div style="min-width:220px;">
-                <label class="form-label">{{ tf('audit_snapshots_retention', 'Keep snapshots for') }}</label>
-                <select id="audit-snapshots-retention" class="form-input">
+
+              <div style="display: flex; align-items: center; gap: 10px; margin-inline-start: auto;">
+                <label class="form-label" style="margin: 0;">{{ tf('audit_snapshots_retention', 'Keep for') }}</label>
+                <select id="audit-snapshots-retention" class="form-select" style="padding: 6px 12px; font-size: 0.85rem;">
                   <option value="90">90 {{ tf('days', 'days') }}</option>
                   <option value="180">180 {{ tf('days', 'days') }}</option>
                   <option value="365">365 {{ tf('days', 'days') }}</option>
                   <option value="0">{{ tf('forever', 'Forever') }}</option>
                 </select>
+                <button class="u-btn primary sm" type="button" onclick="auditPrivacySave()">{{ tf('save', 'Save') }}</button>
               </div>
-              <div>
-                <button class="btn btn-primary" type="button" onclick="auditPrivacySave()">{{ tf('save', 'Save') }}</button>
-              </div>
-              <div class="u-text-muted" id="audit-snapshot-count" style="min-width:200px;"></div>
             </div>
 
-            <div class="u-text-muted" style="margin-top:8px; line-height:1.5;">
-              {{ tf('audit_snapshots_help', 'Snapshots keep the audit readable even if a patient is later deleted. You can purge snapshots any time; audit events remain.') }}
-              {{ tf('audit_snapshots_help_deleted', 'Already-deleted patients cannot be recovered and will show as “Unknown patient”.') }}
+            <div id="audit-privacy-status" class="alert" style="display:none;"></div>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-start;">
+              <button class="u-btn ghost sm" type="button" onclick="auditSnapshotsOpen()">
+                <i class="fa fa-eye"></i> {{ tf('audit_snapshots_view', 'View snapshots') }}
+              </button>
+              <button class="u-btn ghost sm" type="button" onclick="auditPrivacyBackfillConfirm()">
+                <i class="fa fa-history"></i> {{ tf('audit_snapshots_backfill', 'Backfill') }}
+              </button>
+              <button class="u-btn ghost sm" type="button" onclick="auditPrivacyPurgeExpiredConfirm()">
+                <i class="fa fa-trash"></i> {{ tf('audit_snapshots_purge_expired', 'Purge expired') }}
+              </button>
+              <button class="u-btn danger sm" type="button" onclick="auditPrivacyPurgeAllConfirm()">
+                <i class="fa fa-exclamation-triangle"></i> {{ tf('audit_snapshots_purge_all', 'Purge all') }}
+              </button>
+              <div class="u-text-muted" id="audit-snapshot-count" style="display: flex; align-items: center; font-size: 0.85rem; margin-inline-start: auto;"></div>
             </div>
+
+            <p class="u-text-muted" style="font-size: 0.85rem; line-height: 1.5; padding: 0 4px;">
+              {{ tf('audit_snapshots_help', 'Snapshots keep the audit readable even if a patient is later deleted. You can purge snapshots any time; audit events remain.') }}
+            </p>
           </div>
-        </details>
+        </div>
       </div>
     </div>
 
@@ -1832,7 +1904,7 @@
                 <tr>
                   <th scope="col">{{ tf('date', 'Date') }}</th>
                   <th scope="col">{{ tf('action', 'Action') }}</th>
-                  <th scope="col">{{ tf('payment_id', 'Payment ID') }}</th>
+                  <th scope="col">{{ tf('id', 'ID') }}</th>
                   <th scope="col">{{ tf('patient', 'Patient') }}</th>
                 </tr>
               </thead>
@@ -2322,16 +2394,10 @@ function saveThemeColors() {
   var statusEl = document.getElementById('theme-status-colors');
   var primary = document.getElementById('theme-primary').value;
   var accent = document.getElementById('theme-accent').value;
+  var darkMode = document.getElementById('theme-dark-mode').checked ? '1' : '0';
   var fontSize = document.getElementById('theme-font').value;
   var textColor = document.getElementById('theme-text-color').value;
-  var btnTextColorInput = document.getElementById('theme-btn-text-color');
-  var btnTextColor = btnTextColorInput ? btnTextColorInput.value : '';
-  var metricColorInput = document.getElementById('theme-metric-color');
-  var metricColor = metricColorInput ? metricColorInput.value : '';
-  var pageBgInput = document.getElementById('theme-page-bg');
-  var pageBg = pageBgInput ? pageBgInput.value : '';
-  var cardBgInput = document.getElementById('theme-card-bg');
-  var cardBg = cardBgInput ? cardBgInput.value : '';
+  var btnTextColor = document.getElementById('theme-btn-text-color').value;
 
   statusEl.style.display = 'none';
   statusEl.textContent = '';
@@ -2348,11 +2414,9 @@ function saveThemeColors() {
       scope: 'colors',
       primary_color: primary,
       accent_color: accent,
+      dark_mode: darkMode,
       text_color: textColor,
       btn_text_color: btnTextColor,
-      metric_text_color: metricColor,
-      page_bg_tint: pageBg,
-      card_bg_tint: cardBg,
       base_font_size: fontSize,
       csrf_token: CSRF_TOKEN
     })
@@ -2387,27 +2451,26 @@ function saveThemeColors() {
 // Apply simple theme presets (colors only, no auto-save)
 function applyThemePreset(name) {
   var presets = {
-    calm: { primary: '#3b82f6', accent: '#0ea5e9' },
-    warm: { primary: '#d97706', accent: '#f59e0b' },
-    mint: { primary: '#059669', accent: '#10b981' }
+    clinical: { primary: '#3b82f6', accent: '#0ea5e9', text: '#111827', btn: '#ffffff' },
+    oceanic: { primary: '#0d9488', accent: '#0ea5e9', text: '#0f172a', btn: '#ffffff' },
+    rosewood: { primary: '#be123c', accent: '#fb7185', text: '#1e293b', btn: '#ffffff' },
+    midnight: { primary: '#1e293b', accent: '#64748b', text: '#f8fafc', btn: '#ffffff' },
+    emerald: { primary: '#059669', accent: '#10b981', text: '#064e3b', btn: '#ffffff' }
   };
   var preset = presets[name];
   if (!preset) return;
 
-  var primaryInput = document.getElementById('theme-primary');
-  var primaryPreview = document.getElementById('theme-primary-preview');
-  var accentInput = document.getElementById('theme-accent');
-  var accentPreview = document.getElementById('theme-accent-preview');
+  document.getElementById('theme-primary').value = preset.primary;
+  document.getElementById('theme-accent').value = preset.accent;
+  document.getElementById('theme-text-color').value = preset.text;
+  document.getElementById('theme-btn-text-color').value = preset.btn;
+
+  attachThemePreview(); // Trigger UI update
+
   var statusEl = document.getElementById('theme-status-colors');
-
-  if (primaryInput) primaryInput.value = preset.primary;
-  if (primaryPreview) primaryPreview.style.background = preset.primary;
-  if (accentInput) accentInput.value = preset.accent;
-  if (accentPreview) accentPreview.style.background = preset.accent;
-
   if (statusEl) {
-    statusEl.textContent = L.themeSavedReload;
-    statusEl.className = 'alert alert-success';
+    statusEl.textContent = "{{ tf('preset_applied_hint', 'Preset applied to form. Click Apply to save.') }}";
+    statusEl.className = 'alert alert-info';
     statusEl.style.display = 'block';
   }
 }
@@ -3580,12 +3643,20 @@ function auditPaymentsLoad() {
         var method = meta.method || '—';
         var action = it.action || '';
         var actionLabel = action;
+        if (action === 'treatment_create') actionLabel = '{{ tf("audit_treatment_create", "Treatment created") }}';
+        if (action === 'treatment_update') actionLabel = '{{ tf("audit_treatment_update", "Treatment updated") }}';
         if (action === 'payment_create') actionLabel = '{{ tf("audit_payment_create", "Payment added") }}';
         if (action === 'payment_update') actionLabel = '{{ tf("audit_payment_update", "Payment updated") }}';
         if (action === 'payment_delete') actionLabel = '{{ tf("audit_payment_delete", "Payment deleted") }}';
+        if (action === 'payment_add_to_treatment') actionLabel = '{{ tf("audit_payment_add", "Payment added to treatment") }}';
+        if (action === 'payment_initial_remove') actionLabel = '{{ tf("audit_payment_initial_remove", "Initial payment removed") }}';
 
         var dt = it.ts_display || '';
         if (!dt) dt = it.ts || '';
+        var entityLabel = it.entity || 'payment';
+        if (entityLabel === 'treatment') entityLabel = '{{ tf("treatment", "Treatment") }}';
+        else if (entityLabel === 'payment') entityLabel = '{{ tf("payment", "Payment") }}';
+
         html.push('<tr>' +
           '<td>' + escapeHtml(dt || '') + '</td>' +
           '<td>' + escapeHtml(it.actor_username || '—') + '</td>' +
@@ -3593,7 +3664,8 @@ function auditPaymentsLoad() {
           '<td>' + escapeHtml(it.patient_display || patient) + '</td>' +
           '<td style="text-align:right;">' + escapeHtml(amount) + '</td>' +
           '<td>' + escapeHtml(method) + '</td>' +
-          '<td>' + escapeHtml(it.entity_id || '') + '</td>' +
+          '<td><span class="pill sm" style="text-transform: capitalize; background: var(--bg-strong); color: var(--text-secondary);">' + escapeHtml(entityLabel) + '</span></td>' +
+          '<td><code>' + escapeHtml((it.entity_id || '').substring(0, 8)) + '...</code></td>' +
           '<td><button class="btn btn-secondary" type="button" onclick="openAuditRowModal(' + idx + ')">{{ tf("view", "View") }}</button></td>' +
         '</tr>');
       });
@@ -3734,9 +3806,13 @@ function fmtMoney(cents) {
 
 function actionLabel(action) {
   var a = String(action || '').trim().toLowerCase();
+  if (a === 'treatment_create') return '{{ tf("audit_treatment_create", "Treatment created") }}';
+  if (a === 'treatment_update') return '{{ tf("audit_treatment_update", "Treatment updated") }}';
   if (a === 'payment_create') return '{{ tf("audit_payment_create", "Payment added") }}';
   if (a === 'payment_update') return '{{ tf("audit_payment_update", "Payment updated") }}';
   if (a === 'payment_delete') return '{{ tf("audit_payment_delete", "Payment deleted") }}';
+  if (a === 'payment_add_to_treatment') return '{{ tf("audit_payment_add", "Payment added to treatment") }}';
+  if (a === 'payment_initial_remove') return '{{ tf("audit_payment_initial_remove", "Initial payment removed") }}';
   return a || '';
 }
 
@@ -5017,86 +5093,40 @@ function useSelectedLogo() {
 }
 // Theme previews
 function attachThemePreview() {
-  var primaryInput = document.getElementById('theme-primary');
-  var accentInput = document.getElementById('theme-accent');
-  var chip = document.getElementById('theme-chip');
-  var title = document.getElementById('theme-preview-title');
-  var text = document.getElementById('theme-preview-text');
-  var primaryBox = document.getElementById('theme-primary-preview');
-  var accentBox = document.getElementById('theme-accent-preview');
-  var textInput = document.getElementById('theme-text-color');
-  var textPreview = document.getElementById('theme-text-preview');
-  var btnTextInput = document.getElementById('theme-btn-text-color');
-  var btnTextPreview = document.getElementById('theme-btn-text-preview');
-  var metricInput = document.getElementById('theme-metric-color');
-  var metricPreview = document.getElementById('theme-metric-preview');
-  var pageBgInput = document.getElementById('theme-page-bg');
-  var pageBgPreview = document.getElementById('theme-page-bg-preview');
-  var cardBgInput = document.getElementById('theme-card-bg');
-  var cardBgPreview = document.getElementById('theme-card-bg-preview');
-  var clinicBrandInput = document.getElementById('clinic-brand-color');
-  var clinicBrandPreview = document.getElementById('clinic-brand-preview');
+  const primary = document.getElementById('theme-primary').value;
+  const accent = document.getElementById('theme-accent').value;
+  const text = document.getElementById('theme-text-color').value;
+  const btn = document.getElementById('theme-btn-text-color').value;
+  const container = document.getElementById('realtime-preview');
 
-  function refresh() {
-    var primary = primaryInput.value;
-    var accent = accentInput.value;
-    var textColor = textInput ? textInput.value : null;
-    var btnTextColor = btnTextInput ? btnTextInput.value : null;
-    var metricColor = metricInput ? metricInput.value : null;
-    if (primaryBox) primaryBox.style.background = primary;
-    if (accentBox) accentBox.style.background = accent;
-    if (textPreview && textColor) {
-      textPreview.style.background = textColor;
-    }
-    if (btnTextPreview && btnTextColor) {
-      btnTextPreview.style.background = btnTextColor;
-    }
-    if (clinicBrandPreview && clinicBrandInput) {
-      clinicBrandPreview.style.background = clinicBrandInput.value;
-    }
-    if (metricPreview && metricColor) {
-      metricPreview.style.background = metricColor;
-    }
-    if (pageBgPreview && pageBgInput) {
-      pageBgPreview.style.background = pageBgInput.value;
-    }
-    if (cardBgPreview && cardBgInput) {
-      cardBgPreview.style.background = cardBgInput.value;
-    }
-    if (chip) {
-      chip.style.background = primary;
-      chip.style.borderColor = primary;
-      chip.style.color = btnTextColor || '#fff';
-    }
-    if (title) title.style.color = primary;
-    if (text) text.style.color = accent;
+  // Update code displays
+  document.querySelector('#theme-primary + code').textContent = primary.toUpperCase();
+  document.querySelector('#theme-accent + code').textContent = accent.toUpperCase();
+  document.querySelector('#theme-text-color + code').textContent = text.toUpperCase();
+  document.querySelector('#theme-btn-text-color + code').textContent = btn.toUpperCase();
+
+  // Apply to preview container via CSS variables
+  container.style.setProperty('--primary-color', primary);
+  container.style.setProperty('--accent-color', accent);
+  container.style.setProperty('--text-primary', text);
+
+  // Custom button styling for preview
+  const primaryBtn = container.querySelector('.u-btn.primary');
+  if (primaryBtn) {
+    primaryBtn.style.background = primary;
+    primaryBtn.style.color = btn;
   }
 
-  if (primaryInput) {
-    primaryInput.addEventListener('input', refresh);
+  const accentChip = document.getElementById('preview-accent-chip');
+  if (accentChip) {
+    accentChip.style.background = accent;
   }
-  if (accentInput) {
-    accentInput.addEventListener('input', refresh);
-  }
-  if (textInput) {
-    textInput.addEventListener('input', refresh);
-  }
-  if (metricInput) {
-    metricInput.addEventListener('input', refresh);
-  }
-  if (pageBgInput) {
-    pageBgInput.addEventListener('input', refresh);
-  }
-  if (cardBgInput) {
-    cardBgInput.addEventListener('input', refresh);
-  }
-  if (clinicBrandInput) {
-    clinicBrandInput.addEventListener('input', refresh);
-  }
-  if (btnTextInput) {
-    btnTextInput.addEventListener('input', refresh);
-  }
-  refresh();
+}
+
+function initThemeListeners() {
+  ['theme-primary', 'theme-accent', 'theme-text-color', 'theme-btn-text-color'].forEach(id => {
+    document.getElementById(id).addEventListener('input', attachThemePreview);
+  });
 }
 
 function formatDateTime(tsSeconds) {
@@ -6197,6 +6227,9 @@ document.addEventListener('DOMContentLoaded', function() {
 document.addEventListener('DOMContentLoaded', function() {
   if (typeof attachThemePreview === 'function') {
     attachThemePreview();
+  }
+  if (typeof initThemeListeners === 'function') {
+    initThemeListeners();
   }
   // Activate tab from hash if present
   var hash = window.location.hash.replace('#', '');

@@ -13,7 +13,11 @@ import sqlalchemy as sa
 from clinic_app.extensions import db
 
 SENSITIVE_KEYS = {"notes", "note", "diagnosis", "treatment", "details"}
-PAYMENT_ACTIONS = {"payment_create", "payment_update", "payment_delete"}
+PAYMENT_ACTIONS = {
+    "payment_create", "payment_update", "payment_delete",
+    "treatment_create", "treatment_update", "treatment_delete",
+    "payment_add_to_treatment", "payment_initial_remove"
+}
 
 
 def _sanitize_meta(meta: Mapping[str, Any] | None) -> dict[str, Any]:

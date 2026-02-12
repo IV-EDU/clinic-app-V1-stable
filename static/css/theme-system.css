@@ -35,6 +35,37 @@
   --danger-bg: var(--red-bg, #fee2e2);
   --info-color: var(--accent-color, #0ea5e9);
   --info-bg: #e0f2fe;
+
+  /* Additional Modern Variables */
+  --header-height: 72px;
+  --nav-bg: var(--bg-surface);
+  --nav-text: var(--text-primary);
+  --sidebar-width: 260px;
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+}
+
+/* Dark Mode Support */
+body.dark-mode {
+  --primary-color: #60a5fa;
+  --accent-color: #38bdf8;
+  --bg-primary: #0f172a;
+  --page-bg: #0f172a;
+  --bg-surface: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-strong: #334155;
+  --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.3);
+  --card-shadow: 0 18px 38px rgba(0, 0, 0, 0.4);
+  --success-bg: #064e3b;
+  --success-color: #34d399;
+  --warning-bg: #78350f;
+  --warning-color: #fbbf24;
+  --danger-bg: #7f1d1d;
+  --danger-color: #f87171;
+  --info-bg: #0c4a6e;
+  --info-color: #38bdf8;
 }
 
 /* Unified, optional utility styles (prefix u- to avoid conflicts) */
@@ -44,35 +75,72 @@
   border-radius: var(--card-radius, var(--radius-lg, 16px));
   box-shadow: var(--card-shadow, var(--shadow-soft));
   padding: var(--card-padding, var(--spacing-lg));
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .u-app-header {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--primary-color, #3b82f6) 18%, #f3f4ff) 0%,
-    #fdfdfd 52%,
-    color-mix(in srgb, var(--primary-color, #3b82f6) 18%, #f3f4ff) 100%
-  );
+  height: var(--header-height);
+  background: var(--nav-bg);
   border-bottom: 1px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: var(--shadow-soft);
 }
 
+/* Contrast Fix for Header Buttons (Golden Theme and others) */
 .u-app-header .btn.secondary,
 .u-app-header button.secondary,
-.u-app-header a.secondary {
-  background: var(--bg-surface, #ffffff);
+.u-app-header a.secondary,
+.kebab-btn {
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--bg-surface));
   color: var(--text-primary);
-  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 12%, #dbeafe);
+  border: 1px solid color-mix(in srgb, var(--primary-color) 20%, var(--border-strong));
+  font-weight: 600;
 }
 
 .u-app-header .btn.secondary:hover,
 .u-app-header button.secondary:hover,
-.u-app-header a.secondary:hover {
-  background: color-mix(in srgb, var(--primary-color, #3b82f6) 4%, #f1f5f9);
+.u-app-header a.secondary:hover,
+.kebab-btn:hover {
+  background: color-mix(in srgb, var(--primary-color) 15%, var(--bg-surface));
+  border-color: var(--primary-color);
+}
+
+/* Kebab Menu Improvements */
+.kebab-menu {
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-strong) !important;
+  box-shadow: var(--card-shadow) !important;
+  border-radius: 14px !important;
+  padding: 10px !important;
+  min-width: 240px !important;
+}
+
+.kebab-menu a {
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-primary) !important;
+  padding: 12px 16px !important;
+  border-radius: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  transition: background var(--transition-fast) !important;
+  font-weight: 500 !important;
+}
+
+.kebab-menu a:hover {
+  background: color-mix(in srgb, var(--primary-color) 10%, var(--bg-surface)) !important;
+  color: var(--primary-color) !important;
 }
 
 .u-app-header .title {
   color: var(--text-primary);
   font-weight: 800;
+  font-size: 1.25rem;
 }
 
 .u-btn {
@@ -80,26 +148,96 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 12px 20px;
   border-radius: var(--radius-md);
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
   border: 1px solid transparent;
-  transition: transform 0.1s ease, box-shadow 0.2s ease;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.u-btn:hover {
+  transform: translateY(-2px);
+}
+
+.u-btn:active {
+  transform: translateY(0);
 }
 
 .u-btn.primary {
-  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-  color: #fff;
-  border-color: var(--primary-color);
-  box-shadow: 0 10px 20px rgba(59, 130, 246, 0.25);
+  background: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-color) 30%, transparent);
+}
+
+.u-btn.primary:hover {
+  background: var(--primary-hover);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--primary-color) 40%, transparent);
 }
 
 .u-btn.secondary {
-  background: #eef2f7;
+  background: var(--bg-strong);
   color: var(--text-primary);
-  border-color: #dce3ed;
+  border-color: var(--border-strong);
+}
+
+.u-btn.ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-strong);
+}
+
+.u-btn.ghost:hover {
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--bg-surface));
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.u-btn.danger {
+  background: var(--danger-bg);
+  color: var(--danger-color);
+  border-color: color-mix(in srgb, var(--danger-color) 20%, transparent);
+}
+
+.u-btn.sm {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  border-radius: 10px;
+}
+
+.u-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.u-table th {
+  text-align: start;
+  padding: 16px 20px;
+  background: var(--bg-strong);
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.u-table td {
+  padding: 16px 20px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.u-table tr:last-child td {
+  border-bottom: none;
+}
+
+.u-table tr:hover td {
+  background: color-mix(in srgb, var(--primary-color) 2%, var(--bg-surface));
 }
 
 .u-chip {

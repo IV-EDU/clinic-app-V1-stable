@@ -25,12 +25,13 @@
       </div>
       {% endif %}
       {% if show_back and not hide_app_nav %}
-        <a class="btn secondary back-btn" href="{{ back_url(p) }}">← {{ t('back') }}</a>
+        <a class="u-btn ghost sm back-btn" href="{{ back_url(p) }}">← {{ t('back') }}</a>
       {% endif %}
       {% if current_user and not hide_app_nav %}
-        <a class="btn secondary home-btn" href="{{ url_for('index') }}">{{ t('home') }}</a>
+        <a class="u-btn ghost sm home-btn" href="{{ url_for('index') }}">{{ t('home') }}</a>
+        <a class="u-btn ghost sm" href="{{ url_for('core.patient_list') }}">{{ t('patient_files') or 'Patient Files' }}</a>
         {% if user_has_permission(current_user, 'appointments:view') %}
-          <a class="btn secondary" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
+          <a class="u-btn ghost sm" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
         {% endif %}
       {% endif %}
     </div>

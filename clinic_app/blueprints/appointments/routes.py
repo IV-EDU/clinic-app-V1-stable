@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from flask import Blueprint, current_app, flash, g, redirect, request, url_for, jsonify, abort
 from flask_login import current_user
-from sqlalchemy import or_, text, select
+from sqlalchemy import or_, text, select, func
 from sqlalchemy.orm import selectinload
 
 from clinic_app.services.appointments import (

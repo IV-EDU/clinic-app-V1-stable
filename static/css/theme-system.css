@@ -34,8 +34,13 @@
   --font-latin: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 
   --success-color: #10b981;
+  --success-bg: #dcfce7;
   --warning-color: #f59e0b;
+  --warning-bg: #fef3c7;
   --danger-color: #ef4444;
+  --danger-bg: #fee2e2;
+  --info-color: #0ea5e9;
+  --info-bg: #e0f2fe;
 }
 
 /* Base Styles */
@@ -63,7 +68,7 @@ html[lang="ar"] body {
 }
 
 /* Button Refinement */
-.btn {
+.btn, button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -72,28 +77,31 @@ html[lang="ar"] body {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid transparent;
+  border: 1px solid var(--primary-color);
+  background-color: var(--primary-color);
+  color: white;
   text-decoration: none;
+  font-size: 0.95rem;
 }
 
-.btn.primary {
+.btn.primary, button.primary {
   background-color: var(--primary-color);
   color: white;
   box-shadow: 0 4px 14px 0 rgba(13, 148, 136, 0.39);
 }
 
-.btn.primary:hover {
+.btn.primary:hover, button.primary:hover {
   background-color: var(--primary-hover);
   transform: translateY(-1px);
 }
 
-.btn.secondary {
+.btn.secondary, button.secondary {
   background-color: white;
   color: var(--text-secondary);
   border-color: var(--border-strong);
 }
 
-.btn.secondary:hover {
+.btn.secondary:hover, button.secondary:hover {
   background-color: #f8fafc;
   border-color: #cbd5e1;
 }
@@ -104,7 +112,7 @@ input, select, textarea {
   border-radius: var(--radius-md);
   padding: 10px 14px;
   font-size: 1rem;
-  width: 100%;
+  max-width: 100%;
   box-sizing: border-box;
   transition: border-color 0.2s;
 }
@@ -211,10 +219,7 @@ input:focus {
 .u-app-header {
   background: white;
   border-bottom: 1px solid var(--border-strong);
-  padding: var(--spacing-md) var(--spacing-lg);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  padding: 8px var(--spacing-lg);
 }
 
 /* Merge Modal Comparison */

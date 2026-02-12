@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import json
 from collections import defaultdict
 from datetime import date, timedelta
 from uuid import uuid4
@@ -557,6 +558,21 @@ def appointments_vanilla():
             color = doc.get("color") or default_doctor_color
             doctor_color_map[doc_id] = color
 
+        # Prepare JSON data for frontend as required by AGENTS.md
+        appointments_json = json.dumps([_serialize_appointment(a) for a in filtered_appts])
+
+        patients_list = []
+        for p in all_patients:
+            patients_list.append({
+                "id": p.id,
+                "name": p.full_name,
+                "file_number": p.short_id,
+                "phone": p.phone
+            })
+        patients_json = json.dumps(patients_list)
+
+        doctors_json = json.dumps(doctor_options)
+
         return render_page(
             "appointments/vanilla.html",
             title="Appointments",
@@ -572,6 +588,9 @@ def appointments_vanilla():
             end_date_value=end_date_value if use_range == "on" else "",
             doctor_color_map=doctor_color_map,
             default_doctor_color=default_doctor_color,
+            appointments_json=appointments_json,
+            patients_json=patients_json,
+            doctors_json=doctors_json,
         )
 
     except Exception as exc:
@@ -593,6 +612,9 @@ def appointments_vanilla():
                 default_doctor_color=DEFAULT_DOCTOR_COLOR,
                 start_date_value=request.args.get("start_date") or today.isoformat(),
                 end_date_value=request.args.get("end_date") or "",
+                appointments_json="[]",
+                patients_json="[]",
+                doctors_json="[]",
             ),
             500,
         )

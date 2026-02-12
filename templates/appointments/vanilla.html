@@ -7,6 +7,10 @@
 {{ super() }}
 <style>
 /* Modern Appointment Styles using logical properties and centralized theme */
+body {
+  /* Fallback background if color-mix is not supported */
+  background-color: var(--bg-primary, #f7f7f8);
+}
 .appt-container {
   max-width: 1400px;
   margin: 0 auto;
@@ -827,7 +831,7 @@ select:focus-visible {
     } %}
     {% for date_iso, appts in grouped_appointments.items() %}
     <div class="appt-group" data-date="{{ date_iso }}">
-      <button class="appt-group-header" onclick="toggleDateGroup(this, '{{ date_iso }}')" data-expanded="false" data-date="{{ date_iso }}">
+      <button class="appt-group-header expanded" onclick="toggleDateGroup(this, '{{ date_iso }}')" data-expanded="true" data-date="{{ date_iso }}">
         {% set date_label = appts[0].start_time.strftime('%Y-%m-%d') %}
         {% if date_iso == today_str %}
           <span class="date-day">{{ t('today') }}</span> - {{ date_label }}
@@ -841,7 +845,7 @@ select:focus-visible {
         <span class="date-count">({{ appts|length }})</span>
         <span class="date-toggle">▼</span>
       </button>
-      <div class="appt-group-content collapsed" id="group-{{ date_iso }}">
+      <div class="appt-group-content expanded" id="group-{{ date_iso }}">
         <div class="appt-card-grid">
           {% for appt in appts %}
           <div class="appt-card" data-appt-id="{{ appt.id }}" data-appt-date="{{ date_iso }}" data-doctor-id="{{ appt.doctor_id or '' }}" data-doctor-label="{{ appt.doctor_label or '' }}">
@@ -1060,6 +1064,11 @@ select:focus-visible {
     </div>
   </div>
 </div>
+
+<!-- Required JSON Data for compatibility -->
+<script type="application/json" id="appointments-data">{{ appointments_json | safe }}</script>
+<script type="application/json" id="patients-data">{{ patients_json | safe }}</script>
+<script type="application/json" id="doctors-data">{{ doctors_json | safe }}</script>
 
 <script>
 /**

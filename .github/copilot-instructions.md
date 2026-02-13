@@ -28,22 +28,32 @@ data/                   ← Runtime data (DB, backups, images) — DO NOT TOUCH
 ## Key Conventions
 - Plan first (2–5 bullets), then implement. One feature at a time.
 - Reuse helpers in `clinic_app/services/`. Follow existing code style.
+- Use `render_page()` for template rendering, `T()` for i18n strings.
+- Money stored in cents (integer). IDs are UUID text strings.
 - Runtime deps → `requirements.txt`. Dev deps → `requirements.dev.txt`.
 - Run tests via `Run-Tests.bat` after backend changes.
 - Start app via `Start-Clinic.bat` (port 8080).
+
+## Active Work
+- **UI Redesign:** See `UI_REDESIGN_PLAN.md` for the 15-phase plan.
+- **V1 Roadmap:** See `LAST_PLAN.md` (phases 0–6 done, 7 ~70%).
 
 ## Appointments Page — Important
 Template: `templates/appointments/vanilla.html`. Keep these script tag IDs unchanged:
 - `#appointments-data`, `#patients-data`, `#doctors-data`
 
-## Auto-Update Rule
+## Auto-Update Rule (MANDATORY)
 When you add, move, or remove any route, template, service, CSS, or JS file:
 1. Update the matching section in `docs/INDEX.md`
 2. If it changes user-visible features, add a note to `README.md`
-3. Keep `AGENTS.md` §4 (Quick Project Index) accurate
+3. Keep `AGENTS.md` §4 (Blueprints & Routes) accurate
+4. Update `UI_REDESIGN_PLAN.md` progress tracker if applicable
+5. Append to `docs/CHANGELOG.md` — one line: date, what changed, files touched
 
 ## Reference Docs
-- `AGENTS.md` — full agent behavior rules
+- `AGENTS.md` — full agent behavior rules + complete architecture reference
 - `plan_Agents.md` — how to design plans
+- `UI_REDESIGN_PLAN.md` — active UI redesign phases and progress
 - `LAST_PLAN.md` — V1 product roadmap (phases 0-6 done, 7 in progress)
 - `docs/INDEX.md` — complete code-to-feature map
+- `docs/CHANGELOG.md` — running log of all AI agent changes

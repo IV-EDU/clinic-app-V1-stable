@@ -79,3 +79,19 @@
 
 ## V2 Ideas (future, not started)
 *Placeholder — add ideas here as they come up. Do not start V2 work until V1 remaining items are closed.*
+
+---
+
+## Active UI Redesign (NEW)
+A comprehensive 15-phase UI redesign plan has been created. See **`UI_REDESIGN_PLAN.md`** for:
+- CSS design system + dark mode
+- Modal system + toast notifications
+- Arabic search normalization
+- Admin settings split (5 pages)
+- Dashboard homepage + nav restructure
+- Expense consolidation
+- Reception tab, data entry tab
+- Patient detail redesign
+- And more (15 phases total)
+
+This plan supersedes V2 Ideas above — the redesign IS the next major work.

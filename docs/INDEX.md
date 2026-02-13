@@ -334,7 +334,6 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Expense system dev script: `devtools/test_expense_system.py`
   - Duplicate detection dev script: `devtools/test_duplicates.py`
   - Appointment template checker: `devtools/check_template.py`
-  - Historical docs: `docs/appointments template.html`, `docs/appointments_template_source.html`, `docs/old/`
 
 ---
 
@@ -346,10 +345,6 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Patient images: `data/patient_images/`
   - Receipts: `data/receipts/`
   - Backups/exports/logs: under `data/` subfolders.
-
-- **Legacy data**
-  - Archived previous app DB and images: `docs/legacy-data/clinic_app_data/`
-  - These are kept only for reference; the app should not write to `clinic_app/data/` anymore.
 
 ---
 
@@ -380,7 +375,6 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Dependencies: `requirements.txt` (runtime), `requirements.dev.txt` (dev/test)
   - Git ignore: `.gitignore`
   - Cline ignore: `.clineignore`
-  - Project restore helper: `restore_project.py`
 
 - **Batch scripts (Windows)**
   - Start app: `Start-Clinic.bat` (port 8080)
@@ -394,8 +388,10 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Agent rules: `AGENTS.md`
   - Planning guide: `plan_Agents.md`
   - V1 roadmap: `LAST_PLAN.md`
+  - UI redesign plan: `UI_REDESIGN_PLAN.md`
   - Project overview: `README.md`
   - Code index (this file): `docs/INDEX.md`
+  - Change log: `docs/CHANGELOG.md`
   - Copilot auto-instructions: `.github/copilot-instructions.md`
 
 ---

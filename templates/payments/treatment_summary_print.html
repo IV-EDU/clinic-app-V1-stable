@@ -1,12 +1,14 @@
 <!doctype html>
-<html lang="{{ lang|default('en') }}" dir="{{ dir|default('ltr') }}">
+<html lang="{{ lang|default('en') }}" dir="{{ dir|default('ltr') }}" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{{ t('print_summary') }} – {{ patient.get('full_name') or '' }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
   <style>
-    body { background: #fff; }
+    /* Force light mode for print page — override any dark mode styles */
+    html, body { background: #fff !important; color: #0f172a !important; }
+    .theme-toggle-btn, #theme-toggle { display: none !important; }
     .print-wrap { max-width: 900px; margin: 16px auto; padding: 0 12px; }
     .hrow { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:flex-start; }
     .muted { color: #6b7280; font-size: 13px; }

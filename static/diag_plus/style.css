@@ -147,3 +147,199 @@ html[dir="rtl"] body, [dir="rtl"] .wrap{ direction: rtl }
 
 /* Keep charts centered */
 .arch{ margin-left:auto; margin-right:auto }
+
+/* Theme toggle button (standalone pages that don't include app.css) */
+.theme-toggle-btn{position:fixed;bottom:24px;right:24px;z-index:9999;width:48px;height:48px;border-radius:9999px;background:var(--color-surface-raised,#fff);border:1px solid var(--color-border-strong,#e5e7eb);color:var(--color-text-primary,#111);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.12);transition:all .2s ease;}
+.theme-toggle-btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.18);}
+.theme-toggle-btn .sun-icon,.theme-toggle-btn .moon-icon{display:none;}
+[data-theme="light"] .theme-toggle-btn .moon-icon,[data-theme="dark"] .theme-toggle-btn .sun-icon{display:block;}
+[dir="rtl"] .theme-toggle-btn{right:auto;left:24px;}
+
+
+/* ========================================================================
+   DARK MODE OVERRIDES
+   ======================================================================== */
+
+[data-theme="dark"] body {
+  background: var(--bg-page, #14171c) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+
+/* --- Header bar --- */
+[data-theme="dark"] .head {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--primary-color, #60a5fa) 10%, #22252d) 0%,
+    #1a1d23 52%,
+    color-mix(in srgb, var(--primary-color, #60a5fa) 10%, #22252d) 100%
+  ) !important;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* --- Cards --- */
+[data-theme="dark"] .card {
+  background: var(--color-surface, #1a1d23) !important;
+  border-color: var(--color-border, #374151) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* --- Patient card --- */
+[data-theme="dark"] .patient-avatar {
+  background: var(--color-accent, #60a5fa) !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .patient-name {
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+[data-theme="dark"] .patient-sub {
+  color: var(--color-text-tertiary, #94a3b8) !important;
+}
+[data-theme="dark"] .patient-notes {
+  background: var(--color-surface-raised, #22252d) !important;
+  border-color: var(--color-border, #374151) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+
+/* --- Legend --- */
+[data-theme="dark"] .tag {
+  background: var(--color-surface-raised, #22252d) !important;
+  border-color: var(--color-border, #374151) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+
+/* --- Quick-pick buttons (no-status only gets dark surface) --- */
+[data-theme="dark"] .qbtn:not([data-status]),
+[data-theme="dark"] .qbtn[data-status=""] {
+  background: var(--color-surface-raised, #22252d) !important;
+  border-color: var(--color-border-strong, #4b5563) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+/* Buttons WITH a status keep their original color — do NOT override background */
+[data-theme="dark"] .qbtn[data-status]:not([data-status=""]) {
+  color: #fff !important;
+  border-color: transparent !important;
+}
+[data-theme="dark"] .qbtn.on {
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25) !important;
+}
+
+/* --- Tooth cells: uncolored teeth stay WHITE in dark mode for contrast --- */
+[data-theme="dark"] .tooth:not([data-status]),
+[data-theme="dark"] .tooth[data-status=""] {
+  background: #ffffff !important;
+  border-color: var(--color-border-strong, #4b5563) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25) !important;
+  color: #111827 !important;
+}
+[data-theme="dark"] .tooth:not([data-status]):hover,
+[data-theme="dark"] .tooth[data-status=""]:hover {
+  border-color: var(--primary-color, var(--mid)) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, var(--mid)) 70%, transparent) !important;
+}
+/* Teeth WITH a status keep their colored background (same as light mode) */
+[data-theme="dark"] .tooth[data-status="Healthy"] { background: #10b981 !important; color: #fff !important; border-color: #0f7658 !important; }
+[data-theme="dark"] .tooth[data-status="Caries"]  { background: #ef4444 !important; color: #fff !important; border-color: #b91c1c !important; }
+[data-theme="dark"] .tooth[data-status="Filled"]  { background: #3b82f6 !important; color: #fff !important; border-color: #1d4ed8 !important; }
+[data-theme="dark"] .tooth[data-status="Missing"] { background: #9ca3af !important; color: #fff !important; border-color: #4b5563 !important; }
+[data-theme="dark"] .tooth[data-status="RCT"]     { background: #a855f7 !important; color: #fff !important; border-color: #7c3aed !important; }
+[data-theme="dark"] .tooth[data-status="Crown"]   { background: #f59e0b !important; color: #fff !important; border-color: #b45309 !important; }
+[data-theme="dark"] .tooth[data-status="Implant"] { background: #0ea5e9 !important; color: #fff !important; border-color: #0369a1 !important; }
+[data-theme="dark"] .tooth[data-status="Note"]    { background: #06b6d4 !important; color: #111 !important; border-color: #0e7490 !important; }
+
+/* --- Note dot in dark mode --- */
+[data-theme="dark"] .tooth .note-dot {
+  background: var(--color-surface, #1a1d23) !important;
+  border-color: var(--color-accent, #60a5fa) !important;
+  box-shadow: 0 0 0 2px var(--color-surface, #1a1d23) !important;
+}
+
+/* --- Divider lines --- */
+[data-theme="dark"] .midline {
+  background: var(--color-border-strong, #4b5563) !important;
+}
+[data-theme="dark"] .splitline {
+  background: var(--color-border-strong, #4b5563) !important;
+}
+[data-theme="dark"] .quadbar {
+  color: var(--color-text-tertiary, #94a3b8) !important;
+}
+
+/* --- Modal overlay & panel --- */
+[data-theme="dark"] .modal-ov {
+  background: rgba(0, 0, 0, 0.65) !important;
+}
+[data-theme="dark"] .modal {
+  background: var(--color-surface-raised, #22252d) !important;
+  border-color: var(--color-border, #374151) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+
+/* --- Inputs --- */
+[data-theme="dark"] select,
+[data-theme="dark"] textarea,
+[data-theme="dark"] input[type=text],
+[data-theme="dark"] input[type=number] {
+  background: var(--color-surface-overlay, #2a2d35) !important;
+  border-color: var(--color-border-strong, #4b5563) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+
+/* --- Secondary button --- */
+[data-theme="dark"] .btn.secondary {
+  background: var(--color-surface-raised, #22252d) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+  border-color: var(--color-border-strong, #4b5563) !important;
+}
+[data-theme="dark"] .btn.secondary:hover {
+  background: var(--color-surface-overlay, #2a2d35) !important;
+}
+
+/* --- Danger button (dark) --- */
+[data-theme="dark"] .btn.danger {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: #991b1b !important;
+  color: #f87171 !important;
+}
+
+/* --- Badge pill --- */
+[data-theme="dark"] .badge-pill {
+  background: var(--color-surface-raised, #22252d) !important;
+  border-color: var(--color-border, #374151) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+
+/* --- Light text helper --- */
+[data-theme="dark"] .light {
+  color: var(--color-text-tertiary, #94a3b8) !important;
+}
+[data-theme="dark"] .small {
+  color: var(--color-text-tertiary, #94a3b8) !important;
+}
+
+/* --- Banners (medical) --- */
+[data-theme="dark"] .banner-danger {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: #991b1b !important;
+  color: #f87171 !important;
+}
+[data-theme="dark"] .chip-warn {
+  background: rgba(249, 115, 22, 0.15) !important;
+  border-color: rgba(249, 115, 22, 0.3) !important;
+  color: #fb923c !important;
+}
+[data-theme="dark"] .chip-info {
+  background: rgba(56, 189, 248, 0.15) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  color: #38bdf8 !important;
+}
+[data-theme="dark"] .chip-danger {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  color: #f87171 !important;
+}
+[data-theme="dark"] .chip {
+  background: var(--color-surface-raised, #22252d) !important;
+  border-color: var(--color-border, #374151) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+}

@@ -119,8 +119,9 @@ def test_receivables_paginates_but_summary_count_stays_full(logged_in_client):
     resp = logged_in_client.get("/receivables?page=2")
     html = resp.data.decode("utf-8")
     assert resp.status_code == 200
-    # page 2 contains 30 visible rows
-    assert len(re.findall(r'href="/patients/[^"]+"', html)) == 30
+    # page 2 contains 30 visible patient rows (exclude JS template strings from nav search)
+    patient_links = re.findall(r'href="/patients/patient-[^"]+"', html)
+    assert len(patient_links) == 30
     assert "Page 2 / 2" in html
     # Summary count should remain full filtered rows (not page size).
     box_values = re.findall(r'<div class="box-value">([^<]+)</div>', html)

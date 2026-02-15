@@ -20,6 +20,7 @@ from clinic_app.services.ui import render_page  # noqa: F401 - re-exported for t
 from clinic_app.services.database import db
 from clinic_app.services.security import require_permission
 from clinic_app.services.csrf import ensure_csrf_token
+from clinic_app.services.arabic_search import normalize_search_query
 
 bp = Blueprint("core", __name__)
 
@@ -37,6 +38,8 @@ PAYMENT_FORM = "payments/form.html"
 @require_permission("patients:view")
 def index():
     q = (request.args.get("q") or "").strip()
+    # Apply Arabic character normalization for better matching
+    q_normalized = normalize_search_query(q) if q else q
     sort_param_present = "sort" in request.args
     raw_sort = (request.args.get("sort") or "").strip().lower()
     if sort_param_present:
@@ -75,7 +78,7 @@ def index():
     where_sql = ""
     where_params: tuple[str, ...] = ()
     if q:
-        like = f"%{q}%"
+        like = f"%{q_normalized}%"
         digits = "".join(ch for ch in q if ch.isdigit())
         digits_like = f"%{digits}%" if digits else ""
         if has_pages_table and has_patient_phones_table:
@@ -228,7 +231,7 @@ def index():
     if q:
         # Show why a patient matched (extra phone/page) without changing the table layout.
         # Only compute this when searching to avoid extra work on normal browsing.
-        like_for_match = f"%{q}%"
+        like_for_match = f"%{q_normalized}%"
         digits = "".join(ch for ch in q if ch.isdigit())
         digits_like = f"%{digits}%" if digits else ""
 
@@ -337,12 +340,12 @@ def index():
         )
     total_patients = filtered_total
     today_total = money(today_collected(conn))
-    
+
     # Enhanced appointment statistics
     appointments_count = 0
     upcoming_count = 0
     completed_count = 0
-    
+
     has_table = cur.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='appointments'"
     ).fetchone()
@@ -350,7 +353,7 @@ def index():
         today = date.today().isoformat()
         now = datetime.now()
         current_time = now.strftime("%H:%M")
-        
+
         # Get appointment statistics for today
         stats_row = cur.execute(
             """
@@ -362,11 +365,11 @@ def index():
             """,
             (today + ' ' + current_time, today),
         ).fetchone()
-        
+
         appointments_count = stats_row[0] or 0
         upcoming_count = stats_row[1] or 0
         completed_count = stats_row[2] or 0
-        
+
         # For backward compatibility, keep the preview but don't use it in enhanced template
         preview_rows = cur.execute(
             """
@@ -381,7 +384,7 @@ def index():
         appt_preview = [dict(r) for r in preview_rows]
     else:
         appt_preview = []
-    
+
     has_prev = page > 1
     total_pages = (filtered_total + per_page - 1) // per_page if filtered_total else 1
     has_next = page < total_pages
@@ -406,6 +409,50 @@ def index():
         sort=sort,
         show_back=False,
     )
+
+
+@bp.route("/api/global-search", methods=["GET"])
+@require_permission("patients:view")
+def api_global_search():
+    """JSON endpoint for the AJAX-powered global search dropdown in the nav bar."""
+    query = (request.args.get("q") or "").strip()
+    if not query or len(query) < 2:
+        return jsonify([])
+
+    q_normalized = normalize_search_query(query)
+    like = f"%{q_normalized}%"
+
+    conn = db()
+    cur = conn.cursor()
+
+    rows = cur.execute(
+        """
+        SELECT p.id, p.full_name, p.phone, p.short_id
+        FROM patients p
+        WHERE lower(p.full_name) LIKE ?
+           OR lower(p.phone) LIKE ?
+           OR lower(p.short_id) LIKE ?
+        ORDER BY p.full_name ASC
+        LIMIT 8
+        """,
+        (like, like, like),
+    ).fetchall()
+
+    results = []
+    for r in rows:
+        name = r["full_name"] or ""
+        parts = name.split()
+        initials = "".join(p[0].upper() for p in parts[:2]) if parts else "?"
+        results.append({
+            "id": r["id"],
+            "full_name": name,
+            "phone": r["phone"] or "",
+            "short_id": r["short_id"] or "",
+            "initials": initials,
+        })
+
+    conn.close()
+    return jsonify(results)
 
 
 @bp.route("/diagnostics", methods=["GET"], endpoint="diagnostics")

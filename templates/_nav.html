@@ -10,7 +10,9 @@
       <div class="kebab" id="kebab">
         <button class="kebab-btn" onclick="toggleKebab(event, this)">⋮</button>
         <div class="kebab-menu">
-          {% if current_user and not hide_app_nav %}
+            {% if user_has_permission(current_user, 'appointments:view') %}
+              <a class="secondary" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
+            {% endif %}
             {% if user_has_permission(current_user, 'reports:view') %}
               <a class="secondary" href="{{ url_for('reports.collections') }}">{{ t('collections') }}</a>
             {% endif %}
@@ -20,18 +22,23 @@
             {% if user_has_permission(current_user, 'admin.user.manage') %}
               <a class="secondary" href="{{ url_for('admin_settings.index') }}">{{ t('admin_settings') }}</a>
             {% endif %}
-          {% endif %}
+          </div>
         </div>
-      </div>
       {% endif %}
       {% if show_back and not hide_app_nav %}
         <a class="btn secondary back-btn" href="{{ back_url(p) }}">← {{ t('back') }}</a>
       {% endif %}
       {% if current_user and not hide_app_nav %}
-        <a class="btn secondary home-btn" href="{{ url_for('index') }}">{{ t('home') }}</a>
-        {% if user_has_permission(current_user, 'appointments:view') %}
-          <a class="btn secondary" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
-        {% endif %}
+        <a class="btn secondary home-btn" href="{{ url_for('index') }}"><i class="fa fa-home"></i> <span>{{ t('home') }}</span></a>
+        <div class="global-search-wrap" style="position:relative;display:inline-flex;align-items:center;margin-inline-start:8px;">
+          <form class="global-search-form" method="get" action="{{ url_for('index') }}" style="display:inline-flex;align-items:center;" autocomplete="off">
+            <input type="text" name="q" class="global-search-input" id="global-search-input"
+                   placeholder="{{ t('global_search_placeholder') }}"
+                   value="{{ request.args.get('q', '') }}"
+                   autocomplete="off" />
+          </form>
+          <div class="global-search-dropdown" id="global-search-dropdown"></div>
+        </div>
       {% endif %}
     </div>
     <div class="center">
@@ -99,3 +106,96 @@
     </div>
   </div>
 </div>
+
+{# --- Global search AJAX logic --- #}
+{% if current_user and not hide_app_nav %}
+<script>
+(function(){
+  var input = document.getElementById('global-search-input');
+  var dropdown = document.getElementById('global-search-dropdown');
+  if (!input || !dropdown) return;
+
+  var timer = null;
+  var activeIdx = -1;
+  var items = [];
+
+  function hide() {
+    dropdown.innerHTML = '';
+    dropdown.classList.remove('visible');
+    activeIdx = -1;
+    items = [];
+  }
+
+  function highlight(idx) {
+    items.forEach(function(el, i){ el.classList.toggle('active', i === idx); });
+    activeIdx = idx;
+    if (items[idx]) items[idx].scrollIntoView({block:'nearest'});
+  }
+
+  function showResults(data) {
+    if (!data.length) {
+      dropdown.innerHTML = '<div class="gsd-empty">{{ t("no_results_found") }}</div>';
+      dropdown.classList.add('visible');
+      items = [];
+      activeIdx = -1;
+      return;
+    }
+    var html = '';
+    data.forEach(function(p) {
+      html += '<a class="gsd-item" href="/patients/' + p.id + '">'
+        + '<span class="gsd-avatar">' + (p.initials || '?') + '</span>'
+        + '<span class="gsd-info">'
+        + '<span class="gsd-name">' + escH(p.full_name) + '</span>'
+        + '<span class="gsd-meta">' + escH(p.short_id) + (p.phone ? ' · ' + escH(p.phone) : '') + '</span>'
+        + '</span></a>';
+    });
+    dropdown.innerHTML = html;
+    dropdown.classList.add('visible');
+    items = Array.from(dropdown.querySelectorAll('.gsd-item'));
+    activeIdx = -1;
+  }
+
+  function escH(s) {
+    var d = document.createElement('span');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+
+  input.addEventListener('input', function() {
+    clearTimeout(timer);
+    var q = input.value.trim();
+    if (q.length < 2) { hide(); return; }
+    timer = setTimeout(function(){
+      fetch('/api/global-search?q=' + encodeURIComponent(q))
+        .then(function(r){ return r.json(); })
+        .then(showResults)
+        .catch(function(){ hide(); });
+    }, 250);
+  });
+
+  input.addEventListener('keydown', function(e) {
+    if (!dropdown.classList.contains('visible') || !items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      highlight(activeIdx < items.length - 1 ? activeIdx + 1 : 0);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      highlight(activeIdx > 0 ? activeIdx - 1 : items.length - 1);
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault();
+      items[activeIdx].click();
+    } else if (e.key === 'Escape') {
+      hide();
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!dropdown.contains(e.target) && e.target !== input) hide();
+  });
+
+  input.addEventListener('focus', function() {
+    if (input.value.trim().length >= 2 && items.length) dropdown.classList.add('visible');
+  });
+})();
+</script>
+{% endif %}

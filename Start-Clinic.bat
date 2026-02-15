@@ -23,6 +23,14 @@ if exist requirements.txt (
 )
 
 set PYTHONUTF8=1
+
+rem --- Kill any existing process on port 8080 so we don't get conflicts ---
+echo [INFO] Checking if port 8080 is already in use...
+for /f "tokens=5" %%p in ('netstat -aon ^| findstr ":8080 " ^| findstr "LISTENING"') do (
+  echo [INFO] Port 8080 is in use by PID %%p. Stopping it...
+  taskkill /F /PID %%p >nul 2>&1
+)
+
 echo [INFO] Checking database updates...
 set "MIGRATE_LOG=%TEMP%\clinic_migrate_%RANDOM%%RANDOM%.log"
 "%VENV_PY%" -m flask --app clinic_app.app db upgrade >"%MIGRATE_LOG%" 2>&1 || goto :migrate_fail

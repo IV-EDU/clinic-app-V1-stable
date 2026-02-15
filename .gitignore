@@ -74,6 +74,10 @@ Thumbs.db
 /*.png
 /*.pdf
 
+# Agent/Playwright screenshots (testing artifacts)
+.playwright-mcp/
+data/agent-screenshots/
+
 # Secrets
 .env
 .env.local

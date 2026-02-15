@@ -213,6 +213,23 @@ def render_page(template_name: str, **ctx: Any):
 
         if overrides:
             theme_css_parts.append(":root { " + " ".join(overrides) + " }")
+
+        # Dark mode: reset text/bg overrides so design-system.css dark tokens win.
+        # Theme text_color and page_bg_tint are for light mode only.
+        dark_resets = []
+        if text_color:
+            dark_resets.append("--ink: var(--color-text-primary);")
+            dark_resets.append("--text-primary: var(--color-text-primary);")
+        if metric_text_color:
+            dark_resets.append("--metric-color: var(--color-accent);")
+        if page_bg_tint:
+            dark_resets.append("--page-bg: var(--bg-page);")
+        if card_bg_tint:
+            dark_resets.append("--card: var(--color-surface);")
+        if dark_resets:
+            theme_css_parts.append(
+                '[data-theme="dark"] { ' + " ".join(dark_resets) + " }"
+            )
     theme_css = "\n".join(theme_css_parts) if theme_css_parts else None
 
     theme_logo_url = None

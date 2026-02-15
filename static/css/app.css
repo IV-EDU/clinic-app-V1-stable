@@ -15,12 +15,12 @@
   font-display: swap;
 }
 
-:root{--ink:#111827;--muted:#6b7280;--border:#e5e7eb;--bg:#f7f7f8;--card:#fff;--green:#16a34a;--green-bg:#dcfce7;--red:#b91c1c;--red-bg:#fee2e2;--yellow:#b45309;--yellow-bg:#fef3c7;--metric-color:var(--primary-color,#2563eb)}
+:root{--ink:var(--color-text-primary);--muted:var(--color-text-tertiary);--border:var(--color-border);--bg:var(--color-surface-sunken);--card:var(--color-surface);--green:var(--color-success);--green-bg:var(--color-success-bg);--red:var(--color-danger);--red-bg:var(--color-danger-bg);--yellow:var(--color-warning);--yellow-bg:var(--color-warning-bg);--metric-color:var(--primary-color,var(--color-accent))}
 
 /* Global Typography with Arabic Support */
 *{box-sizing:border-box}
 /* Default body font supports both languages */
-body{font-family:'DejaVu Sans','Segoe UI',Arial,sans-serif;margin:0;min-height:100vh;background:var(--page-bg,var(--bg));color:var(--ink)}
+body{font-family:'DejaVu Sans','Segoe UI',Arial,sans-serif;margin:0;min-height:100vh;background:var(--bg-page);color:var(--color-text-primary)}
 /* Explicit language-specific fonts */
 [lang="en"], .en-content{font-family:system-ui,Segoe UI,Arial,sans-serif !important}
 [lang="ar"], .ar-content{font-family:'DejaVu Sans',Arial,sans-serif !important}
@@ -50,10 +50,10 @@ html[dir="ltr"], body.ltr {
 }
 
 .header{
-  background:linear-gradient(90deg, color-mix(in srgb, var(--primary-color,#3b82f6) 14%, #ffffff) 0%, #fdfdfd 52%, color-mix(in srgb, var(--primary-color,#3b82f6) 14%, #ffffff) 100%);
-  color:var(--text-primary,var(--ink,#0f172a));
+  background:var(--bg-header);
+  color:var(--color-text-primary);
   padding:14px 16px;
-  border-bottom:1px solid var(--border);
+  border-bottom:1px solid var(--color-border);
 }
 .header .bar{display:flex;align-items:center;gap:10px}
 .header .start,.header .end{flex:1;display:flex;align-items:center;gap:8px}
@@ -79,10 +79,10 @@ body.rtl .start,body.rtl .end{flex-direction:row-reverse}
 body.rtl .kebab .kebab-menu{right:0;left:auto}
 html[dir="rtl"] .kebab .kebab-menu{right:0;left:auto}
 .wrap{max-width:1100px;margin:20px auto;padding:0 12px;overflow-x:hidden}
-.card{background:var(--bg-surface,var(--card,#fff));border:1px solid var(--border-strong,var(--border,#e5e7eb));border-radius:var(--card-radius,16px);padding:var(--card-padding,20px);box-shadow:var(--card-shadow,0 12px 30px rgba(15,23,42,.08));margin-bottom:14px;overflow:hidden}
+.card{background:var(--color-surface);border:1px solid var(--color-border-strong);border-radius:var(--card-radius,16px);padding:var(--card-padding,20px);box-shadow:var(--card-shadow);margin-bottom:14px;overflow:hidden}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row>*{flex:1}
-input,select,textarea{padding:10px;border:1px solid var(--border);border-radius:10px;background:#fff;max-width:100%}
+input,select,textarea{padding:10px;border:1px solid var(--color-border);border-radius:10px;background:var(--color-surface);max-width:100%}
 /* Input text alignment based on language */
 input[type="text"], input[type="search"], textarea {
     text-align: start;
@@ -228,11 +228,11 @@ textarea:focus-visible{
 .patient-list-card .overflow-x-auto{width:100%}
 .patient-table{width:100%;border-collapse:separate;border-spacing:0 8px;text-align:start}
 .patient-table th{background:var(--bg,#f7f7f8);font-weight:700;color:var(--ink);padding:10px;text-align:center}
-.patient-table td{background:#fff;border:1px solid var(--border);padding:10px;text-align:start;vertical-align:middle;color:var(--ink,#111827)}
+.patient-table td{background:var(--color-surface);border:1px solid var(--color-border);padding:10px;text-align:start;vertical-align:middle;color:var(--color-text-primary)}
 .matched-hint{margin-top:2px;font-size:12px;color:var(--muted,#6b7280);font-weight:600}
 .patient-table td:first-child{border-radius:10px 0 0 10px}
 .patient-table td:last-child{border-radius:0 10px 10px 0}
-.patient-table tbody tr:hover td{background:#f9fafb}
+.patient-table tbody tr:hover td{background:var(--color-surface-sunken)}
 .patient-table th.balance-col,.patient-table td.balance-col{text-align:center}
 .patient-table td.actions{white-space:nowrap;text-align:center}
 .patient-table .actions-col{width:120px}
@@ -384,10 +384,10 @@ html[dir="rtl"] .header .start .back-btn,html[dir="rtl"] .header .start .home-bt
 .kebab.open .kebab-menu{display:block}
 html[dir="rtl"] .kebab .kebab-menu{left:auto;right:0}
 html[dir="rtl"] .header .end{order:0 !important;justify-content:flex-start !important}
-.flash-message{background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;padding:10px;border-radius:10px;margin-bottom:10px;text-align:center}
-.flash-message[data-category="err"]{background:#fee2e2;color:#b91c1c;border-color:#fecaca}
-.flash-message[data-category="warn"]{background:#fef3c7;color:#b45309;border-color:#fcd34d}
-.flash-message[data-category="info"]{background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe}
+.flash-message{background:var(--color-success-bg);color:var(--color-success);border:1px solid var(--color-success-border);padding:10px;border-radius:10px;margin-bottom:10px;text-align:center}
+.flash-message[data-category="err"]{background:var(--color-danger-bg);color:var(--color-danger);border-color:var(--color-danger-border)}
+.flash-message[data-category="warn"]{background:var(--color-warning-bg);color:var(--color-warning);border-color:var(--color-warning-border)}
+.flash-message[data-category="info"]{background:var(--color-info-bg);color:var(--color-info);border-color:var(--color-info-border)}
 .flash-message:focus-visible{outline:2px solid var(--primary-color,#2563eb);outline-offset:2px}
 .appointment-hero{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;background:linear-gradient(90deg,color-mix(in srgb,var(--primary-color,#2563eb) 12%,#e5f0ff) 0%,#fdfdfd 52%,color-mix(in srgb,var(--primary-color,#2563eb) 12%,#e5f0ff) 100%);border:0;box-shadow:none}
 .appointment-hero .eyebrow{text-transform:uppercase;color:#1d4ed8;font-size:12px;letter-spacing:1px;margin-bottom:4px}
@@ -1304,7 +1304,7 @@ table td.actions .btn{margin-left:4px}
     overflow-y: auto !important;
     overflow-x: hidden !important;
   }
-  
+
   .modal-content {
     width: 100% !important;
     max-width: 95vw !important;
@@ -1314,13 +1314,13 @@ table td.actions .btn{margin-left:4px}
     flex-direction: column !important;
     overflow: hidden !important;
   }
-  
+
   .modal-header,
   .modal-footer {
     flex-shrink: 0 !important;
     padding: 1rem !important;
   }
-  
+
   .modal-body {
     flex: 1 !important;
     overflow-y: auto !important;
@@ -1328,35 +1328,35 @@ table td.actions .btn{margin-left:4px}
     padding: 1rem !important;
     min-height: 0 !important;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr !important;
     gap: 1rem !important;
   }
-  
+
   .payment-grid {
     grid-template-columns: 1fr !important;
     gap: 1rem !important;
     padding: 1rem !important;
   }
-  
+
   .payment-row {
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 0.5rem !important;
     padding: 1rem !important;
   }
-  
+
   .payment-value {
     text-align: left !important;
     font-size: 1.125rem !important;
   }
-  
+
   .patient-details {
     flex-direction: column !important;
     gap: 0.75rem !important;
   }
-  
+
   .patient-details span {
     white-space: normal !important;
     font-size: 1rem !important;
@@ -1373,84 +1373,84 @@ table td.actions .btn{margin-left:4px}
     overflow-y: auto !important;
     overflow-x: hidden !important;
   }
-  
+
   .modal-content {
     border-radius: 8px !important;
     max-height: calc(100vh - 0.5rem) !important;
     margin: 0 !important;
   }
-  
+
   .modal-header,
   .modal-body,
   .modal-footer {
     padding: 0.75rem !important;
   }
-  
+
   .admin-form {
     gap: 0.75rem !important;
   }
-  
+
   .form-group {
     gap: 0.375rem !important;
   }
-  
+
   /* Responsive receipt header */
   .receipt-header {
     margin-bottom: 1.5rem !important;
     padding: 1rem !important;
   }
-  
+
   .receipt-title {
     font-size: 1.5rem !important;
   }
-  
+
   .receipt-subtitle {
     font-size: 1rem !important;
   }
-  
+
   /* Responsive receipt sections */
   .receipt-section {
     padding: 1.5rem !important;
     margin-bottom: 1.5rem !important;
   }
-  
+
   .receipt-section-title {
     font-size: 1.25rem !important;
     margin-bottom: 1rem !important;
   }
-  
+
   /* Responsive form elements */
   .receipt-form {
     font-size: 1rem !important;
   }
-  
+
   .receipt-form .form-label {
     font-size: 1rem !important;
   }
-  
+
   .receipt-form .form-input,
   .receipt-form .modal-form-input {
     font-size: 1rem !important;
     padding: 0.75rem 1rem !important;
     min-height: 2.5rem !important;
   }
-  
+
   .receipt-form .patient-name {
     font-size: 1.25rem !important;
   }
-  
+
   .receipt-form .patient-details {
     font-size: 1rem !important;
   }
-  
+
   .receipt-form .payment-label {
     font-size: 1rem !important;
   }
-  
+
   .receipt-form .payment-value {
     font-size: 1.125rem !important;
   }
-  
+
   .receipt-form .modal-notes {
     font-size: 1rem !important;
   }
@@ -1462,31 +1462,31 @@ table td.actions .btn{margin-left:4px}
     background: #000000;
     border-color: #ffffff;
   }
-  
+
   .receipt-title {
     color: #ffffff;
   }
-  
+
   .receipt-subtitle {
     color: #cccccc;
   }
-  
+
   .receipt-section {
     border-color: #000000;
     background: #ffffff;
   }
-  
+
   .receipt-form .form-label {
     color: #000000;
   }
-  
+
   .receipt-form .form-input,
   .receipt-form .modal-form-input {
     border-color: #000000;
     background: #ffffff !important;
     color: #000000;
   }
-  
+
   .modal-notes {
     background: #ffffff;
     border-color: #000000;
@@ -1499,7 +1499,7 @@ table td.actions .btn{margin-left:4px}
   .modal-close {
     transition: none;
   }
-  
+
   * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
@@ -1851,5 +1851,227 @@ i.fa-exclamation-circle::before { content: "!"; }
 i.fa-calendar::before { content: "▦"; }
 
 i.fa-spinner::before { content: "⟳"; }
+i.fa-home::before { content: "⌂"; }
 @keyframes faSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 i.fa-spin { animation: faSpin 0.9s linear infinite; }
+
+/* --------------------------------------------------------------------------
+   Theme Toggle Button (Phase 1: Dark Mode Foundation)
+--------------------------------------------------------------------------- */
+.theme-toggle-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-strong);
+  transition: all var(--transition-base);
+}
+
+.theme-toggle-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border-color: var(--color-accent);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(0);
+}
+
+.theme-toggle-btn .sun-icon,
+.theme-toggle-btn .moon-icon {
+  display: none;
+}
+
+[data-theme="light"] .theme-toggle-btn .moon-icon,
+[data-theme="dark"] .theme-toggle-btn .sun-icon {
+  display: block;
+}
+
+/* RTL adjustment */
+[dir="rtl"] .theme-toggle-btn {
+  right: auto;
+  left: 24px;
+}
+
+/* --------------------------------------------------------------------------
+   Global Search Bar (Phase 3: Nav Search)
+--------------------------------------------------------------------------- */
+.global-search-form {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: 8px;
+}
+.global-search-input {
+  padding: 6px 12px;
+  border: 1px solid var(--border-strong, var(--border, #d1d5db));
+  border-radius: var(--radius-md, 10px);
+  background: var(--bg-surface, var(--card, #fff));
+  color: var(--text-primary, var(--ink, #111827));
+  font-size: 13px;
+  width: 180px;
+  transition: width 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+.global-search-input::placeholder {
+  color: var(--muted, #6b7280);
+  opacity: 0.8;
+}
+.global-search-input:focus {
+  width: 240px;
+  border-color: var(--primary-color, #2563eb);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+@media (max-width: 640px) {
+  /* Hide the brand text (clinic name) on small screens to save space */
+  .brand-text {
+    display: none !important;
+  }
+
+  /* Hide home button text on small screens */
+  .home-btn {
+    padding: 6px 10px;
+  }
+  .home-btn span {
+    display: none;
+  }
+
+  /* Reduce header padding */
+  .header {
+    padding: 10px 8px;
+  }
+
+  /* Adjust global search to fit */
+  .global-search-form {
+    display: inline-flex; /* Ensure it's not hidden */
+    margin-inline-start: 4px;
+  }
+
+  .global-search-input {
+    width: 120px; /* Smaller default width */
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  .global-search-input:focus {
+    width: 160px; /* Smaller expanded width */
+  }
+}
+
+/* --- Global Search Dropdown (AJAX results) --- */
+.global-search-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.global-search-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  inset-inline-start: 0;
+  min-width: 280px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--bg-surface, var(--card, #fff));
+  border: 1px solid var(--border-strong, var(--border, #d1d5db));
+  border-radius: var(--radius-md, 10px);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+  z-index: 9000;
+  padding: 4px 0;
+  animation: gsdSlideIn 0.15s ease-out;
+}
+.global-search-dropdown.visible {
+  display: block;
+}
+@keyframes gsdSlideIn {
+  from { opacity:0; transform:translateY(-6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* Individual result item */
+.gsd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  text-decoration: none;
+  color: var(--text-primary, var(--ink, #111827));
+  transition: background 0.12s ease;
+  cursor: pointer;
+}
+.gsd-item:hover,
+.gsd-item.active {
+  background: var(--color-accent-bg, rgba(59,130,246,0.08));
+}
+
+/* Avatar circle */
+.gsd-avatar {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-color, #2563eb);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Info text */
+.gsd-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.gsd-name {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gsd-meta {
+  font-size: 12px;
+  color: var(--muted, #6b7280);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty state */
+.gsd-empty {
+  padding: 14px 16px;
+  text-align: center;
+  color: var(--muted, #6b7280);
+  font-size: 13px;
+}
+
+/* Custom scrollbar for dropdown */
+.global-search-dropdown::-webkit-scrollbar {
+  width: 5px;
+}
+.global-search-dropdown::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-radius: 3px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .global-search-dropdown {
+    min-width: 220px;
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+  }
+}

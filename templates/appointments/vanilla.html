@@ -401,7 +401,7 @@ select:focus-visible {
   display: flex;
   flex-direction: column;
   transition: box-shadow 0.2s ease;
-  min-height: 330px; 
+  min-height: 330px;
 }
 .appt-card:hover {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
@@ -415,7 +415,7 @@ select:focus-visible {
   background: #f9fafb;
   border-radius: 12px 12px 0 0;
   transition: background-color 0.2s ease;
-  overflow: hidden; 
+  overflow: hidden;
 }
 .appt-card-patient-chip:hover {
   background: #f3f4f6;
@@ -837,6 +837,249 @@ select:focus-visible {
   border-color: #10b981;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
+
+/* ========================================================================
+   DARK MODE OVERRIDES
+   ======================================================================== */
+
+/* --- Cards & surfaces --- */
+[data-theme="dark"] .card {
+  background: var(--color-surface, #1a1d23) !important;
+  border-color: var(--color-border, #374151) !important;
+  color: var(--color-text-primary, #f1f5f9);
+}
+
+/* --- Modals --- */
+[data-theme="dark"] .modal-content {
+  background: var(--color-surface-raised, #22252d) !important;
+  color: var(--color-text-primary, #f1f5f9);
+  border: 1px solid var(--color-border-strong, #4b5563) !important;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5) !important;
+}
+[data-theme="dark"] .schedule-modal,
+[data-theme="dark"] .modal-overlay {
+  background: rgba(0, 0, 0, 0.75) !important;
+}
+[data-theme="dark"] .modal-header {
+  border-bottom-color: var(--color-border, #374151) !important;
+}
+[data-theme="dark"] .modal-title {
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+[data-theme="dark"] .modal-footer {
+  border-top-color: var(--color-border, #374151) !important;
+}
+[data-theme="dark"] .modal-close:hover {
+  background: var(--color-surface-overlay, #2a2d35) !important;
+  color: var(--color-text-primary, #f1f5f9);
+}
+
+/* --- Forms --- */
+[data-theme="dark"] .form-label {
+  color: var(--color-text-secondary, #cbd5e1) !important;
+}
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .form-select {
+  background: var(--color-surface-raised, #22252d) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+  border-color: var(--color-border, #374151) !important;
+}
+[data-theme="dark"] .form-input:focus,
+[data-theme="dark"] .form-select:focus {
+  border-color: var(--color-accent, #60a5fa) !important;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
+}
+[data-theme="dark"] .card-title {
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+
+/* --- Date group headers (the cream/beige bars) --- */
+[data-theme="dark"] .appt-group-header {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color, #60a5fa) 12%, var(--color-surface-raised, #22252d)),
+    color-mix(in srgb, var(--accent-color, #38bdf8) 6%, var(--color-surface, #1a1d23))
+  ) !important;
+  border-color: var(--color-border-strong, #4b5563) !important;
+  color: var(--color-text-primary, #f1f5f9) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+[data-theme="dark"] .appt-group-header:hover {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color, #60a5fa) 16%, var(--color-surface-overlay, #2a2d35)),
+    color-mix(in srgb, var(--accent-color, #38bdf8) 8%, var(--color-surface-raised, #22252d))
+  ) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+[data-theme="dark"] .appt-group-header.expanded {
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--primary-color, #60a5fa) 20%, var(--color-surface-overlay, #2a2d35)),
+    color-mix(in srgb, var(--accent-color, #38bdf8) 12%, var(--color-surface-raised, #22252d))
+  ) !important;
+  border-color: var(--color-accent, #60a5fa) !important;
+}
+[data-theme="dark"] .appt-group-header .date-day {
+  color: var(--color-accent, #60a5fa) !important;
+}
+[data-theme="dark"] .appt-group-header .date-count {
+  background: color-mix(in srgb, var(--color-accent, #60a5fa) 20%, var(--color-surface, #1a1d23)) !important;
+  color: var(--color-accent, #60a5fa) !important;
+}
+[data-theme="dark"] .appt-group-header .date-toggle {
+  color: var(--color-text-tertiary, #94a3b8) !important;
+}
+
+/* --- Patient chip header on appointment cards --- */
+[data-theme="dark"] .appt-card-patient-chip {
+  background: var(--color-surface-sunken, #14171c) !important;
+  border-bottom-color: var(--color-border, #374151) !important;
+}
+[data-theme="dark"] .appt-card-patient-chip:hover {
+  background: var(--color-surface-raised, #22252d) !important;
+}
+[data-theme="dark"] .appt-card-patient-name {
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+[data-theme="dark"] .appt-card-patient-details {
+  color: var(--color-text-tertiary, #94a3b8) !important;
+}
+
+/* --- Status buttons (dark-friendly backgrounds) --- */
+[data-theme="dark"] .status-scheduled {
+  background: rgba(251, 191, 36, 0.15) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(251, 191, 36, 0.3) !important;
+}
+[data-theme="dark"] .status-scheduled:hover {
+  background: rgba(251, 191, 36, 0.25) !important;
+}
+[data-theme="dark"] .status-pending,
+[data-theme="dark"] .status-checked_in {
+  background: rgba(249, 115, 22, 0.15) !important;
+  color: #fb923c !important;
+  border-color: rgba(249, 115, 22, 0.3) !important;
+}
+[data-theme="dark"] .status-pending:hover,
+[data-theme="dark"] .status-checked_in:hover {
+  background: rgba(249, 115, 22, 0.25) !important;
+}
+[data-theme="dark"] .status-done {
+  background: rgba(34, 197, 94, 0.15) !important;
+  color: #4ade80 !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+[data-theme="dark"] .status-done:hover {
+  background: rgba(34, 197, 94, 0.25) !important;
+}
+[data-theme="dark"] .status-cancelled {
+  background: var(--color-surface-overlay, #2a2d35) !important;
+  color: var(--color-text-secondary, #cbd5e1) !important;
+  border-color: var(--color-border, #374151) !important;
+}
+[data-theme="dark"] .status-cancelled:hover {
+  background: var(--color-surface-raised, #22252d) !important;
+}
+
+/* --- No-appointments empty state --- */
+[data-theme="dark"] .no-appointments-card {
+  background: var(--color-surface-sunken, #14171c) !important;
+  border-color: var(--color-border, #374151) !important;
+}
+[data-theme="dark"] .no-appointments-icon {
+  color: var(--color-text-tertiary, #94a3b8) !important;
+}
+
+/* --- Patient suggestions dropdown --- */
+[data-theme="dark"] .patient-suggestions {
+  background: var(--color-surface-raised, #22252d) !important;
+  border-color: var(--color-border-strong, #4b5563) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
+}
+[data-theme="dark"] .patient-suggestion-item {
+  color: var(--color-text-primary, #f1f5f9) !important;
+  border-bottom-color: var(--color-border, #374151) !important;
+}
+[data-theme="dark"] .patient-suggestion-item:hover,
+[data-theme="dark"] .patient-suggestion-item:focus {
+  background: var(--color-surface-overlay, #2a2d35) !important;
+}
+[data-theme="dark"] .patient-suggestion-item.selected {
+  background: color-mix(in srgb, var(--color-accent, #60a5fa) 15%, var(--color-surface, #1a1d23)) !important;
+  border-left-color: var(--color-accent, #60a5fa) !important;
+}
+[data-theme="dark"] .patient-name {
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+[data-theme="dark"] .patient-secondary-info,
+[data-theme="dark"] .patient-file,
+[data-theme="dark"] .patient-phone {
+  color: var(--color-text-secondary, #cbd5e1) !important;
+}
+[data-theme="dark"] .patient-age,
+[data-theme="dark"] .patient-last-visit {
+  color: var(--color-text-tertiary, #94a3b8) !important;
+}
+
+/* --- Patient selection preview --- */
+[data-theme="dark"] .patient-selection-preview {
+  background: color-mix(in srgb, var(--color-accent, #60a5fa) 10%, var(--color-surface, #1a1d23)) !important;
+  border-color: var(--color-accent, #60a5fa) !important;
+}
+[data-theme="dark"] .patient-preview-name {
+  color: var(--color-accent, #60a5fa) !important;
+}
+[data-theme="dark"] .patient-preview-details {
+  color: var(--color-text-secondary, #cbd5e1) !important;
+}
+
+/* --- Notes fade gradient --- */
+[data-theme="dark"] .notes-field-minimized::after {
+  background: linear-gradient(transparent, var(--color-surface, #1a1d23)) !important;
+}
+[data-theme="dark"] .notes-toggle {
+  background: var(--color-surface-overlay, #2a2d35) !important;
+  border-color: var(--color-border, #374151) !important;
+  color: var(--color-text-secondary, #cbd5e1) !important;
+}
+[data-theme="dark"] .notes-toggle:hover {
+  background: var(--color-surface-raised, #22252d) !important;
+}
+
+/* --- Alert (error) --- */
+[data-theme="dark"] .alert-error {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* --- Doctor chip --- */
+[data-theme="dark"] .doctor-chip {
+  color: var(--color-text-primary, #f1f5f9) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+}
+
+/* --- Card body rows --- */
+[data-theme="dark"] .appt-card-row {
+  color: var(--color-text-primary, #f1f5f9) !important;
+}
+[data-theme="dark"] .appt-card-reason {
+  color: var(--color-text-tertiary, #94a3b8) !important;
+}
+[data-theme="dark"] .appt-card-icon {
+  color: var(--color-text-tertiary, #94a3b8) !important;
+}
+
+/* --- Card footer --- */
+[data-theme="dark"] .appt-card-footer {
+  border-top-color: var(--color-border, #374151) !important;
+}
+
+/* --- Card header border --- */
+[data-theme="dark"] .card-header {
+  border-bottom-color: var(--color-border, #374151) !important;
+}
 </style>
 {% endblock %}
 
@@ -844,7 +1087,7 @@ select:focus-visible {
 <div class="appt-container">
   {% set doctor_color_map = doctor_color_map or {} %}
   {% set default_doctor_color = default_doctor_color or '#2563EB' %}
-  
+
   <!-- Header -->
   <div class="appt-header u-card appt-header-card">
     <h1 class="appt-title">{{ t('appointments') }}</h1>
@@ -861,11 +1104,11 @@ select:focus-visible {
 
     <form id="appt-form-main" method="GET" action="{{ url_for('appointments.vanilla') }}"
       data-today="{{ today_str }}" data-yesterday="{{ yesterday_str }}" data-tomorrow="{{ tomorrow_str }}">
-      
+
       {% set start_arg = start_date_value %}
       {% set end_arg = end_date_value %}
       {% set single_day_filter = (not use_range) or (start_arg and end_arg and start_arg == end_arg) %}
-      
+
       <!-- Quick Filter Buttons -->
       <div class="appt-filter-buttons">
         <button type="button" class="btn secondary filter-btn {% if start_arg == today_str and single_day_filter %}active{% endif %}" onclick="setQuickFilter('today')" data-filter="today">
@@ -899,7 +1142,7 @@ select:focus-visible {
             {% endfor %}
           </select>
         </div>
-        
+
         <!-- Date Filter Row -->
         <div class="appt-filter-row-dates">
           <div class="appt-date-range-group">
@@ -913,7 +1156,7 @@ select:focus-visible {
             </span></label>
                 <input type="date" id="start_date" name="start_date" class="form-input" value="{{ start_date_value }}">
               </div>
-              
+
               <div class="form-group end-date-inline" id="end-date-group" {% if not use_range %}style="display: none;"{% endif %}>
                 <label class="form-label" for="end_date">{{ tf('appointments_end_date', 'End date') }}</label>
                 <input type="date" id="end_date" name="end_date" class="form-input" value="{{ end_date_value }}">
@@ -961,7 +1204,7 @@ select:focus-visible {
         <div class="appt-card-grid">
           {% for appt in appts %}
           <div class="appt-card" data-appt-id="{{ appt.id }}" data-appt-date="{{ date_iso }}" data-doctor-id="{{ appt.doctor_id or '' }}" data-doctor-label="{{ appt.doctor_label or '' }}">
-            
+
             <!-- Patient Chip Header -->
             {% set patient = appt.patient %}
             <a href="{% if patient %}{{ url_for('patients.patient_detail', pid=patient.id) }}{% else %}#{% endif %}" target="_blank" class="appt-card-patient-chip">
@@ -971,7 +1214,7 @@ select:focus-visible {
                 <span>📞 {{ (patient.phone if patient else appt.patient_phone) or '—' }}</span>
               </div>
             </a>
-            
+
             <!-- Card Body -->
             <div class="appt-card-body">
             <div class="appt-card-row">
@@ -1077,7 +1320,7 @@ select:focus-visible {
               {% endfor %}
             </select>
           </div>
-          
+
           <div class="form-group">
             <label class="form-label">{{ tf('appointment_status_label', 'Status') }} *</label>
             <select id="appt-status" class="form-select" required>
@@ -1088,7 +1331,7 @@ select:focus-visible {
             </select>
           </div>
         </div>
-        
+
         <!-- Date and Time Row -->
         <div class="appt-form-row">
           <div class="form-group">
@@ -1100,7 +1343,7 @@ select:focus-visible {
             <input type="time" id="appt-start-time" class="form-input" required step="60" min="08:00" max="20:00" placeholder="{{ tf('appointment_start_time_placeholder', 'Select time') }}">
           </div>
         </div>
-        
+
         <!-- Title and Notes Fields -->
         <div class="form-group">
           <label class="form-label">{{ tf('appointment_title_label', 'Search Title') }}</label>
@@ -1230,16 +1473,16 @@ function openApptModal(apptId = null) {
   const title = document.getElementById('appt-modal-title');
   const submitBtn = document.getElementById('appt-submit-btn');
   const alert = document.getElementById('appt-alert');
-  
+
   alert.style.display = 'none';
   document.getElementById('appt-form').reset();
   document.getElementById('appt-id').value = '';
   document.getElementById('appt-patient-file').value = '';
   document.getElementById('appt-patient-phone').value = '';
-  
+
   // Reset patient preview
   hidePatientPreview();
-  
+
   const today = document.getElementById('appt-form-main').dataset.today || new Date().toISOString().split('T')[0];
   document.getElementById('appt-date').value = today; // Default to today
 
@@ -1285,7 +1528,7 @@ function toggleDateGroup(headerButton, dateId) {
     return;
   }
   const isExpanded = headerButton.dataset.expanded === 'true';
-  
+
   if (isExpanded) {
     headerButton.classList.remove('expanded');
     headerButton.dataset.expanded = 'false';
@@ -1305,7 +1548,7 @@ function toggleDateGroup(headerButton, dateId) {
 function disablePatientFields(disabled) {
   const searchInput = document.getElementById('appt-patient-search');
   const patientGroup = document.getElementById('patient-form-group');
-  
+
   if (disabled) {
     searchInput.disabled = true;
     searchInput.style.backgroundColor = '#f9fafb';
@@ -1325,7 +1568,7 @@ function showPatientPreview(patientData) {
   const nameEl = document.getElementById('patient-preview-name');
   const fileEl = document.getElementById('patient-preview-file');
   const phoneEl = document.getElementById('patient-preview-phone');
-  
+
   if (patientData) {
     nameEl.textContent = patientData.name;
     fileEl.textContent = patientData.file_number || '—';
@@ -1350,16 +1593,16 @@ function autoResizeTextarea(textarea) {
 function initAutoResize() {
   const notesTextarea = document.getElementById('appt-notes');
   const titleInput = document.getElementById('appt-title');
-  
+
   if (notesTextarea && titleInput) {
     // Set initial height to match title field
     notesTextarea.style.height = titleInput.offsetHeight + 'px';
-    
+
     // Auto-resize on input
     notesTextarea.addEventListener('input', function() {
       autoResizeTextarea(this);
     });
-    
+
     // Auto-resize when title changes (for layout sync)
     titleInput.addEventListener('input', function() {
       autoResizeTextarea(notesTextarea);
@@ -1378,20 +1621,20 @@ async function loadApptData(apptId, mode = 'edit') {
     const appt = await response.json();
 
     if (appt.error) { throw new Error(appt.error); }
-    
+
     // Format date/time for inputs
     const start = new Date(appt.start_time);
-    
+
     // Handle timezone offset for date/time inputs
     const toLocalISOString = (date) => {
         const offset = date.getTimezoneOffset() * 60000;
         const localDate = new Date(date.getTime() - offset);
         return localDate.toISOString();
     }
-    
+
     const localStart = toLocalISOString(start);
     const timeValue = localStart.split('T')[1].substring(0, 5);
-    
+
     if (mode === 'edit') {
       document.getElementById('appt-id').value = appt.id;
       document.getElementById('appt-patient').value = appt.patient_id;
@@ -1404,7 +1647,7 @@ async function loadApptData(apptId, mode = 'edit') {
       document.getElementById('appt-title').value = appt.title || '';
       document.getElementById('appt-notes').value = appt.notes || '';
       document.getElementById('appt-date').value = localStart.split('T')[0];
-      
+
       // Set time with proper rounding to 30-minute intervals
       const [hours, minutes] = timeValue.split(':');
       const totalMinutes = parseInt(hours) * 60 + parseInt(minutes);
@@ -1412,9 +1655,9 @@ async function loadApptData(apptId, mode = 'edit') {
       const roundedHours = Math.floor(roundedMinutes / 60);
       const roundedMins = roundedMinutes % 60;
       const roundedTime = `${roundedHours.toString().padStart(2, '0')}:${roundedMins.toString().padStart(2, '0')}`;
-      
+
       document.getElementById('appt-start-time').value = roundedTime;
-      
+
       // Show patient preview
       selectedPatientData = {
         id: appt.patient_id,
@@ -1423,7 +1666,7 @@ async function loadApptData(apptId, mode = 'edit') {
         phone_number: appt.patient_phone
       };
       showPatientPreview(selectedPatientData);
-      
+
       document.getElementById('appt-modal').classList.add('active');
     } else {
       // Build View Modal Content with enhanced layout
@@ -1475,7 +1718,7 @@ async function loadApptData(apptId, mode = 'edit') {
 async function saveAppt() {
   const submitBtn = document.getElementById('appt-submit-btn');
   const alert = document.getElementById('appt-alert');
-  
+
   const apptData = {
     id: document.getElementById('appt-id').value || null,
     patient_id: document.getElementById('appt-patient').value,
@@ -1495,7 +1738,7 @@ async function saveAppt() {
   if (!apptData.doctor_id) validationErrors.push('Doctor is required');
   if (!apptData.date) validationErrors.push('Date is required');
   if (!apptData.start_time) validationErrors.push(APPT_I18N.startTimeRequired || "{{ tf('appointment_start_time_required','Time is required') }}");
-  
+
   if (validationErrors.length > 0) {
     alert.textContent = 'Please correct the following: ' + validationErrors.join(', ');
     alert.style.display = 'block';
@@ -1630,7 +1873,7 @@ async function searchPatients(query) {
         const names = patient.name.split(' ');
         initials = names.slice(0, 2).map(n => n[0]).join('').toUpperCase();
       }
-      
+
       return `
       <button type="button"
         class="patient-suggestion-item"
@@ -1682,7 +1925,7 @@ function selectPatient(patientId, displayName, fileNumber, phoneNumber) {
   fileInput.value = fileNumber || '';
   phoneInput.value = phoneNumber || '';
   suggestionsDiv.style.display = 'none';
-  
+
   // Update patient data and show preview
   selectedPatientData = {
     id: patientId,
@@ -1702,7 +1945,7 @@ function openDeleteModal(apptId, patientName) {
 async function confirmDelete() {
   const submitBtn = document.getElementById('delete-submit-btn');
   const apptId = document.getElementById('delete-id').value;
-  
+
   submitBtn.disabled = true;
   submitBtn.textContent = APPT_I18N.deleteWorking || APPT_I18N.deleteBtn;
   submitBtn.classList.add('loading');
@@ -1901,16 +2144,16 @@ function getActiveDateFilterType() {
   const startDate = document.getElementById('start_date')?.value || '';
   const endDate = document.getElementById('end_date')?.value || '';
   const useRange = document.getElementById('use_range_check')?.checked || false;
-  
+
   if (!startDate) {
     return 'all';
   }
-  
+
   const today = getReferenceDate('today');
   const yesterday = getReferenceDate('yesterday');
   const tomorrow = getReferenceDate('tomorrow');
   const singleDay = !useRange || !endDate || endDate === startDate;
-  
+
   if (singleDay) {
     if (startDate === today) {
       return 'today';
@@ -1923,7 +2166,7 @@ function getActiveDateFilterType() {
     }
     return 'single';
   }
-  
+
   return 'range';
 }
 
@@ -1960,7 +2203,7 @@ function initAppointmentData() {
   const appointmentCards = document.querySelectorAll('.appt-card');
   allAppointments = [];
   filteredAppointments = [];
-  
+
   appointmentCards.forEach(card => {
     const apptId = card.dataset.apptId;
     const groupElement = card.closest('.appt-group');
@@ -1970,14 +2213,14 @@ function initAppointmentData() {
     const datasetDoctorIdRaw = card.dataset.doctorId || '';
     const datasetDoctorId = datasetDoctorIdRaw.toLowerCase();
     const datasetDoctorLabelRaw = card.dataset.doctorLabel || '';
-    
+
     // Extract text content for search/filter display
     const patientNameEl = card.querySelector('.appt-card-patient-name');
     const patientDetailsEl = card.querySelector('.appt-card-patient-details');
     const doctorEl = card.querySelector('.appt-card-body .appt-card-row:nth-child(2)');
     const titleEl = card.querySelector('.appt-card-body .appt-card-reason span');
     const timeEl = card.querySelector('.appt-card-body .appt-card-row:nth-child(1) strong');
-    
+
     const patientName = patientNameEl?.textContent?.trim() || '';
     const patientPhone = patientDetailsEl?.textContent?.match(/📞\s*([^📁\n]+)/)?.[1]?.trim() || '';
     const patientFile = patientDetailsEl?.textContent?.match(/📁\s*([^📞\n]+)/)?.[1]?.trim() || '';
@@ -1986,7 +2229,7 @@ function initAppointmentData() {
     const doctorSearchValue = normalizedDoctorLower.replace(/^dr\.?\s*/, '').trim() || normalizedDoctorLower;
     const title = titleEl?.textContent?.trim() || '';
     const timeDisplay = timeEl?.textContent?.trim() || '';
-    
+
     let apptDate = datasetDate;
     if (!apptDate) {
       if (groupText.includes('Today')) {
@@ -2005,7 +2248,7 @@ function initAppointmentData() {
         }
       }
     }
-    
+
     allAppointments.push({
       id: apptId,
       element: card,
@@ -2030,7 +2273,7 @@ function initAppointmentData() {
       originalTimeDisplay: timeDisplay
     });
   });
-  
+
   filteredAppointments = [...allAppointments];
   console.log(`Loaded ${allAppointments.length} appointments for live search`);
 }
@@ -2041,7 +2284,7 @@ function filterAppointments(options = {}) {
   if (!silent) {
     showSearchFeedback('🔄 Filtering...');
   }
-  
+
   const searchTerm = document.getElementById('search_term')?.value.trim().toLowerCase() || '';
   const doctorFilterRaw = document.getElementById('doctor_id')?.value || 'all';
   const doctorFilter = doctorFilterRaw.toLowerCase();
@@ -2063,9 +2306,9 @@ function filterAppointments(options = {}) {
       endDateTime.setHours(23, 59, 59, 999);
     }
   }
-  
+
   console.log(`Filtering - Search: "${searchTerm}", Doctor: "${doctorFilterRaw}", Start: "${startDate}", End: "${endDate}", Range: ${useRange}`);
-  
+
   filteredAppointments = allAppointments.filter(appt => {
     // Search term filter
     const matchesSearch = !searchTerm ||
@@ -2075,7 +2318,7 @@ function filterAppointments(options = {}) {
       appt.doctor.includes(searchTerm) ||
       appt.title.includes(searchTerm) ||
       appt.timeDisplay.includes(searchTerm);
-    
+
     // Doctor filter - prefer the exact doctor id when available
     let matchesDoctor = true;
     if (doctorFilter !== 'all') {
@@ -2086,7 +2329,7 @@ function filterAppointments(options = {}) {
         appt.doctor.includes(doctorFilter) ||
         normalizedOriginalDoctor.includes(doctorFilter);
     }
-    
+
     // Date filter - Enhanced logic (only apply if startDate is set)
     let matchesDate = true;
     if (startDateTime && endDateTime) {
@@ -2112,7 +2355,7 @@ function filterAppointments(options = {}) {
             }
           }
         }
-        
+
         if (apptDateStr) {
           const apptDateTime = parseLocalDate(apptDateStr);
           if (apptDateTime) {
@@ -2130,18 +2373,18 @@ function filterAppointments(options = {}) {
         matchesDate = true; // Include if date parsing fails
       }
     }
-    
+
     const matches = matchesSearch && matchesDoctor && matchesDate;
     if (!matchesDoctor) {
       console.log(`Doctor filter failed for "${appt.originalDoctor}" vs "${doctorFilterRaw}"`);
     }
-    
+
     return matches;
   });
-  
+
   console.log(`Filtered to ${filteredAppointments.length} out of ${allAppointments.length} appointments`);
   displayFilteredAppointments();
-  
+
   if (!silent) {
     const activeFilters = [searchTerm, doctorFilterRaw !== 'all' ? doctorFilterRaw : null, startDate].filter(Boolean);
     if (activeFilters.length > 0) {
@@ -2158,7 +2401,7 @@ function showSearchFeedback(message) {
   if (existingFeedback) {
     existingFeedback.remove();
   }
-  
+
   // Create new feedback
   const feedback = document.createElement('div');
   feedback.className = 'search-feedback';
@@ -2179,15 +2422,15 @@ function showSearchFeedback(message) {
     transform: translateY(-10px);
     transition: all 0.3s ease;
   `;
-  
+
   document.body.appendChild(feedback);
-  
+
   // Animate in
   setTimeout(() => {
     feedback.style.opacity = '1';
     feedback.style.transform = 'translateY(0)';
   }, 10);
-  
+
   // Remove after 2 seconds
   setTimeout(() => {
     feedback.style.opacity = '0';
@@ -2203,7 +2446,7 @@ function showSearchFeedback(message) {
 function displayFilteredAppointments() {
   // Create a more efficient approach using a Set to track visible elements
   const visibleGroups = new Set();
-  
+
   const allCards = document.querySelectorAll('.appt-card');
   const allGroups = document.querySelectorAll('.appt-group');
 
@@ -2223,7 +2466,7 @@ function displayFilteredAppointments() {
         visibleGroups.add(appt.groupElement);
       }
     });
-    
+
     // Show groups that have visible appointments
     visibleGroups.forEach(group => {
       if (group) {
@@ -2234,13 +2477,13 @@ function displayFilteredAppointments() {
   } else {
     console.log('No appointments match the current filters');
   }
-  
+
   // Update "no results" message
   updateNoResultsMessage();
-  
+
   // Update the group count display to reflect filtered results
   updateGroupCounts();
-  
+
   // Apply expansion rules so only allowed groups stay open
   applyGroupExpansionState();
 }
@@ -2248,12 +2491,12 @@ function displayFilteredAppointments() {
 function updateGroupCounts() {
   // Update date group headers to show filtered count
   const groups = document.querySelectorAll('.appt-group');
-  
+
   groups.forEach(group => {
     const visibleCards = group.querySelectorAll('.appt-card[style*="flex"]');
     const header = group.querySelector('.appt-group-header');
     const countElement = header?.querySelector('.date-count');
-    
+
     if (countElement && visibleCards.length >= 0) {
       countElement.textContent = `(${visibleCards.length})`;
     }
@@ -2266,9 +2509,9 @@ function updateNoResultsMessage() {
   if (existingMessage) {
     existingMessage.remove();
   }
-  
+
   const container = document.querySelector('.appt-container');
-  
+
   if (filteredAppointments.length === 0 && allAppointments.length > 0) {
     const noResultsDiv = document.createElement('div');
     noResultsDiv.className = 'card no-results-message';
@@ -2277,7 +2520,7 @@ function updateNoResultsMessage() {
       <h2 class="section-title">{{ t('no_rows') }}</h2>
       <p class="no-appointments-text">{{ t('search_placeholder') }}</p>
     `;
-    
+
     // Insert after the filter card
     const filterCard = document.querySelector('.card');
     if (filterCard && filterCard.nextSibling) {
@@ -2290,15 +2533,15 @@ function updateNoResultsMessage() {
 
 function initLiveSearch() {
   const searchTerm = document.getElementById('search_term');
-  
+
   if (searchTerm) {
     // Use debounced input event handler for better performance
     const debouncedFilter = debounce(() => {
       filterAppointments();
     }, 300); // 300ms delay
-    
+
     searchTerm.addEventListener('input', debouncedFilter);
-    
+
     // Prevent Enter from submitting form
     searchTerm.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
@@ -2307,7 +2550,7 @@ function initLiveSearch() {
         filterAppointments();
       }
     });
-    
+
     console.log('Live search initialized with debouncing');
   }
 }
@@ -2320,7 +2563,7 @@ function setQuickFilter(filterType) {
   if (!startDateInput || !endDateInput || !useRangeCheck || !endDateGroup) {
     return;
   }
-  
+
   const quickDates = {
     today: getReferenceDate('today'),
     yesterday: getReferenceDate('yesterday'),
@@ -2329,7 +2572,7 @@ function setQuickFilter(filterType) {
   if (filterType === 'all') {
     expandedDateIds.clear();
   }
-  
+
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.classList.remove('active');
   });
@@ -2338,7 +2581,7 @@ function setQuickFilter(filterType) {
     activeButton.classList.add('active');
   }
   activeFilterMode = filterType;
-  
+
   if (filterType === 'today' || filterType === 'yesterday' || filterType === 'tomorrow') {
     const dateValue = quickDates[filterType];
     startDateInput.value = dateValue;
@@ -2353,7 +2596,7 @@ function setQuickFilter(filterType) {
     endDateGroup.style.display = 'none';
     endDateGroup.classList.remove('visible');
   }
-  
+
   const preserveExpanded = filterType !== 'all';
   refreshAppointmentsList(null, { preserveFilters: true, preserveExpanded }).then(() => {
     filterAppointments({ silent: true });
@@ -2364,11 +2607,11 @@ function initQuickFilterButtons() {
   const startDate = document.getElementById('start_date').value;
   const endDate = document.getElementById('end_date').value;
   const useRange = document.getElementById('use_range_check').checked;
-  
+
   const today = getReferenceDate('today');
   const yesterday = getReferenceDate('yesterday');
   const tomorrow = getReferenceDate('tomorrow');
-  
+
   const matchesSingleDay = (targetDate) => {
     if (!startDate || !targetDate) {
       return false;
@@ -2378,7 +2621,7 @@ function initQuickFilterButtons() {
     }
     return startDate === targetDate && (!endDate || endDate === targetDate);
   };
-  
+
   let activeFilter = 'all';
   if (matchesSingleDay(today)) {
     activeFilter = 'today';
@@ -2388,12 +2631,12 @@ function initQuickFilterButtons() {
     activeFilter = 'tomorrow';
   }
   activeFilterMode = activeFilter;
-  
+
   const activeButton = document.querySelector(`[data-filter="${activeFilter}"]`);
   if (activeButton) {
     activeButton.classList.add('active');
   }
-  
+
 }
 
 function initLiveFilters() {
@@ -2462,13 +2705,13 @@ function initLiveFilters() {
       if (searchTerm) {
         searchTerm.value = '';
       }
-      
+
       document.getElementById('doctor_id').value = 'all';
       expandedDateIds.clear();
       setQuickFilter('today');
     });
   }
-  
+
   console.log('Live filters initialized');
 }
 

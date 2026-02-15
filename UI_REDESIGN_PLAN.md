@@ -3,7 +3,7 @@
 > Comprehensive plan for remaking the UI to be clinical, modern, dark-mode-ready, and user-friendly.
 > Agreed upon after full codebase review. All phases are independent and shippable.
 >
-> **Last Updated:** 2025-02-13
+> **Last Updated:** 2026-02-15
 
 ---
 
@@ -41,7 +41,7 @@
 ---
 
 ## Phase 1: CSS Design System + Dark Mode Foundation
-**Priority:** Highest | **Risk:** Low (CSS-only, no backend) | **Est:** 1 session
+**Priority:** Highest | **Risk:** Low (CSS-only, no backend) | **Est:** 1 session | **Status:** ✅ COMPLETE (2026-02-13)
 
 ### What
 - Create `static/css/design-system.css` with:
@@ -58,9 +58,9 @@
 - Update `_base.html` to load design system CSS and add theme toggle
 
 ### Files to Touch
-- Create: `static/css/design-system.css`
-- Edit: `templates/_base.html` (add CSS link, add theme toggle script)
-- Edit: `static/css/app.css` (migrate hard-coded colors to variables)
+- Create: `static/css/design-system.css` ✅
+- Edit: `templates/_base.html` (add CSS link, add theme toggle script) ✅
+- Edit: `static/css/app.css` (migrate hard-coded colors to variables) ✅
 
 ### Safety
 - Pure CSS + JS. No backend changes. Cannot break data.
@@ -69,7 +69,7 @@
 ---
 
 ## Phase 2: Modal System + Toast Notifications + Loading States
-**Priority:** Highest | **Risk:** Low (JS/CSS) | **Est:** 1 session
+**Priority:** Highest | **Risk:** Low (JS/CSS) | **Est:** 1 session | **Status:** ✅ COMPLETE (2026-02-13)
 
 ### What
 - Create a reusable modal component (JS class + CSS):
@@ -86,10 +86,10 @@
   - Prevent double-submit
 
 ### Files to Touch
-- Create: `static/js/modal-system.js`
-- Create: `static/js/toast.js`
-- Create: `static/css/components.css` (modal, toast, loading styles)
-- Edit: `templates/_base.html` (load new JS/CSS, toast container)
+- Create: `static/js/modal-system.js` ✅
+- Create: `static/js/toast.js` ✅
+- Create: `static/css/components.css` ✅
+- Edit: `templates/_base.html` (load new JS/CSS, toast container) ✅
 
 ### Safety
 - Does not remove old modals immediately. New system is opt-in, then migrate page by page.
@@ -97,7 +97,7 @@
 ---
 
 ## Phase 3: Arabic Search Normalization + Global Search Bar
-**Priority:** Highest | **Risk:** Low-Medium | **Est:** 1 session
+**Priority:** Highest | **Risk:** Low-Medium | **Est:** 1 session | **Status:** ✅ COMPLETE (2026-02-14)
 
 ### What
 - Arabic character normalization: collapse ا/أ/إ/آ, ه/ة, ي/ى variants in search
@@ -106,12 +106,12 @@
 - Search results in dropdown, Enter to go to patient detail
 
 ### Files to Touch
-- Create: `clinic_app/services/arabic_search.py` (normalize function)
-- Edit: `clinic_app/blueprints/core/core.py` (use normalized search)
-- Edit: `clinic_app/blueprints/appointments/routes.py` (patient search API)
-- Edit: `clinic_app/blueprints/patients/routes.py` (search)
-- Edit: `templates/_nav.html` (add search bar)
-- Add Arabic translations to `services/i18n.py`
+- Create: `clinic_app/services/arabic_search.py` ✅
+- Edit: `clinic_app/blueprints/core/core.py` (use normalized search) ✅
+- Edit: `clinic_app/blueprints/appointments/routes.py` (patient search API) ✅
+- Edit: `clinic_app/blueprints/patients/routes.py` (search) ✅
+- Edit: `templates/_nav.html` (add search bar) ✅
+- Add Arabic translations to `services/i18n.py` ✅
 
 ### Safety
 - Normalization is additive — plain-text search still works, Arabic search becomes better.
@@ -361,9 +361,9 @@
 
 | Phase | Status | Date Started | Date Done | Notes |
 |-------|--------|-------------|-----------|-------|
-| 1 | Not started | | | |
-| 2 | Not started | | | |
-| 3 | Not started | | | |
+| 1 | ✅ Complete | 2026-02-13 | 2026-02-13 | CSS design system + dark mode w/ 3 rounds of fixes |
+| 2 | ✅ Complete | 2026-02-13 | 2026-02-13 | Modal system + Toast + Loading states (all components opt-in, fully tested) |
+| 3 | ✅ Complete | 2026-02-14 | 2026-02-14 | Arabic search normalization + global search bar |
 | 4 | Not started | | | |
 | 5 | Not started | | | |
 | E | Not started | | | |

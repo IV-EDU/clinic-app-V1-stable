@@ -11,7 +11,6 @@ It includes:
 - Expenses
 - Reports
 - Admin / roles / users (includes data import/export)
-- Dark mode toggle (localStorage-based, fully working across all pages)
 
 This folder "Clinic-App-Local" is the main project folder.
 

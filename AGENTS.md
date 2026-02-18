@@ -1,22 +1,9 @@
 # Clinic-App-Local - Agent Guide
 
-> **Last Updated:** 2026-02-15
+> **Last Updated:** 2025-02-13
 >
 > This file is the single source of truth for any AI agent working on this codebase.
 > Reading this file should give you enough context to work without reading all source files.
-
----
-
-## 0) Before Anything Else — Read VISION.md
-
-**READ `VISION.md` NOW.** It defines:
-- Your role (technical co-founder, not just a code assistant)
-- The product roadmap (local → API → React → online → mobile)
-- Decision triggers (when to make big architectural changes)
-- Current priority stack (what to work on next)
-- Self-maintenance rules (check for stale docs, flag issues proactively)
-
-**If you skip `VISION.md`, you will make worse decisions.** It takes 2 minutes to read.
 
 ---
 
@@ -46,7 +33,6 @@ Skipping doc updates creates drift that makes future work harder and wastes user
 - **Context:** This is a **production system** for a real dental clinic. Downtime means patients cannot be scheduled, records cannot be accessed, and payments cannot be processed.
 - **Language:** The clinic operates in Arabic. The app is bilingual (English + Arabic UI). Arabic/RTL is first-class.
 - **Platform:** Windows only. The app runs locally via `Start-Clinic.bat` on port 8080. No cloud, no Docker.
-- **Default Login Credentials:** Username: `admin` | Password: `admin` — **USE THESE EXACTLY. DO NOT GUESS.** Failed logins trigger rate limiting (5 per 15 min) which will lock you out and waste the user's time. For tests (pytest), use: username `admin`, password `password123` (see `tests/conftest.py`).
 - **Preferred help:** Step-by-step, plain-English explanations. Show what changed and why.
 
 When unsure: say what you think the user wants, ask **one** clear question, propose a small, low-risk plan.
@@ -519,7 +505,8 @@ After finishing a task, always provide:
 ## 22) Reference Files
 
 | File | Purpose |
-|------|---------|| `VISION.md` | **READ FIRST.** Product vision, agent role, roadmap, priorities, self-maintenance || `AGENTS.md` (this file) | Complete architecture + agent behavior rules |
+|------|---------|
+| `AGENTS.md` (this file) | Complete architecture + agent behavior rules |
 | `UI_REDESIGN_PLAN.md` | Active 15-phase UI redesign plan with progress tracker |
 | `LAST_PLAN.md` | V1 product roadmap (phases 0-6 done, 7 ~70%) |
 | `plan_Agents.md` | How to structure plans for this project |
@@ -527,98 +514,3 @@ After finishing a task, always provide:
 | `docs/CHANGELOG.md` | Running log of all changes made by AI agents |
 | `.github/copilot-instructions.md` | Auto-loaded by GitHub Copilot |
 | `README.md` | User-facing project overview |
-
----
-
-## 23) Bug Checking & Verification (MANDATORY)
-
-**Every AI agent MUST verify their changes work correctly. No exceptions.**
-
-After implementing any change — whether CSS, template, backend, or JS — you MUST:
-
-### Step 1: Run Tests (always)
-- Run `Run-Tests.bat` or `pytest` after **any** backend change.
-- If adding a new feature, write or extend tests to cover it.
-- If fixing a bug, add a test that would have caught it.
-- If tests fail — fix before proceeding. Do NOT hand broken code to the user.
-
-### Step 2: Visual Verification (if browser/Playwright tools are available)
-If your environment has browser tools (Playwright MCP, browser tool, etc.):
-- Navigate to the affected page(s) on `http://127.0.0.1:8080/`.
-- **The app MUST be running on port 8080.** If it's not running, start it first via `Start-Clinic.bat` or `python wsgi.py`. Do NOT use any other port.
-- Confirm the feature/fix works as expected.
-- Check that nothing else on the page is broken (layout, buttons, forms, navigation).
-- Test both English and Arabic/RTL if the change touches UI.
-- Test dark mode if CSS changes were made.
-- Take screenshots for before/after comparison when possible.
-- **Screenshot files** go into `.playwright-mcp/` (Playwright default) or `data/agent-screenshots/`. **NEVER leave PNGs in the workspace root.** Both folders are `.gitignore`-d.
-
-### Step 2b: Playwright Cookbook (FOLLOW THIS EXACTLY)
-
-**Starting the app (required before any browser navigation):**
-```
-# Check if app is already running:
-.\.venv\Scripts\python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/')" 2>nul && echo RUNNING || echo NOT_RUNNING
-# If NOT_RUNNING, start in background:
-.\.venv\Scripts\python wsgi.py  (run as background terminal)
-# Wait 5 seconds for startup, then proceed.
-```
-
-**Logging in (MUST do before visiting any page):**
-1. Navigate to `http://127.0.0.1:8080/auth/login`
-2. Fill username: `admin`, password: `admin` — **USE EXACTLY THESE CREDENTIALS**
-3. Click the login button
-4. You'll be redirected to `http://127.0.0.1:8080/`
-
-**Key routes (use these exact URLs after login):**
-| Page | URL |
-|------|-----|
-| Home/Dashboard | `http://127.0.0.1:8080/` |
-| Appointments | `http://127.0.0.1:8080/appointments/vanilla` |
-| Admin Settings | `http://127.0.0.1:8080/admin/settings` |
-| Reports | `http://127.0.0.1:8080/collections` |
-| Simple Expenses | `http://127.0.0.1:8080/simple-expenses/` |
-
-**Patient-specific pages (need a real patient ID):**
-- Patient detail: `/patients/<pid>` (get pid from home page patient list)
-- Diagnosis: `/patients/<pid>/diagnosis/`
-- Medical: `/patients/<pid>/medical/`
-- Images: `/patients/<pid>/images/`
-
-**Toggling dark mode via JS (use instead of clicking the button):**
-```js
-() => { document.documentElement.setAttribute('data-theme', 'dark'); localStorage.setItem('clinic-theme', 'dark'); return 'done'; }
-```
-
-**Common mistakes to avoid:**
-- Do NOT navigate to `/home` or `/login` — those paths don't exist. Use `/` and `/auth/login`.
-- Do NOT use port other than 8080.
-- Do NOT try to log in more than once — failed attempts trigger rate limiting (5 per 15 min).
-- Do NOT try to fill forms using `formData` parameter — use click + type on individual fields.
-- Screenshots go to `.playwright-mcp/` — never the workspace root.
-
-### Step 3: Known Limitations
-- **Print layouts CANNOT be tested with Playwright.** `window.print()` triggers the browser's native print dialog, which Playwright cannot control. For print-related changes:
-  - Screenshot the page **before** the print dialog fires.
-  - Verify CSS `@media print` rules by inspecting the stylesheet, not by printing.
-  - Tell the user to manually test print and describe what they should see.
-- **Playwright needs the app running on port 8080.** If you get blank pages or connection errors, the app is either not running or on the wrong port.
-
-### Step 4: Fix What You Find
-- If the browser shows a broken layout, missing element, or wrong behavior — fix it immediately.
-- Do NOT leave known bugs for the user to find.
-- If you can't fix it in this session, add it to the Priority Stack in `VISION.md`.
-
-### Step 5: Report Results
-In your completion message, include:
-- What pages were checked (or "no browser tool available").
-- Test results (pass/fail count).
-- Any issues found and fixed during verification.
-
-### If No Browser Tool Is Available
-Fall back to:
-- Running pytest.
-- Reading the template/CSS/JS carefully and reasoning about correctness.
-- Telling the user exactly what to check manually and what to look for.
-
-**This rule is non-negotiable.** Skipping verification wastes user time and risks breaking a production system.

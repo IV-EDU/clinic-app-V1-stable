@@ -39,7 +39,6 @@ from clinic_app.services.doctor_colors import (
 )
 from clinic_app.services.ui import render_page
 from clinic_app.services.security import require_permission
-from clinic_app.services.arabic_search import normalize_search_query
 
 bp = Blueprint("patients", __name__)
 
@@ -378,16 +377,16 @@ def patient_detail(pid):
     if not p:
         conn.close()
         return "Patient not found", 404
-
+    
     # Get treatments with grouped payments
     treatments = get_treatments_for_patient(conn, pid)
-
+    
     doctor_options = _doctor_options()
     doctor_label_map, doctor_color_map, default_label, default_color = _doctor_maps(
         doctor_options
     )
     deleted_ids = {d["doctor_id"] for d in get_deleted_doctors()}
-
+    
     # Format treatments for display
     treatments_fmt = []
     for t in treatments:
@@ -399,7 +398,7 @@ def patient_detail(pid):
         d["remaining_fmt"] = money(d.get("remaining_cents") or 0)
         d["discount_fmt"] = money(d.get("discount_cents") or 0)
         d["amount_fmt"] = money(d.get("amount_cents") or 0)
-
+        
         # Format child payments
         for payment in d.get("payments", []):
             payment["amount_fmt"] = money(payment.get("amount_cents") or 0)
@@ -419,7 +418,7 @@ def patient_detail(pid):
             payment["display_doctor_id"] = display_doctor_id
             if display_doctor_id and display_doctor_id != ANY_DOCTOR_ID:
                 filter_doctor_ids.add(display_doctor_id)
-
+        
         # Handle doctor display for treatment
         original_doctor_id = (d.get("doctor_id") or "").strip() or ANY_DOCTOR_ID
         is_deleted = original_doctor_id in deleted_ids
@@ -453,13 +452,13 @@ def patient_detail(pid):
             d["visit_type_key"] = "vt_none"
 
         d["filter_doctor_ids_csv"] = ",".join(sorted(filter_doctor_ids))
-
+        
         treatments_fmt.append(d)
-
+    
     overall_cents = overall_remaining(conn, pid)
     overall_fmt = money(overall_cents)
     overall_class = bal_class_nonneg(overall_cents)
-
+    
     # Suggested merge targets based on similar names (first 2 parts).
     merge_suggestions = []
     try:
@@ -482,7 +481,7 @@ def patient_detail(pid):
             merge_suggestions = [dict(r) for r in rows_sugg]
     except Exception:
         merge_suggestions = []
-
+    
     # Page numbers for this patient (physical notebook pages).
     try:
         pages = PatientPageService.get_patient_pages(pid)
@@ -963,14 +962,11 @@ def search_patients():
 
     if not query or len(query) < 2:
         return jsonify([])
-
-    # Apply Arabic character normalization for better matching
-    query_normalized = normalize_search_query(query)
-
+    
     try:
         # Use the new page number search service if available
         results = PatientPageService.search_patients_by_page(query)
-
+        
         patients = []
         for row in results:
             # Get additional patient details
@@ -991,10 +987,10 @@ def search_patients():
                 (row["id"],)
             ).fetchone()
             conn.close()
-
+            
             if not patient_detail:
                 continue
-
+                
             # Calculate age based on created_at (approximate)
             age = None
             if patient_detail["created_at"]:
@@ -1008,7 +1004,7 @@ def search_patients():
                     age = age_years if age_years > 0 else None
                 except Exception:
                     age = None
-
+            
             # Generate initials for avatar
             initials = ''
             try:
@@ -1019,7 +1015,7 @@ def search_patients():
                     initials = '?'
             except Exception:
                 initials = '?'
-
+            
             # Format last visit
             last_visit = None
             if patient_detail["last_visit"]:
@@ -1032,7 +1028,7 @@ def search_patients():
                     last_visit = last_visit_date.strftime("%b %d, %Y")
                 except Exception:
                     last_visit = None
-
+            
             patient_data = {
                 "id": patient_detail["id"],
                 "full_name": patient_detail["full_name"] or "Unknown Patient",
@@ -1050,7 +1046,7 @@ def search_patients():
         # Fallback to original search if page number service fails
         conn = db()
         try:
-            search_term = f"%{query_normalized}%"
+            search_term = f"%{query.lower()}%"
             digits = _normalize_phone_digits(query)
             search_digits = f"%{digits}%" if digits else ""
             has_pages = _table_exists(conn, "patient_pages")
@@ -1130,7 +1126,7 @@ def search_patients():
                 """,
                 tuple(params),
             ).fetchall()
-
+            
             patients = []
             for row in rows:
                 # Calculate age based on created_at (approximate)
@@ -1146,7 +1142,7 @@ def search_patients():
                         age = age_years if age_years > 0 else None
                     except Exception:
                         age = None
-
+                
                 # Generate initials for avatar
                 initials = ''
                 try:
@@ -1157,7 +1153,7 @@ def search_patients():
                         initials = '?'
                 except Exception:
                     initials = '?'
-
+                
                 # Format last visit
                 last_visit = None
                 if row["last_visit"]:
@@ -1170,7 +1166,7 @@ def search_patients():
                         last_visit = last_visit_date.strftime("%b %d, %Y")
                     except Exception:
                         last_visit = None
-
+                
                 patient_data = {
                     "id": row["id"],
                     "full_name": row["full_name"] or "Unknown Patient",
@@ -1351,7 +1347,7 @@ def add_patient_page(pid):
     data = request.get_json()
     if not data or "page_number" not in data:
         return jsonify({"error": "Page number is required"}), 400
-
+    
     try:
         page_id = PatientPageService.add_page_to_patient(
             pid,

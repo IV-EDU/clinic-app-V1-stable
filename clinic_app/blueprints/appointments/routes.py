@@ -35,7 +35,6 @@ from clinic_app.services.ui import render_page
 from clinic_app.services.errors import record_exception
 from clinic_app.extensions import csrf, db
 from clinic_app.services.csrf import ensure_csrf_token
-from clinic_app.services.arabic_search import normalize_search_query
 from flask_wtf.csrf import validate_csrf
 from clinic_app.models import Appointment as AppointmentModel, Patient as PatientModel, Doctor as DoctorModel
 bp = Blueprint("appointments", __name__)
@@ -339,12 +338,12 @@ def delete_appointment(appt_id):
     try:
         # Import here to avoid circular imports
         from clinic_app.services.appointments import get_appointment_by_id, delete_appointment as delete_appt
-
+        
         appointment = get_appointment_by_id(appt_id)
         if not appointment:
             flash("Appointment not found", "err")
             return redirect(request.form.get("next") or url_for("appointments.index"))
-
+        
         try:
             delete_appt(appt_id)
             flash(f"Appointment for {appointment['patient_name']} has been deleted", "ok")
@@ -516,8 +515,7 @@ def appointments_vanilla():
                 query = query.filter(AppointmentModel.doctor_id == doctor_id)
 
         if search_term:
-            normalized_term = normalize_search_query(search_term)
-            like = f"%{normalized_term}%"
+            like = f"%{search_term}%"
             query = query.filter(
                 or_(
                     PatientModel.full_name.ilike(like),
@@ -794,15 +792,12 @@ def api_patients_search():
     if not query:
         return jsonify([])
 
-    # Normalize Arabic characters for better matching
-    normalized_q = normalize_search_query(query)
-
     # Search patients by name, phone, or short_id
     patients = PatientModel.query.filter(
         or_(
-            PatientModel.full_name.ilike(f"%{normalized_q}%"),
-            PatientModel.phone.ilike(f"%{normalized_q}%"),
-            PatientModel.short_id.ilike(f"%{normalized_q}%"),
+            PatientModel.full_name.ilike(f"%{query}%"),
+            PatientModel.phone.ilike(f"%{query}%"),
+            PatientModel.short_id.ilike(f"%{query}%"),
         )
     ).limit(10).all()
 

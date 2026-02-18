@@ -42,13 +42,6 @@ data/                   ← Runtime data (DB, backups, images) — DO NOT TOUCH
 Template: `templates/appointments/vanilla.html`. Keep these script tag IDs unchanged:
 - `#appointments-data`, `#patients-data`, `#doctors-data`
 
-## Agent Brain — READ FIRST
-Read `VISION.md` before starting any task. It defines:
-- Your role (technical co-founder, not just a code assistant)
-- Product roadmap and decision triggers
-- Current priority stack (what to work on next)
-- Self-maintenance rules (proactively flag issues, stale docs, suggest next steps)
-
 ## Auto-Update Rule (MANDATORY)
 When you add, move, or remove any route, template, service, CSS, or JS file:
 1. Update the matching section in `docs/INDEX.md`
@@ -58,7 +51,6 @@ When you add, move, or remove any route, template, service, CSS, or JS file:
 5. Append to `docs/CHANGELOG.md` — one line: date, what changed, files touched
 
 ## Reference Docs
-- `VISION.md` — **READ FIRST.** Product vision, agent role, roadmap, priorities
 - `AGENTS.md` — full agent behavior rules + complete architecture reference
 - `plan_Agents.md` — how to design plans
 - `UI_REDESIGN_PLAN.md` — active UI redesign phases and progress

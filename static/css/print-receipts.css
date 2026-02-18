@@ -560,12 +560,7 @@
     .modal,
     .print-loading,
     .print-message,
-    .action-bar,
-    .theme-toggle-btn,
-    #theme-toggle,
-    .global-search-form,
-    nav,
-    .kebab {
+    .action-bar {
         display: none !important;
     }
 
@@ -768,33 +763,33 @@
         align-items: stretch;
         gap: 8px;
     }
-
+    
     .print-receipt-btn {
         width: 100%;
         justify-content: center;
     }
-
+    
     .format-buttons {
         justify-content: center;
     }
-
+    
     .format-btn {
         flex: 1;
         text-align: center;
     }
-
+    
     .print-message {
         left: 10px;
         right: 10px;
         top: 10px;
         max-width: none;
     }
-
+    
     .loading-overlay {
         margin: 20px;
         width: calc(100% - 40px);
     }
-
+    
     .modal-dialog {
         width: 95%;
         margin: 10px;
@@ -851,12 +846,12 @@
         background: #059669;
         color: #fff;
     }
-
+    
     .receipt-page .print-receipt-btn:hover {
         background: #047857;
         color: #fff;
     }
-
+    
     .message-content {
         border: 1px solid #000;
     }
@@ -869,11 +864,11 @@
     .message-close {
         transition: none;
     }
-
+    
     .spinner {
         animation: none;
     }
-
+    
     .print-message {
         animation: none;
     }
@@ -885,31 +880,31 @@
         background: #2d3748;
         color: #e2e8f0;
     }
-
+    
     .modal-header {
         border-bottom-color: #4a5568;
     }
-
+    
     .radio-option label {
         background: #2d3748;
         border-color: #4a5568;
         color: #e2e8f0;
     }
-
+    
     .radio-option label:hover {
         background: #4a5568;
     }
-
+    
     .checkbox-label input[type="checkbox"]:checked + .checkmark {
         background-color: #3182ce;
         border-color: #3182ce;
     }
-
+    
     .loading-overlay {
         background: #2d3748;
         color: #e2e8f0;
     }
-
+    
     .message-content {
         background: #2d3748;
         color: #e2e8f0;

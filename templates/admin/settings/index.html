@@ -14,13 +14,6 @@
   {% if _btn_text %}--btn-text-on-primary: {{ _btn_text }};{% endif %}
   {% if _metric %}--metric-color: {{ _metric }};{% endif %}
 }
-{# In dark mode, reset light-mode text overrides so design-system dark tokens win #}
-{% if _text or _metric %}
-[data-theme="dark"] {
-  {% if _text %}--ink: var(--color-text-primary); --text-primary: var(--color-text-primary);{% endif %}
-  {% if _metric %}--metric-color: var(--primary-color, var(--color-accent));{% endif %}
-}
-{% endif %}
 
 /* Admin Settings Styles */
 .admin-settings-container {
@@ -415,16 +408,6 @@
   font-weight: 700;
 }
 
-/* Audit pre block (used in JS-generated content) */
-.audit-pre {
-  margin-top: 8px;
-  white-space: pre-wrap;
-  background: #f9fafb;
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-}
-
 .modal.active {
   display: flex;
 }
@@ -740,203 +723,6 @@
 [dir="rtl"] .dup-chips { justify-content: flex-start; }
 [dir="rtl"] .admin-tab-content { text-align: start; }
 [dir="rtl"] .admin-settings-header { text-align: center; }
-
-/* ========================================================================
-   DARK MODE OVERRIDES
-   ======================================================================== */
-
-/* --- Header gradient --- */
-[data-theme="dark"] .admin-settings-header {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--primary-color, #60a5fa) 12%, var(--color-surface-raised, #22252d)) 0%,
-    var(--color-surface, #1a1d23) 52%,
-    color-mix(in srgb, var(--primary-color, #60a5fa) 12%, var(--color-surface-raised, #22252d)) 100%
-  ) !important;
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-[data-theme="dark"] .admin-settings-header h1 {
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-[data-theme="dark"] .admin-settings-header p {
-  color: var(--color-text-secondary, #cbd5e1) !important;
-}
-
-/* --- Tab navigation --- */
-[data-theme="dark"] .admin-tabs {
-  background: var(--color-surface, #1a1d23) !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
-}
-[data-theme="dark"] .admin-tab {
-  background: var(--color-surface-sunken, #14171c) !important;
-  color: var(--color-text-tertiary, #94a3b8) !important;
-  border-bottom-color: transparent !important;
-}
-[data-theme="dark"] .admin-tab:hover {
-  background: var(--color-surface-raised, #22252d) !important;
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-[data-theme="dark"] .admin-tab.active {
-  background: var(--color-surface-raised, #22252d) !important;
-  color: var(--color-accent, #60a5fa) !important;
-  border-bottom-color: var(--color-accent, #60a5fa) !important;
-}
-@media (max-width: 768px) {
-  [data-theme="dark"] .admin-tab {
-    border-bottom-color: var(--color-border, #374151) !important;
-  }
-}
-
-/* --- Tab content panels --- */
-[data-theme="dark"] .admin-tab-content {
-  background: var(--color-surface, #1a1d23) !important;
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-
-/* --- Cards inside admin --- */
-[data-theme="dark"] .admin-card,
-[data-theme="dark"] .card {
-  background: var(--color-surface, #1a1d23) !important;
-  border-color: var(--color-border, #374151) !important;
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-
-/* --- Card headers --- */
-[data-theme="dark"] .card-header {
-  border-bottom-color: var(--color-border, #374151) !important;
-}
-[data-theme="dark"] .card-title {
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-
-/* --- Modal --- */
-[data-theme="dark"] .modal-content,
-[data-theme="dark"] .modal {
-  background: var(--color-surface-raised, #22252d) !important;
-  border-color: var(--color-border, #374151) !important;
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-[data-theme="dark"] .modal-header {
-  border-bottom-color: var(--color-border, #374151) !important;
-}
-[data-theme="dark"] .modal-footer {
-  border-top-color: var(--color-border, #374151) !important;
-}
-
-/* --- Status badges --- */
-[data-theme="dark"] .status-badge {
-  border-color: var(--color-border, #374151) !important;
-}
-[data-theme="dark"] .status-badge.permission {
-  background: color-mix(in srgb, var(--color-accent, #60a5fa) 12%, var(--color-surface, #1a1d23)) !important;
-  color: var(--color-accent, #60a5fa) !important;
-  border-color: color-mix(in srgb, var(--color-accent, #60a5fa) 25%, transparent) !important;
-}
-
-/* --- Section descriptions --- */
-[data-theme="dark"] .section-description,
-[data-theme="dark"] .card p {
-  color: var(--color-text-secondary, #cbd5e1) !important;
-}
-
-/* --- Forms & inputs --- */
-[data-theme="dark"] .form-label {
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-[data-theme="dark"] .form-input,
-[data-theme="dark"] .form-select {
-  background: var(--color-surface-overlay, #2a2d35) !important;
-  border-color: var(--color-border-strong, #4b5563) !important;
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-[data-theme="dark"] .form-checkbox-group {
-  background: var(--color-surface, #1a1d23) !important;
-  border-color: var(--color-border, #374151) !important;
-}
-[data-theme="dark"] .checkbox-group-title {
-  color: var(--color-text-primary, #f1f5f9) !important;
-  border-bottom-color: var(--color-border, #374151) !important;
-}
-[data-theme="dark"] .checkbox-item {
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-
-/* --- Table compact (audit details) --- */
-[data-theme="dark"] .table-compact th {
-  background: var(--color-surface-overlay, #2a2d35) !important;
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-[data-theme="dark"] .table-compact td {
-  color: var(--color-text-primary, #f1f5f9) !important;
-  border-bottom-color: var(--color-border, #374151) !important;
-}
-[data-theme="dark"] .table-compact th {
-  border-bottom-color: var(--color-border, #374151) !important;
-}
-
-/* --- Audit pre/details blocks --- */
-[data-theme="dark"] .audit-pre {
-  background: var(--color-surface-overlay, #2a2d35) !important;
-  border-color: var(--color-border, #374151) !important;
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-[data-theme="dark"] details summary {
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-
-/* --- Audit admin-table dark --- */
-[data-theme="dark"] .admin-table thead th {
-  background: var(--color-surface-overlay, #2a2d35) !important;
-  color: var(--color-text-primary, #f1f5f9) !important;
-  border-bottom-color: var(--color-border, #374151) !important;
-}
-[data-theme="dark"] .admin-table tbody td {
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-[data-theme="dark"] .admin-table tbody tr:hover {
-  background: var(--color-surface-overlay, #2a2d35) !important;
-}
-
-/* --- Alerts dark --- */
-[data-theme="dark"] .alert-error {
-  background: rgba(239, 68, 68, 0.15) !important;
-  border-color: #991b1b !important;
-  color: #f87171 !important;
-}
-[data-theme="dark"] .alert-success {
-  background: rgba(34, 197, 94, 0.15) !important;
-  border-color: #166534 !important;
-  color: #4ade80 !important;
-}
-
-/* --- Modal overlay darker for better contrast --- */
-[data-theme="dark"] .modal {
-  background: rgba(0, 0, 0, 0.75) !important;
-}
-[data-theme="dark"] .modal-content {
-  background: var(--color-surface-raised, #22252d) !important;
-  border: 1px solid var(--color-border-strong, #4b5563) !important;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5) !important;
-}
-[data-theme="dark"] .modal-title {
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-[data-theme="dark"] .modal-close:hover {
-  background: var(--color-surface-overlay, #2a2d35) !important;
-  color: var(--color-text-primary, #f1f5f9) !important;
-}
-
-/* --- Logo preview dark --- */
-[data-theme="dark"] .logo-preview {
-  background: var(--color-surface, #1a1d23) !important;
-  border-color: var(--color-border, #374151) !important;
-  color: var(--color-text-tertiary, #94a3b8) !important;
-}
-
-/* --- u-text-muted dark --- */
-[data-theme="dark"] .u-text-muted {
-  color: var(--color-text-tertiary, #94a3b8) !important;
-}
 </style>
 
 {% macro tf(key, default_text) -%}
@@ -4038,7 +3824,7 @@ function openAuditRowModal(index) {
     changes +
     '<details style="margin-top:12px;">' +
       '<summary style="cursor:pointer; font-weight:700;">{{ tf("technical_details", "Technical details") }}</summary>' +
-      '<pre class="audit-pre">' + escapeHtml(metaJson) + '</pre>' +
+      '<pre style="margin-top:8px; white-space:pre-wrap; background:#f9fafb; padding:10px; border-radius:10px; border:1px solid #e5e7eb;">' + escapeHtml(metaJson) + '</pre>' +
     '</details>';
 
   modal.classList.add('active');
@@ -6365,7 +6151,7 @@ function saveImportSettings() {
 function addPageRange() {
   var container = document.getElementById('page-ranges-container');
   var rangeCount = container.querySelectorAll('.page-range-row').length;
-
+  
   var rangeRow = document.createElement('div');
   rangeRow.className = 'page-range-row';
   rangeRow.setAttribute('data-range-id', rangeCount);
@@ -6380,7 +6166,7 @@ function addPageRange() {
       <button type="button" class="btn btn-danger btn-sm" onclick="removePageRange(${rangeCount})">{{ tf('remove', 'Remove') }}</button>
     </div>
   `;
-
+  
   container.appendChild(rangeRow);
 }
 
@@ -6395,7 +6181,7 @@ function removePageRange(rangeId) {
 document.addEventListener('DOMContentLoaded', function() {
   var pageFormatSelect = document.getElementById('default-page-format');
   var customFormatGroup = document.getElementById('custom-format-group');
-
+  
   if (pageFormatSelect && customFormatGroup) {
     pageFormatSelect.addEventListener('change', function() {
       if (this.value === 'custom') {

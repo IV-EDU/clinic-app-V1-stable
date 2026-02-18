@@ -39,17 +39,8 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Shared macros: `templates/_macros.html`
 
 - **Styling**
-  - Design system tokens (CSS variables for light/dark) + comprehensive dark mode overrides (sections A-V, 1500+ lines): `static/css/design-system.css`
-  - Theme tokens and utilities (with dark mode overrides): `static/css/theme-system.css`
-  - Reusable UI components (modals, toasts, loading states): `static/css/components.css`
   - Global styles and components: `static/css/app.css`
-
-- **JavaScript**
-  - Modal system (Modal.open/close with events): `static/js/modal-system.js`
-  - Toast notifications (Toast.success/error/warning/info): `static/js/toast.js`
-  - Patient receipts: `static/js/patient-receipts.js`
-  - Form repeaters: `static/js/patient-form-repeaters.js`
-  - Status chips: `static/js/status-chip.js`
+  - Theme tokens and utilities: `static/css/theme-system.css`
 
 - **Key routes**
   - `/` → `core.index` (main dashboard, uses patients list and today’s stats)
@@ -394,7 +385,6 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Release packaging: `Make-Clinic-Release.bat`, `Make-Clinic-Release-Zip.bat`, `Make-Clinic-Zip.bat`
 
 - **Documentation**
-  - **Product vision & agent role: `VISION.md`** ← READ FIRST
   - Agent rules: `AGENTS.md`
   - Planning guide: `plan_Agents.md`
   - V1 roadmap: `LAST_PLAN.md`

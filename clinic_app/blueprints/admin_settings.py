@@ -158,7 +158,7 @@ def _reassign_linked_records(session, source_user_id: str, target_user_id: str |
     except OperationalError:
         # Expense receipts table not present; skip
         pass
-
+    
     try:
         # Reassign receipts.issued_by_user_id
         session.execute(
@@ -168,7 +168,7 @@ def _reassign_linked_records(session, source_user_id: str, target_user_id: str |
     except OperationalError:
         # Receipts table not present or column doesn't exist; skip
         pass
-
+    
     try:
         # Reassign receipt_reprints.user_id
         session.execute(
@@ -178,7 +178,7 @@ def _reassign_linked_records(session, source_user_id: str, target_user_id: str |
     except OperationalError:
         # Receipt reprints table not present; skip
         pass
-
+    
     return True
 
 
@@ -672,12 +672,12 @@ def delete_user(user_id: str):
                 return jsonify({"success": False, "errors": [message]}), 400
             flash(message, "err")
             return redirect(url_for("admin_settings.index"))
-
+        
         reassigned = _reassign_linked_records(session, user.id, fallback_id)
 
         # Clean up user relationships before deletion
         session.execute(user_roles.delete().where(user_roles.c.user_id == user.id))
-
+        
         # Flush to apply reassignments before deletion
         session.flush()
 
@@ -3054,6 +3054,12 @@ def commit_data_import():
             never_auto_merge = _admin_setting_bool(conn, "import_never_auto_merge", True)
         if request.form.get("merge_mode") in (None, "", False):
             merge_mode = "safe" if never_auto_merge else "normal"
+        if request.form.get("merge_mode") in (None, "", False):
+            merge_mode = "safe" if never_auto_merge else "normal"
+        if request.form.get("merge_mode") in (None, "", False):
+            merge_mode = "safe" if never_auto_merge else "normal"
+        if request.form.get("merge_mode") in (None, "", False):
+            merge_mode = "safe" if never_auto_merge else "normal"
 
         migrate_patients_drop_unique_short_id(conn)
         conn.execute("BEGIN")
@@ -3983,7 +3989,7 @@ def get_user(user_id: str):
         user = session.execute(
             select(User).options(selectinload(User.roles)).where(User.id == user_id)
         ).unique().scalars().one_or_none()
-
+        
         if not user:
             return jsonify({"success": False, "errors": ["User not found"]}), 404
 
@@ -4013,7 +4019,7 @@ def get_role(role_id: int):
         role = session.execute(
             select(Role).options(selectinload(Role.permissions)).where(Role.id == role_id)
         ).unique().scalars().one_or_none()
-
+        
         if not role:
             return jsonify({"success": False, "errors": ["Role not found"]}), 404
 
@@ -4038,10 +4044,10 @@ def get_patient_settings():
     """Get current patient settings."""
     try:
         from clinic_app.services.patient_pages import AdminSettingsService
-
+        
         service = AdminSettingsService()
         settings = service.get_all_settings()
-
+        
         return jsonify({
             "success": True,
             "settings": settings
@@ -4058,11 +4064,11 @@ def update_patient_settings():
     try:
         data = request.get_json() or {}
         ensure_csrf_token(data)
-
+        
         from clinic_app.services.patient_pages import AdminSettingsService
-
+        
         service = AdminSettingsService()
-
+        
         # Extract settings from request data
         settings_to_update = {
             'enable_file_numbers': data.get('enable_file_numbers', False),
@@ -4071,9 +4077,9 @@ def update_patient_settings():
             'custom_page_format': data.get('custom_page_format', ''),
             'page_ranges': data.get('page_ranges', [])
         }
-
+        
         service.update_settings(settings_to_update)
-
+        
         return jsonify({
             "success": True,
             "message": "Patient settings updated successfully"
@@ -4088,10 +4094,10 @@ def get_page_number_settings():
     """Get page number specific settings."""
     try:
         from clinic_app.services.patient_pages import AdminSettingsService
-
+        
         service = AdminSettingsService()
         settings = service.get_all_settings()
-
+        
         page_settings = {
             'enable_file_numbers': settings.get('enable_file_numbers', False),
             'require_page_numbers': settings.get('require_page_numbers', False),
@@ -4099,7 +4105,7 @@ def get_page_number_settings():
             'custom_page_format': settings.get('custom_page_format', ''),
             'page_ranges': settings.get('page_ranges', [])
         }
-
+        
         return jsonify({
             "success": True,
             "page_settings": page_settings

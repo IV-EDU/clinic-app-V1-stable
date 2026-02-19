@@ -342,7 +342,6 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Duplicate detection dev script: `devtools/test_duplicates.py`
   - Appointment template checker: `devtools/check_template.py`
   - Playwright isolated server launcher: `devtools/playwright_server.py`
-  - Python wrapper for Playwright smoke: `devtools/run_playwright_smoke.py`
 
 ---
 
@@ -382,6 +381,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Alembic config: `alembic.ini`
   - PyInstaller spec: `clinic_app.spec`
   - Dependencies: `requirements.txt` (runtime), `requirements.dev.txt` (dev/test)
+  - Pytest config + warning filters: `pyproject.toml`
   - Node test dependency + scripts: `package.json`
   - Playwright config: `playwright.config.ts`
   - Git ignore: `.gitignore`

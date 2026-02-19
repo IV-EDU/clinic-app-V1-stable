@@ -1,0 +1,19 @@
+[tool.pytest.ini_options]
+# Filter known third-party deprecation warnings that we cannot fix.
+# This keeps the pytest output clean so real warnings are visible.
+filterwarnings = [
+    # dateutil uses deprecated datetime.utcfromtimestamp() internally
+    "ignore:datetime.datetime.utcfromtimestamp:DeprecationWarning:dateutil",
+    # flask-login uses deprecated datetime.utcnow() internally
+    "ignore:datetime.datetime.utcnow:DeprecationWarning:flask_login",
+    # alembic uses deprecated datetime.utcnow() internally
+    "ignore:datetime.datetime.utcnow:DeprecationWarning:alembic",
+    # fpdf2 "uni" parameter is deprecated since v2.5.1 (our pdf_enhanced.py)
+    'ignore:"uni" parameter is deprecated:DeprecationWarning',
+    # devtools test scripts use return instead of assert (not worth fixing)
+    "ignore::pytest.PytestReturnNotNoneWarning",
+    # SQLAlchemy warnings from Alembic migration scripts
+    "ignore::sqlalchemy.exc.SAWarning",
+    # ResourceWarning from unclosed files during test collection
+    "ignore::ResourceWarning",
+]

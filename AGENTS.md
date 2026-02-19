@@ -530,7 +530,6 @@ After finishing a task, always provide:
 - `test_duplicates.py` -- duplicate detection testing
 - `check_template.py` -- appointment template checker
 - `playwright_server.py` -- isolated Flask launcher for Playwright E2E
-- `run_playwright_smoke.py` -- Python wrapper for `npm run test:e2e`
 
 ---
 

@@ -286,6 +286,7 @@ All blueprints use **`render_page()`** from `services/ui.py` (never raw `render_
 ### CSS Files
 | File | Purpose |
 |------|---------|
+| `static/css/design-system.css` | Design tokens (light/dark), bridge aliases, dark mode component overrides, toggle UI, print protection |
 | `static/css/app.css` | Main global styles (buttons, cards, grids, forms, tables) |
 | `static/css/theme-system.css` | CSS variable foundation, theme overrides |
 | `static/css/print-receipts.css` | Print-specific styles for receipts |

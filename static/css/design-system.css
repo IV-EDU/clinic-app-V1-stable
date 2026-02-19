@@ -1,0 +1,642 @@
+/* ============================================================
+   Design System – Clinic-App-Local
+   ============================================================
+   Single source of truth for colors, spacing, typography,
+   and dark mode.  Loaded BEFORE app.css and theme-system.css.
+
+   Token naming : --color-{purpose}
+   Bridge aliases: --ink, --bg, --card, etc. (for existing code)
+   Dark mode    : html[data-theme="dark"]  (specificity > :root)
+   ============================================================ */
+
+/* ============================================================
+   1. LIGHT THEME TOKENS  (default)
+   ============================================================ */
+:root {
+  color-scheme: light;
+
+  /* -- Surfaces ---------------------------------------------- */
+  --color-bg:              #f7f7f8;
+  --color-surface:         #ffffff;
+  --color-surface-raised:  #f8fafc;
+  --color-surface-sunken:  #f3f4f6;
+
+  /* -- Text -------------------------------------------------- */
+  --color-text:            #111827;
+  --color-text-secondary:  #475569;
+  --color-text-muted:      #6b7280;
+  --color-text-faint:      #94a3b8;
+
+  /* -- Borders ----------------------------------------------- */
+  --color-border:          #e5e7eb;
+  --color-border-strong:   #d1d5db;
+
+  /* -- Status ------------------------------------------------ */
+  --color-success:         #16a34a;
+  --color-success-bg:      #dcfce7;
+  --color-success-border:  #bbf7d0;
+  --color-warning:         #b45309;
+  --color-warning-bg:      #fef3c7;
+  --color-warning-border:  #fcd34d;
+  --color-danger:          #b91c1c;
+  --color-danger-bg:       #fee2e2;
+  --color-danger-border:   #fecaca;
+  --color-info:            #0ea5e9;
+  --color-info-bg:         #e0f2fe;
+  --color-info-border:     #bae6fd;
+
+  /* -- Shadows ----------------------------------------------- */
+  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg:  0 12px 30px rgba(15, 23, 42, 0.08);
+
+  /* -- Spacing ----------------------------------------------- */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+
+  /* -- Typography -------------------------------------------- */
+  --text-xs:   0.75rem;   /* 12px */
+  --text-sm:   0.875rem;  /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg:   1.125rem;  /* 18px */
+  --text-xl:   1.5rem;    /* 24px */
+
+  /* -- Border Radius ----------------------------------------- */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --radius-full: 999px;
+
+  /* -- Transitions ------------------------------------------- */
+  --transition-fast:   0.15s ease;
+  --transition-normal: 0.2s ease;
+
+  /* ============================================================
+     2. BRIDGE – old variable names → design tokens
+     Keeps all existing var(--ink), var(--bg), etc. working.
+     ============================================================ */
+  --ink:       var(--color-text);
+  --muted:     var(--color-text-muted);
+  --border:    var(--color-border);
+  --bg:        var(--color-bg);
+  --card:      var(--color-surface);
+  --green:     var(--color-success);
+  --green-bg:  var(--color-success-bg);
+  --red:       var(--color-danger);
+  --red-bg:    var(--color-danger-bg);
+  --yellow:    var(--color-warning);
+  --yellow-bg: var(--color-warning-bg);
+  --metric-color: var(--primary-color, #2563eb);
+}
+
+/* ============================================================
+   3. DARK THEME TOKENS
+   html[data-theme="dark"] has specificity (0,1,1) which beats
+   inline :root (0,1,0) from dynamic theme_css.
+   ============================================================ */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* -- Surfaces (dark blue-grey, NOT pure black) ------------- */
+  --color-bg:              #1a1d23;
+  --color-surface:         #22252b;
+  --color-surface-raised:  #2a2d35;
+  --color-surface-sunken:  #15171c;
+
+  /* -- Text -------------------------------------------------- */
+  --color-text:            #e5e7eb;
+  --color-text-secondary:  #94a3b8;
+  --color-text-muted:      #64748b;
+  --color-text-faint:      #475569;
+
+  /* -- Borders ----------------------------------------------- */
+  --color-border:          #2d3139;
+  --color-border-strong:   #3d4251;
+
+  /* -- Status (brighter for dark backgrounds) ---------------- */
+  --color-success:         #4ade80;
+  --color-success-bg:      rgba(22, 163, 74, 0.15);
+  --color-success-border:  rgba(74, 222, 128, 0.3);
+  --color-warning:         #fbbf24;
+  --color-warning-bg:      rgba(217, 119, 6, 0.15);
+  --color-warning-border:  rgba(251, 191, 36, 0.3);
+  --color-danger:          #f87171;
+  --color-danger-bg:       rgba(239, 68, 68, 0.15);
+  --color-danger-border:   rgba(248, 113, 113, 0.3);
+  --color-info:            #38bdf8;
+  --color-info-bg:         rgba(14, 165, 233, 0.15);
+  --color-info-border:     rgba(56, 189, 248, 0.3);
+
+  /* -- Shadows (stronger in dark) ---------------------------- */
+  --shadow-sm:  0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg:  0 12px 30px rgba(0, 0, 0, 0.5);
+
+  /* -- Bridge re-override ------------------------------------ */
+  --ink:       var(--color-text);
+  --muted:     var(--color-text-muted);
+  --border:    var(--color-border);
+  --bg:        var(--color-bg);
+  --card:      var(--color-surface);
+  --green:     var(--color-success);
+  --green-bg:  var(--color-success-bg);
+  --red:       var(--color-danger);
+  --red-bg:    var(--color-danger-bg);
+  --yellow:    var(--color-warning);
+  --yellow-bg: var(--color-warning-bg);
+
+  /* -- Theme-system.css bridge ------------------------------- */
+  --bg-primary:     var(--color-bg);
+  --page-bg:        var(--color-bg);
+  --bg-surface:     var(--color-surface);
+  --text-primary:   var(--color-text);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted:     var(--color-text-muted);
+  --border-strong:  var(--color-border-strong);
+  --shadow-soft:    var(--shadow-md);
+  --card-shadow:    var(--shadow-lg);
+  --success-color:  var(--color-success);
+  --success-bg:     var(--color-success-bg);
+  --warning-color:  var(--color-warning);
+  --warning-bg:     var(--color-warning-bg);
+  --danger-color:   var(--color-danger);
+  --danger-bg:      var(--color-danger-bg);
+  --info-color:     var(--color-info);
+  --info-bg:        var(--color-info-bg);
+}
+
+/* ============================================================
+   4. DARK MODE – Component Overrides
+   Catches hardcoded colors in app.css / theme-system.css.
+   ============================================================ */
+
+/* --- Base elements ------------------------------------------ */
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+/* --- Header & navigation ------------------------------------ */
+html[data-theme="dark"] .header,
+html[data-theme="dark"] .u-app-header {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--primary-color, #3b82f6) 10%, var(--color-surface)) 0%,
+    var(--color-surface) 52%,
+    color-mix(in srgb, var(--primary-color, #3b82f6) 10%, var(--color-surface)) 100%);
+  border-bottom-color: var(--color-border);
+}
+
+html[data-theme="dark"] .kebab-btn {
+  background: color-mix(in srgb, var(--primary-color) 12%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--primary-color) 25%, var(--color-border));
+}
+
+html[data-theme="dark"] .kebab-menu {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .kebab-menu a {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+/* --- Buttons ------------------------------------------------ */
+html[data-theme="dark"] .btn.secondary,
+html[data-theme="dark"] button.secondary,
+html[data-theme="dark"] a.secondary {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .btn.secondary:not(:disabled):hover,
+html[data-theme="dark"] button.secondary:not(:disabled):hover {
+  background: var(--color-surface-sunken);
+}
+
+html[data-theme="dark"] .u-btn.secondary {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .u-chip {
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--color-surface-raised));
+  border-color: color-mix(in srgb, var(--primary-color) 20%, var(--color-border));
+}
+
+/* --- Login -------------------------------------------------- */
+html[data-theme="dark"] .login-card {
+  background: var(--color-surface);
+}
+
+/* --- Grid cells --------------------------------------------- */
+html[data-theme="dark"] .grid .h {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .grid .c,
+html[data-theme="dark"] .grid.excel .c {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+/* --- Tables ------------------------------------------------- */
+html[data-theme="dark"] table {
+  background: var(--color-surface);
+}
+
+html[data-theme="dark"] table th {
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] table td {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-bottom-color: var(--color-border);
+}
+
+html[data-theme="dark"] table tbody tr:hover td,
+html[data-theme="dark"] .patient-table tbody tr:hover td {
+  background: var(--color-surface-raised);
+}
+
+html[data-theme="dark"] table tbody tr:nth-child(even) td {
+  background: var(--color-surface-sunken);
+}
+
+/* --- Modals ------------------------------------------------- */
+html[data-theme="dark"] .modal-content,
+html[data-theme="dark"] .schedule-modal__panel,
+html[data-theme="dark"] .reports-modal-dialog {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+}
+
+html[data-theme="dark"] .modal-header,
+html[data-theme="dark"] .modal-footer {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .modal-title {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .modal-close:hover,
+html[data-theme="dark"] .modal-header .close:hover,
+html[data-theme="dark"] .reports-modal-close:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .modal-body {
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+/* --- Forms -------------------------------------------------- */
+html[data-theme="dark"] .form-label {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .form-input,
+html[data-theme="dark"] .form-select,
+html[data-theme="dark"] .modal-form-input {
+  background: var(--color-surface-sunken) !important;
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .form-input:focus,
+html[data-theme="dark"] .form-select:focus {
+  border-color: var(--primary-color, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* --- Stat tiles & meta blocks ------------------------------- */
+html[data-theme="dark"] .stat-tile,
+html[data-theme="dark"] .stat-pill,
+html[data-theme="dark"] .dash-stat,
+html[data-theme="dark"] .summary-item,
+html[data-theme="dark"] .summary-box,
+html[data-theme="dark"] .payment-field,
+html[data-theme="dark"] .payment-note,
+html[data-theme="dark"] .payment-field-group,
+html[data-theme="dark"] .meta-block {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+/* --- Appointments ------------------------------------------- */
+html[data-theme="dark"] .appointment-hero {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--primary-color) 8%, var(--color-surface)) 0%,
+    var(--color-surface) 52%,
+    color-mix(in srgb, var(--primary-color) 8%, var(--color-surface)) 100%);
+}
+
+html[data-theme="dark"] .appt-card {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .timeline-hour {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .empty-hour {
+  border-color: var(--color-border);
+  color: var(--color-text-faint);
+}
+
+html[data-theme="dark"] .appt-body .pill {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .appt-body .notes {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .appt-card.status-done {
+  background: color-mix(in srgb, #06b6d4 10%, var(--color-surface));
+  border-color: color-mix(in srgb, #06b6d4 25%, var(--color-border));
+}
+
+html[data-theme="dark"] .appt-card.status-in_progress {
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-warning) 25%, var(--color-border));
+}
+
+html[data-theme="dark"] .appt-card.status-cancelled {
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-danger) 25%, var(--color-border));
+}
+
+html[data-theme="dark"] .appt-snippet {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+/* --- Payments ----------------------------------------------- */
+html[data-theme="dark"] .payment-card.ok,
+html[data-theme="dark"] .payment-item.ok {
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+  border-color: var(--color-success-border);
+}
+
+html[data-theme="dark"] .payment-card.due,
+html[data-theme="dark"] .payment-item.due {
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
+  border-color: var(--color-danger-border);
+}
+
+html[data-theme="dark"] .payment-form-card .grid.excel {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+/* --- Balance boxes ------------------------------------------ */
+html[data-theme="dark"] .bal-0 {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  border-color: var(--color-success-border);
+}
+
+html[data-theme="dark"] .bal-pos {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
+}
+
+/* --- Flash messages ----------------------------------------- */
+html[data-theme="dark"] .flash-message {
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
+  color: var(--color-success);
+  border-color: var(--color-success-border);
+}
+
+html[data-theme="dark"] .flash-message[data-category="err"] {
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
+}
+
+html[data-theme="dark"] .flash-message[data-category="warn"] {
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
+  color: var(--color-warning);
+  border-color: var(--color-warning-border);
+}
+
+html[data-theme="dark"] .flash-message[data-category="info"] {
+  background: color-mix(in srgb, var(--color-info) 10%, var(--color-surface));
+  color: var(--color-info);
+  border-color: var(--color-info-border);
+}
+
+/* --- Alerts ------------------------------------------------- */
+html[data-theme="dark"] .alert-error {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
+}
+
+/* --- Reports ------------------------------------------------ */
+html[data-theme="dark"] .doctor-summary-row {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .reports-modal-header,
+html[data-theme="dark"] .reports-modal-footer {
+  border-color: var(--color-border);
+}
+
+/* --- Receipts ----------------------------------------------- */
+html[data-theme="dark"] .receipt-header {
+  background: linear-gradient(135deg, var(--color-surface-raised), var(--color-surface-sunken));
+  border-color: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .receipt-title {
+  color: var(--color-text);
+}
+
+html[data-theme="dark"] .receipt-subtitle {
+  color: var(--color-text-secondary);
+}
+
+html[data-theme="dark"] .receipt-section {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .receipt-action-btn {
+  background: var(--color-surface);
+}
+
+html[data-theme="dark"] .receipt-form .modal-patient-info {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .receipt-form .modal-payment-summary {
+  background: color-mix(in srgb, var(--color-info) 8%, var(--color-surface));
+  border-color: var(--color-info);
+}
+
+html[data-theme="dark"] .receipt-form .payment-row {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .receipt-form .modal-notes {
+  background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface));
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+/* --- Chips & badges ----------------------------------------- */
+html[data-theme="dark"] .page-chip {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .badge {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+html[data-theme="dark"] .info-chip.status-pill {
+  background: var(--color-success-bg);
+  border-color: var(--color-success-border);
+  color: var(--color-success);
+}
+
+html[data-theme="dark"] .view-toggle-btn.active {
+  background: color-mix(in srgb, var(--primary-color) 15%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--primary-color) 30%, var(--color-border));
+  color: var(--color-text);
+}
+
+/* --- Patient notes & pages ---------------------------------- */
+html[data-theme="dark"] .patient-notes,
+html[data-theme="dark"] .patient-pages {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+/* --- Merge preview ------------------------------------------ */
+html[data-theme="dark"] .merge-selection-preview {
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--color-surface));
+  border-color: var(--primary-color);
+}
+
+html[data-theme="dark"] .merge-suggestions {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+/* --- Scrollbars (webkit) ------------------------------------ */
+html[data-theme="dark"] .modal-body::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+}
+
+html[data-theme="dark"] .modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-faint);
+}
+
+/* --- Arabic section tint ------------------------------------ */
+html[data-theme="dark"] .arabic-section {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+/* ============================================================
+   5. THEME TOGGLE BUTTON
+   ============================================================ */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: var(--radius-full, 999px);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+}
+
+.theme-toggle-btn:hover {
+  transform: scale(1.1);
+}
+
+/* Show moon in light mode, sun in dark mode */
+.theme-icon-dark  { display: none; }
+.theme-icon-light { display: inline; }
+html[data-theme="dark"] .theme-icon-dark  { display: inline; }
+html[data-theme="dark"] .theme-icon-light { display: none; }
+
+/* ============================================================
+   6. SMOOTH THEME TRANSITION
+   Added via JS after first paint to prevent FOUC.
+   ============================================================ */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 0.3s ease,
+              color 0.3s ease,
+              border-color 0.3s ease,
+              box-shadow 0.3s ease !important;
+}
+
+/* ============================================================
+   7. PRINT PROTECTION
+   Always print in light mode regardless of theme.
+   ============================================================ */
+@media print {
+  html[data-theme="dark"] {
+    --color-bg: #ffffff;
+    --color-surface: #ffffff;
+    --color-surface-raised: #f8fafc;
+    --color-surface-sunken: #f3f4f6;
+    --color-text: #111827;
+    --color-text-secondary: #475569;
+    --color-text-muted: #6b7280;
+    --color-text-faint: #94a3b8;
+    --color-border: #e5e7eb;
+    --color-border-strong: #d1d5db;
+    --color-success: #16a34a;
+    --color-success-bg: #dcfce7;
+    --color-warning: #b45309;
+    --color-warning-bg: #fef3c7;
+    --color-danger: #b91c1c;
+    --color-danger-bg: #fee2e2;
+    --color-info: #0ea5e9;
+    --color-info-bg: #e0f2fe;
+    --ink: #111827;
+    --bg: #ffffff;
+    --card: #ffffff;
+    color-scheme: light;
+  }
+
+  .theme-toggle-btn { display: none !important; }
+}

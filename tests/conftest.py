@@ -1,4 +1,6 @@
+import os
 import re
+import shutil
 import sys
 import pathlib
 import re
@@ -15,16 +17,47 @@ from clinic_app import create_app
 from clinic_app.services.database import db as raw_db
 
 
+@pytest.fixture(scope="session")
+def _template_db(tmp_path_factory):
+    """Build a fully-migrated DB once per test session.
+
+    Every function-scoped ``app`` fixture copies this file instead of
+    running 18 Alembic migrations from scratch — makes the suite ~10×
+    faster.
+    """
+    db_path = tmp_path_factory.mktemp("template") / "app.db"
+    old_db = os.environ.get("CLINIC_DB_PATH")
+    old_key = os.environ.get("CLINIC_SECRET_KEY")
+    os.environ["CLINIC_DB_PATH"] = str(db_path)
+    os.environ["CLINIC_SECRET_KEY"] = "test-secret"
+    try:
+        _app = create_app()
+        # Push an app context so extensions close cleanly.
+        with _app.app_context():
+            pass
+    finally:
+        # Restore environment so monkeypatch in tests can work normally.
+        if old_db is None:
+            os.environ.pop("CLINIC_DB_PATH", None)
+        else:
+            os.environ["CLINIC_DB_PATH"] = old_db
+        if old_key is None:
+            os.environ.pop("CLINIC_SECRET_KEY", None)
+        else:
+            os.environ["CLINIC_SECRET_KEY"] = old_key
+    return db_path
+
+
 @pytest.fixture
-def app(tmp_path, monkeypatch):
+def app(tmp_path, monkeypatch, _template_db):
+    # Copy pre-migrated template DB — avoids running Alembic per test.
     db_path = tmp_path / "app.db"
+    shutil.copy2(_template_db, db_path)
     monkeypatch.setenv("CLINIC_DB_PATH", str(db_path))
     monkeypatch.setenv("CLINIC_SECRET_KEY", "test-secret")
+    monkeypatch.setenv("CLINIC_AUTO_MIGRATE", "0")  # Already migrated
     app = create_app()
     app.config.update(TESTING=True, WTF_CSRF_ENABLED=True)
-    runner = app.test_cli_runner()
-    result = runner.invoke(args=["db", "upgrade"])
-    assert result.exit_code == 0, result.output
     yield app
 
 

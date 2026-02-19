@@ -2,13 +2,9 @@
 
 import re
 
-from clinic_app.app import create_app
 
-
-def test_vanilla_route():
+def test_vanilla_route(app):
     """Appointments vanilla route returns 200 with required JSON script tags."""
-    app = create_app()
-
     with app.test_client() as client:
         response = client.get('/appointments/vanilla')
 

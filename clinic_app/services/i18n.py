@@ -979,6 +979,8 @@ I18N: Dict[str, Dict[str, str]] = {
         # Copy watermark feature
         "copy_watermark": "CLINIC COPY",
         "copy_watermark_description": "Marks receipts as clinic copies for internal use",
+        # Theme toggle (Phase 1 dark mode)
+        "toggle_theme": "Toggle theme",
     },
     "ar": {
         "app_title": "تطبيق العيادة",
@@ -1953,6 +1955,8 @@ I18N: Dict[str, Dict[str, str]] = {
         # Copy watermark feature
         "copy_watermark": "نسخة العيادة",
         "copy_watermark_description": "يميز الإيصالات كنسخ داخلية للاستخدام في العيادة",
+        # Theme toggle (Phase 1 dark mode)
+        "toggle_theme": "تبديل المظهر",
     },
 }
 

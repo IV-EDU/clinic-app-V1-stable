@@ -71,6 +71,9 @@
       {% endif %}
     </div>
     <div class="end" style="justify-content:flex-end">
+      <button type="button" class="theme-toggle-btn secondary" onclick="toggleTheme()" title="{{ t('toggle_theme') }}">
+        <span class="theme-icon-light">🌙</span><span class="theme-icon-dark">☀️</span>
+      </button>
       <div class="lang-toggle" style="display:flex;gap:4px;align-items:center">
         <form method="post" action="{{ url_for('core.set_lang') }}" style="display:inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

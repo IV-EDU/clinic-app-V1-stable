@@ -15,7 +15,7 @@
   font-display: swap;
 }
 
-:root{--ink:#111827;--muted:#6b7280;--border:#e5e7eb;--bg:#f7f7f8;--card:#fff;--green:#16a34a;--green-bg:#dcfce7;--red:#b91c1c;--red-bg:#fee2e2;--yellow:#b45309;--yellow-bg:#fef3c7;--metric-color:var(--primary-color,#2563eb)}
+/* `:root` tokens moved to design-system.css (Phase 1 CSS Design System) */
 
 /* Global Typography with Arabic Support */
 *{box-sizing:border-box}

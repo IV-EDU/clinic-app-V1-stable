@@ -361,7 +361,7 @@
 
 | Phase | Status | Date Started | Date Done | Notes |
 |-------|--------|-------------|-----------|-------|
-| 1 | Not started | | | |
+| 1 | Done | 2026-02-19 | 2026-02-19 | design-system.css, dark toggle, FOUC prevention, bridge aliases |
 | 2 | Not started | | | |
 | 3 | Not started | | | |
 | 4 | Not started | | | |

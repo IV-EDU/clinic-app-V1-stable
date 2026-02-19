@@ -39,6 +39,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Shared macros: `templates/_macros.html`
 
 - **Styling**
+  - Design token system + dark mode: `static/css/design-system.css`
   - Global styles and components: `static/css/app.css`
   - Theme tokens and utilities: `static/css/theme-system.css`
 

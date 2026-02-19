@@ -11,10 +11,10 @@
     #fdfdfd 52%,
     color-mix(in srgb, var(--primary-color, #3b82f6) 4%, #f9fafb) 100%
   );
-  --bg-surface: #ffffff;
+  --bg-surface: var(--color-surface, #ffffff);
   --text-primary: var(--ink, #111827);
-  --text-secondary: #475569;
-  --text-muted: #6b7280;
+  --text-secondary: var(--color-text-secondary, #475569);
+  --text-muted: var(--color-text-muted, #6b7280);
   --border-strong: var(--border, #e5e7eb);
   --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.06);
   --radius-md: 12px;
@@ -34,7 +34,7 @@
   --danger-color: var(--red, #b91c1c);
   --danger-bg: var(--red-bg, #fee2e2);
   --info-color: var(--accent-color, #0ea5e9);
-  --info-bg: #e0f2fe;
+  --info-bg: var(--color-info-bg, #e0f2fe);
 }
 
 /* Unified, optional utility styles (prefix u- to avoid conflicts) */

@@ -1,6 +1,6 @@
 # Clinic-App-Local - Agent Guide
 
-> **Last Updated:** 2025-02-13
+> **Last Updated:** 2026-02-19
 >
 > This file is the single source of truth for any AI agent working on this codebase.
 > Reading this file should give you enough context to work without reading all source files.
@@ -33,7 +33,15 @@ Skipping doc updates creates drift that makes future work harder and wastes user
 - **Context:** This is a **production system** for a real dental clinic. Downtime means patients cannot be scheduled, records cannot be accessed, and payments cannot be processed.
 - **Language:** The clinic operates in Arabic. The app is bilingual (English + Arabic UI). Arabic/RTL is first-class.
 - **Platform:** Windows only. The app runs locally via `Start-Clinic.bat` on port 8080. No cloud, no Docker.
+- **Default Login Credentials:** Username: `admin` | Password: `admin` — **USE THESE EXACTLY. DO NOT GUESS.** Failed logins trigger rate limiting (5 per 15 min). For tests (pytest), use: username `admin`, password `password123` (see `tests/conftest.py`).
 - **Preferred help:** Step-by-step, plain-English explanations. Show what changed and why.
+
+> **⚠️ CRITICAL — NEVER CHANGE THE ADMIN PASSWORD ⚠️**
+>
+> The production credentials are `admin` / `admin`. **DO NOT change, "improve", or "secure" these credentials.**
+> A previous AI agent changed the admin password and **locked the user out of their own production system**.
+> If you need a test user, **create a new user** — do NOT modify the `admin` account.
+> This rule is absolute. No exceptions. No "improving security." The user will reset it anyway and you will have wasted their time.
 
 When unsure: say what you think the user wants, ask **one** clear question, propose a small, low-risk plan.
 
@@ -61,6 +69,8 @@ When unsure: say what you think the user wants, ask **one** clear question, prop
 - `wsgi.py` -> calls `create_app()` from `clinic_app/__init__.py`
 - `Start-Clinic.bat` -> creates `.venv`, installs deps, runs `wsgi.py` on port 8080
 - `Run-Tests.bat` -> runs `pytest`
+- `Run-E2E-Tests.bat` -> runs Playwright Chromium smoke tests on an isolated temp DB
+- `Run-Validation.bat` -> runs full validation (`pytest` + Playwright smoke)
 - `Run-Migrations.bat` -> runs Alembic
 
 ### App Factory Flow (`create_app()`)
@@ -354,7 +364,7 @@ data/
 
 ### Be extra careful with (explain risk + wait for approval):
 - Database schema/migrations
-- Batch scripts (`Start-Clinic.bat`, `Run-Tests.bat`, `Run-Migrations.bat`)
+- Batch scripts (`Start-Clinic.bat`, `Run-Tests.bat`, `Run-E2E-Tests.bat`, `Run-Validation.bat`, `Run-Migrations.bat`)
 - Import logic in `admin_settings.py` (lines ~1880-3500) -- rated 8/10, DO NOT refactor
 - Backup/restore logic -- uses SQLite backup API + marker-based restore
 - Patient merge logic in `services/patients.py`
@@ -377,8 +387,23 @@ data/
 2. Read only what is needed.
 3. Make small, surgical changes in the relevant blueprint/template.
 4. Keep code/docs in sync when user-facing features change.
-5. Run tests when backend logic changes (prefer `Run-Tests.bat`).
+5. Run validation after changes: prefer `Run-Validation.bat` (full `pytest` + Playwright smoke). Use `Run-Tests.bat` for logic-only checks.
 6. **Update docs** per the Auto-Update Rule (top of this file).
+
+### Hard Rules for AI Agents
+
+1. **One feature per session.** Never combine multiple UI Redesign phases or unrelated features in a single task. One phase = one task = one commit.
+2. **Tests MUST pass before declaring done.** Run `pytest` (or `Run-Validation.bat`) and confirm 0 failures. If tests fail, fix them before finishing.
+3. **No whitespace-only changes.** Do NOT change blank lines, trailing whitespace, or formatting in files you are not functionally modifying. This pollutes git blame.
+4. **No new files without approval.** Do NOT create new markdown docs (VISION.md, etc.), config files (.kilocode/), or tool-specific files unless the user explicitly asks.
+5. **Work on a branch when possible.** Use `git checkout -b feature/xyz` before starting work. The user reviews and merges to main.
+6. **No cosmetic README rewrites.** Only add/remove lines that reflect actual feature changes. Do not rewrite tone, structure, or marketing language.
+7. **Pre-flight checklist before declaring done:**
+   - [ ] All tests pass (pytest + E2E if applicable)
+   - [ ] No whitespace-only diffs in unchanged files
+   - [ ] No new files that weren't in the plan
+   - [ ] Docs updated per Auto-Update Rule
+   - [ ] Changes match the original plan — nothing extra
 
 ### Context Checklist (before starting work)
 **Always check these files first:**
@@ -396,7 +421,7 @@ data/
 ## 13) Known Issues and Decisions
 
 ### Known Bugs
-1. `admin_settings.py` lines ~3071-3078: 4x duplicated `merge_mode` fallback check (copy-paste). Harmless but should be cleaned up.
+1. ~~`admin_settings.py` lines ~3055-3062: 4x duplicated `merge_mode` fallback check (copy-paste).~~ **Fixed 2026-02-19** — reduced to single check.
 2. Legacy expense system has stub functions for edit_supplier/edit_material ("not yet implemented").
 
 ### Architectural Decisions (agreed with user)
@@ -452,9 +477,9 @@ Rules:
 
 ## 17) Running and Testing
 
-- **Preferred (Windows):** `Start-Clinic.bat` (app), `Run-Tests.bat` (tests)
-- **Direct:** `.venv\Scripts\python wsgi.py`, `.venv\Scripts\python -m pytest`
-- Run tests when backend logic changes.
+- **Preferred (Windows):** `Start-Clinic.bat` (app), `Run-Validation.bat` (full validation), `Run-Tests.bat` (logic-only), `Run-E2E-Tests.bat` (browser smoke)
+- **Direct:** `.venv\Scripts\python wsgi.py`, `.venv\Scripts\python -m pytest`, `npm run test:e2e`
+- Playwright smoke tests run on an isolated temp DB via `devtools/playwright_server.py` (do not point E2E at `data/app.db`).
 
 ---
 
@@ -495,10 +520,17 @@ After finishing a task, always provide:
 - **~32 test files** covering: core smoke, auth/security, patients, payments, appointments, reports, i18n, database
 - Run via `Run-Tests.bat` or `pytest`
 
+### Browser E2E (`e2e/tests/`)
+- **Framework:** Node Playwright (`@playwright/test`) with config in `playwright.config.ts`
+- **Current scope:** smoke coverage (login, home load, appointments JSON script tags, patient form load)
+- **Run via:** `Run-E2E-Tests.bat` or `npm run test:e2e`
+
 ### Dev Tools (`devtools/`)
 - `test_simple_expenses.py`, `test_expense_system.py` -- expense dev scripts
 - `test_duplicates.py` -- duplicate detection testing
 - `check_template.py` -- appointment template checker
+- `playwright_server.py` -- isolated Flask launcher for Playwright E2E
+- `run_playwright_smoke.py` -- Python wrapper for `npm run test:e2e`
 
 ---
 

@@ -22,17 +22,23 @@ clinic_app/             ← Main Python package
 templates/              ← Jinja2 HTML pages
 static/css/ static/js/  ← Frontend assets (Tailwind-based CSS, vanilla JS)
 tests/                  ← pytest suite (~32 files)
+e2e/tests/              ← Playwright browser smoke suite
 data/                   ← Runtime data (DB, backups, images) — DO NOT TOUCH
 ```
 
 ## Key Conventions
-- Plan first (2–5 bullets), then implement. One feature at a time.
+- Plan first (2–5 bullets), then implement. **One feature per session — never combine multiple phases.**
 - Reuse helpers in `clinic_app/services/`. Follow existing code style.
 - Use `render_page()` for template rendering, `T()` for i18n strings.
 - Money stored in cents (integer). IDs are UUID text strings.
 - Runtime deps → `requirements.txt`. Dev deps → `requirements.dev.txt`.
-- Run tests via `Run-Tests.bat` after backend changes.
+- Run `Run-Validation.bat` after code changes (full `pytest` + Playwright smoke).
+- Use `Run-Tests.bat` for logic-only runs and `Run-E2E-Tests.bat` for browser-only runs.
+- **Tests MUST pass before declaring done.** No exceptions.
+- **No whitespace-only changes** in files you're not functionally modifying.
+- **No new files** (markdown, configs, etc.) unless the user explicitly asks.
 - Start app via `Start-Clinic.bat` (port 8080).
+- Login: `admin` / `admin`. **NEVER change the admin password.** A previous agent did this and locked the user out.
 
 ## Active Work
 - **UI Redesign:** See `UI_REDESIGN_PLAN.md` for the 15-phase plan.

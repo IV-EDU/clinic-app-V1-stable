@@ -1,0 +1,14 @@
+{
+  "name": "clinic-app-local-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright smoke tests for Clinic-App-Local",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2"
+  }
+}

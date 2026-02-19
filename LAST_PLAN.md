@@ -65,6 +65,7 @@
 
 ## Safety & Testing Checklist (per phase)
 - Use existing scripts: `Run-Tests.bat` after backend changes; `Start-Clinic.bat` for manual checks.
+- Prefer `Run-Validation.bat` for post-change verification (`pytest` + Playwright smoke on isolated temp DB).
 - No new paths outside `data/` and `static/uploads/`.
 - Arabic and English manual verification on key pages each phase.
 - Migrations are small and reversible; avoid touching existing tables beyond the new `theme_settings`.

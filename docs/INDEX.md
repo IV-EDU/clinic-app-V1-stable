@@ -329,11 +329,20 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Database: `test_database_service.py`
   - Print / receipts: `test_print_receipts.py`
 
+- **Browser smoke tests** (`e2e/tests/`)
+  - Shared helper: `e2e/tests/helpers.ts`
+  - Login + home smoke: `e2e/tests/auth_home_smoke.spec.ts`
+  - Appointments JSON script tags smoke: `e2e/tests/appointments_json_smoke.spec.ts`
+  - New patient form + CSRF smoke: `e2e/tests/patient_form_smoke.spec.ts`
+  - Config: `playwright.config.ts`
+
 - **Dev tools** (`devtools/`)
   - Simple expenses dev script: `devtools/test_simple_expenses.py`
   - Expense system dev script: `devtools/test_expense_system.py`
   - Duplicate detection dev script: `devtools/test_duplicates.py`
   - Appointment template checker: `devtools/check_template.py`
+  - Playwright isolated server launcher: `devtools/playwright_server.py`
+  - Python wrapper for Playwright smoke: `devtools/run_playwright_smoke.py`
 
 ---
 
@@ -373,6 +382,8 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Alembic config: `alembic.ini`
   - PyInstaller spec: `clinic_app.spec`
   - Dependencies: `requirements.txt` (runtime), `requirements.dev.txt` (dev/test)
+  - Node test dependency + scripts: `package.json`
+  - Playwright config: `playwright.config.ts`
   - Git ignore: `.gitignore`
   - Cline ignore: `.clineignore`
 
@@ -380,6 +391,8 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Start app: `Start-Clinic.bat` (port 8080)
   - Start preview: `Start-Clinic-Preview.bat`
   - Run tests: `Run-Tests.bat`
+  - Run browser smoke tests: `Run-E2E-Tests.bat`
+  - Run full validation (pytest + browser smoke): `Run-Validation.bat`
   - Run migrations: `Run-Migrations.bat`
   - Build exe: `Build-Clinic.bat`
   - Release packaging: `Make-Clinic-Release.bat`, `Make-Clinic-Release-Zip.bat`, `Make-Clinic-Zip.bat`

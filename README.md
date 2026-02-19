@@ -68,6 +68,7 @@ Important locations:
 
 - static/         → CSS, JS, images
 - tests/          → pytest tests for the project
+- e2e/tests/      → Playwright browser smoke tests
 - data/           → local database files and data (real clinic data – important)
 
 Root-level important files:
@@ -75,9 +76,13 @@ Root-level important files:
 - wsgi.py              → entry point for the app
 - Start-Clinic.bat     → run the app on Windows
 - Run-Tests.bat        → run tests on Windows
+- Run-E2E-Tests.bat    → run Playwright browser smoke tests
+- Run-Validation.bat   → run full validation (pytest + Playwright smoke)
 - Run-Migrations.bat   → run database migrations
 - requirements.txt     → runtime Python dependencies
 - requirements.dev.txt → dev/test dependencies
+- package.json         → Node scripts/dependency for Playwright
+- playwright.config.ts → Playwright config (isolated E2E server + Chromium)
 - README.md            → this file
 
 --------------------------------------------------
@@ -114,7 +119,14 @@ If the appointments page is broken, it usually means:
 4. Running tests
 --------------------------------------------------
 
-To run tests on Windows:
+Recommended for non-coders after any code change:
+
+- Run-Validation.bat
+  - Runs full `pytest` suite (backend/function logic)
+  - Runs Playwright Chromium smoke tests (real browser checks)
+  - Returns one pass/fail result
+
+Other options:
 
 Option 1: Double-click
 - Run-Tests.bat
@@ -123,8 +135,13 @@ Option 2: From a terminal in the project folder, with the virtual environment ac
 
 - .venv\Scripts\python -m pytest
 
+Browser smoke tests only:
+- Run-E2E-Tests.bat
+- or: npm run test:e2e
+
 All tests live under:
 - tests/
+- e2e/tests/
 
 --------------------------------------------------
 5. Requirements
@@ -134,11 +151,20 @@ Dependencies are listed in:
 
 - requirements.txt          → main runtime dependencies
 - requirements.dev.txt      → dev/test tools (like pytest, etc.)
+- package.json              → Playwright dependency + npm scripts
 
 Inside the virtual environment you can install them manually with:
 
 - pip install -r requirements.txt
 - pip install -r requirements.dev.txt
+
+Install Playwright Node dependency:
+
+- npm install
+
+Install Chromium browser for Playwright (first run only):
+
+- npx playwright install chromium
 
 --------------------------------------------------
 6. Payments & doctor selection
@@ -192,6 +218,7 @@ Inside the virtual environment you can install them manually with:
   - See `LAST_PLAN.md` for the current V1 UI/branding/Arabic roadmap.
 - Always start by showing a short plan before making changes.
 - Prefer small, local edits over big refactors, and keep docs updated when features change.
+- After code changes, run `Run-Validation.bat` by default (full `pytest` + Playwright smoke).
 
 ==================================================
 END OF README CONTENT

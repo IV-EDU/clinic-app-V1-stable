@@ -109,8 +109,8 @@ html[data-theme="dark"] {
   /* -- Text -------------------------------------------------- */
   --color-text:            #e5e7eb;
   --color-text-secondary:  #94a3b8;
-  --color-text-muted:      #64748b;
-  --color-text-faint:      #475569;
+  --color-text-muted:      #8b9aab;
+  --color-text-faint:      #64748b;
 
   /* -- Borders ----------------------------------------------- */
   --color-border:          #2d3139;
@@ -177,9 +177,9 @@ html[data-theme="dark"] {
 html[data-theme="dark"] input,
 html[data-theme="dark"] select,
 html[data-theme="dark"] textarea {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-color: var(--color-border);
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
 }
 
 /* --- Header & navigation ------------------------------------ */
@@ -188,141 +188,216 @@ html[data-theme="dark"] .u-app-header {
   background: linear-gradient(90deg,
     color-mix(in srgb, var(--primary-color, #3b82f6) 10%, var(--color-surface)) 0%,
     var(--color-surface) 52%,
-    color-mix(in srgb, var(--primary-color, #3b82f6) 10%, var(--color-surface)) 100%);
-  border-bottom-color: var(--color-border);
+    color-mix(in srgb, var(--primary-color, #3b82f6) 10%, var(--color-surface)) 100%) !important;
+  border-bottom-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] .kebab-btn {
-  background: color-mix(in srgb, var(--primary-color) 12%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--primary-color) 25%, var(--color-border));
+  background: color-mix(in srgb, var(--primary-color) 12%, var(--color-surface)) !important;
+  border-color: color-mix(in srgb, var(--primary-color) 25%, var(--color-border)) !important;
 }
 
 html[data-theme="dark"] .kebab-menu {
-  background: var(--color-surface-raised);
-  border-color: var(--color-border);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
 }
 
 html[data-theme="dark"] .kebab-menu a {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-  color: var(--color-text);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
 }
 
 /* --- Buttons ------------------------------------------------ */
 html[data-theme="dark"] .btn.secondary,
 html[data-theme="dark"] button.secondary,
 html[data-theme="dark"] a.secondary {
-  background: var(--color-surface-raised);
-  color: var(--color-text);
-  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border-strong) !important;
 }
 
 html[data-theme="dark"] .btn.secondary:not(:disabled):hover,
 html[data-theme="dark"] button.secondary:not(:disabled):hover {
-  background: var(--color-surface-sunken);
+  background: var(--color-surface-sunken) !important;
 }
 
 html[data-theme="dark"] .u-btn.secondary {
-  background: var(--color-surface-raised);
-  border-color: var(--color-border-strong);
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border-strong) !important;
 }
 
 html[data-theme="dark"] .u-chip {
-  background: color-mix(in srgb, var(--primary-color) 8%, var(--color-surface-raised));
-  border-color: color-mix(in srgb, var(--primary-color) 20%, var(--color-border));
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--color-surface-raised)) !important;
+  border-color: color-mix(in srgb, var(--primary-color) 20%, var(--color-border)) !important;
 }
 
 /* --- Login -------------------------------------------------- */
 html[data-theme="dark"] .login-card {
-  background: var(--color-surface);
+  background: var(--color-surface) !important;
 }
 
 /* --- Grid cells --------------------------------------------- */
 html[data-theme="dark"] .grid .h {
-  background: var(--color-surface-raised);
-  color: var(--color-text);
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text) !important;
 }
 
 html[data-theme="dark"] .grid .c,
 html[data-theme="dark"] .grid.excel .c {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-  color: var(--color-text);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
 }
 
 /* --- Tables ------------------------------------------------- */
 html[data-theme="dark"] table {
-  background: var(--color-surface);
+  background: var(--color-surface) !important;
 }
 
 html[data-theme="dark"] table th {
-  background: var(--color-surface-raised);
-  color: var(--color-text-secondary);
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text-secondary) !important;
+  border-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] table td {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border-bottom-color: var(--color-border);
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] table tbody tr {
+  background: transparent !important;
+}
+
+html[data-theme="dark"] table tbody tr:hover {
+  background: transparent !important;
+}
+
+html[data-theme="dark"] table tbody tr:nth-child(even) {
+  background: transparent !important;
+}
+
+html[data-theme="dark"] table tbody tr:nth-child(even):hover {
+  background: transparent !important;
 }
 
 html[data-theme="dark"] table tbody tr:hover td,
 html[data-theme="dark"] .patient-table tbody tr:hover td {
-  background: var(--color-surface-raised);
+  background: var(--color-surface-raised) !important;
 }
 
 html[data-theme="dark"] table tbody tr:nth-child(even) td {
-  background: var(--color-surface-sunken);
+  background: var(--color-surface-sunken) !important;
+}
+
+/* Protect admin user row highlight in dark mode */
+html[data-theme="dark"] tr.protected td {
+  background: rgba(99, 102, 241, 0.08) !important;
+}
+
+/* --- Reports tables ----------------------------------------- */
+html[data-theme="dark"] .reports-table td.c {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .reports-table thead th {
+  color: var(--color-text-secondary) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .reports-empty {
+  color: var(--color-text-muted) !important;
+}
+
+/* --- Receipt / print table ---------------------------------- */
+html[data-theme="dark"] .receipt-table th,
+html[data-theme="dark"] .receipt-table td {
+  border-color: var(--color-border) !important;
 }
 
 /* --- Modals ------------------------------------------------- */
+html[data-theme="dark"] .modal-dialog {
+  background: var(--color-surface) !important;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5) !important;
+}
+
 html[data-theme="dark"] .modal-content,
 html[data-theme="dark"] .schedule-modal__panel,
 html[data-theme="dark"] .reports-modal-dialog {
-  background: var(--color-surface);
-  color: var(--color-text);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5) !important;
 }
 
 html[data-theme="dark"] .modal-header,
 html[data-theme="dark"] .modal-footer {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] .modal-title {
-  color: var(--color-text);
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .modal-close,
+html[data-theme="dark"] .modal-header .close,
+html[data-theme="dark"] .close {
+  color: var(--color-text-secondary) !important;
 }
 
 html[data-theme="dark"] .modal-close:hover,
 html[data-theme="dark"] .modal-header .close:hover,
 html[data-theme="dark"] .reports-modal-close:hover {
-  background: var(--color-surface-raised);
-  color: var(--color-text);
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text) !important;
 }
 
 html[data-theme="dark"] .modal-body {
   scrollbar-color: var(--color-border-strong) transparent;
 }
 
+html[data-theme="dark"] .modal-body p,
+html[data-theme="dark"] .modal-body span,
+html[data-theme="dark"] .modal-body label,
+html[data-theme="dark"] .modal-body div {
+  color: inherit;
+}
+
 /* --- Forms -------------------------------------------------- */
 html[data-theme="dark"] .form-label {
-  color: var(--color-text-secondary);
+  color: var(--color-text-secondary) !important;
 }
 
 html[data-theme="dark"] .form-input,
 html[data-theme="dark"] .form-select,
 html[data-theme="dark"] .modal-form-input {
   background: var(--color-surface-sunken) !important;
-  border-color: var(--color-border);
-  color: var(--color-text);
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
 }
 
 html[data-theme="dark"] .form-input:focus,
 html[data-theme="dark"] .form-select:focus {
-  border-color: var(--primary-color, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: var(--primary-color, #3b82f6) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+}
+
+html[data-theme="dark"] .form-checkbox-group,
+html[data-theme="dark"] .checkbox-group {
+  border-color: var(--color-border) !important;
+}
+
+/* --- Hint text ---------------------------------------------- */
+html[data-theme="dark"] .hint,
+html[data-theme="dark"] .reports-hint,
+html[data-theme="dark"] .h {
+  color: var(--color-text-muted) !important;
 }
 
 /* --- Stat tiles & meta blocks ------------------------------- */
@@ -335,8 +410,24 @@ html[data-theme="dark"] .payment-field,
 html[data-theme="dark"] .payment-note,
 html[data-theme="dark"] .payment-field-group,
 html[data-theme="dark"] .meta-block {
-  background: var(--color-surface-raised);
-  border-color: var(--color-border);
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* --- Summary labels ----------------------------------------- */
+html[data-theme="dark"] .summary-label,
+html[data-theme="dark"] .box-label,
+html[data-theme="dark"] .pill-label {
+  color: var(--color-text-secondary) !important;
+}
+
+/* --- Admin card title & header ------------------------------ */
+html[data-theme="dark"] .card-title {
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .card-header {
+  border-color: var(--color-border) !important;
 }
 
 /* --- Appointments ------------------------------------------- */
@@ -344,213 +435,225 @@ html[data-theme="dark"] .appointment-hero {
   background: linear-gradient(90deg,
     color-mix(in srgb, var(--primary-color) 8%, var(--color-surface)) 0%,
     var(--color-surface) 52%,
-    color-mix(in srgb, var(--primary-color) 8%, var(--color-surface)) 100%);
+    color-mix(in srgb, var(--primary-color) 8%, var(--color-surface)) 100%) !important;
 }
 
 html[data-theme="dark"] .appt-card {
-  background: var(--color-surface-raised);
-  border-color: var(--color-border);
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] .timeline-hour {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] .empty-hour {
-  border-color: var(--color-border);
-  color: var(--color-text-faint);
+  border-color: var(--color-border) !important;
+  color: var(--color-text-faint) !important;
 }
 
 html[data-theme="dark"] .appt-body .pill {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-  color: var(--color-text);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
 }
 
 html[data-theme="dark"] .appt-body .notes {
-  background: var(--color-surface);
-  border-color: var(--color-border);
-  color: var(--color-text-secondary);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-secondary) !important;
 }
 
 html[data-theme="dark"] .appt-card.status-done {
-  background: color-mix(in srgb, #06b6d4 10%, var(--color-surface));
-  border-color: color-mix(in srgb, #06b6d4 25%, var(--color-border));
+  background: color-mix(in srgb, #06b6d4 10%, var(--color-surface)) !important;
+  border-color: color-mix(in srgb, #06b6d4 25%, var(--color-border)) !important;
 }
 
 html[data-theme="dark"] .appt-card.status-in_progress {
-  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-warning) 25%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface)) !important;
+  border-color: color-mix(in srgb, var(--color-warning) 25%, var(--color-border)) !important;
 }
 
 html[data-theme="dark"] .appt-card.status-cancelled {
-  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--color-danger) 25%, var(--color-border));
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface)) !important;
+  border-color: color-mix(in srgb, var(--color-danger) 25%, var(--color-border)) !important;
 }
 
 html[data-theme="dark"] .appt-snippet {
-  background: var(--color-surface-raised);
-  border-color: var(--color-border);
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
 }
 
 /* --- Payments ----------------------------------------------- */
+html[data-theme="dark"] .payment-card,
+html[data-theme="dark"] .payment-item {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
 html[data-theme="dark"] .payment-card.ok,
 html[data-theme="dark"] .payment-item.ok {
-  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
-  border-color: var(--color-success-border);
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface)) !important;
+  border-color: var(--color-success-border) !important;
 }
 
 html[data-theme="dark"] .payment-card.due,
 html[data-theme="dark"] .payment-item.due {
-  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
-  border-color: var(--color-danger-border);
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface)) !important;
+  border-color: var(--color-danger-border) !important;
 }
 
 html[data-theme="dark"] .payment-form-card .grid.excel {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
 }
 
 /* --- Balance boxes ------------------------------------------ */
 html[data-theme="dark"] .bal-0 {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-  border-color: var(--color-success-border);
+  background: var(--color-success-bg) !important;
+  color: var(--color-success) !important;
+  border-color: var(--color-success-border) !important;
 }
 
 html[data-theme="dark"] .bal-pos {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
-  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg) !important;
+  color: var(--color-danger) !important;
+  border-color: var(--color-danger-border) !important;
 }
 
 /* --- Flash messages ----------------------------------------- */
 html[data-theme="dark"] .flash-message {
-  background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
-  color: var(--color-success);
-  border-color: var(--color-success-border);
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface)) !important;
+  color: var(--color-success) !important;
+  border-color: var(--color-success-border) !important;
 }
 
 html[data-theme="dark"] .flash-message[data-category="err"] {
-  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
-  color: var(--color-danger);
-  border-color: var(--color-danger-border);
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface)) !important;
+  color: var(--color-danger) !important;
+  border-color: var(--color-danger-border) !important;
 }
 
 html[data-theme="dark"] .flash-message[data-category="warn"] {
-  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface));
-  color: var(--color-warning);
-  border-color: var(--color-warning-border);
+  background: color-mix(in srgb, var(--color-warning) 10%, var(--color-surface)) !important;
+  color: var(--color-warning) !important;
+  border-color: var(--color-warning-border) !important;
 }
 
 html[data-theme="dark"] .flash-message[data-category="info"] {
-  background: color-mix(in srgb, var(--color-info) 10%, var(--color-surface));
-  color: var(--color-info);
-  border-color: var(--color-info-border);
+  background: color-mix(in srgb, var(--color-info) 10%, var(--color-surface)) !important;
+  color: var(--color-info) !important;
+  border-color: var(--color-info-border) !important;
 }
 
 /* --- Alerts ------------------------------------------------- */
 html[data-theme="dark"] .alert-error {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
-  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg) !important;
+  color: var(--color-danger) !important;
+  border-color: var(--color-danger-border) !important;
 }
 
 /* --- Reports ------------------------------------------------ */
 html[data-theme="dark"] .doctor-summary-row {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] .reports-modal-header,
 html[data-theme="dark"] .reports-modal-footer {
-  border-color: var(--color-border);
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .reports-summary-grid .summary-box,
+html[data-theme="dark"] .reports-summary-card {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
 }
 
 /* --- Receipts ----------------------------------------------- */
 html[data-theme="dark"] .receipt-header {
-  background: linear-gradient(135deg, var(--color-surface-raised), var(--color-surface-sunken));
-  border-color: var(--color-border-strong);
+  background: linear-gradient(135deg, var(--color-surface-raised), var(--color-surface-sunken)) !important;
+  border-color: var(--color-border-strong) !important;
 }
 
 html[data-theme="dark"] .receipt-title {
-  color: var(--color-text);
+  color: var(--color-text) !important;
 }
 
 html[data-theme="dark"] .receipt-subtitle {
-  color: var(--color-text-secondary);
+  color: var(--color-text-secondary) !important;
 }
 
 html[data-theme="dark"] .receipt-section {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] .receipt-action-btn {
-  background: var(--color-surface);
+  background: var(--color-surface) !important;
 }
 
 html[data-theme="dark"] .receipt-form .modal-patient-info {
-  background: var(--color-surface-raised);
-  border-color: var(--color-border);
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] .receipt-form .modal-payment-summary {
-  background: color-mix(in srgb, var(--color-info) 8%, var(--color-surface));
-  border-color: var(--color-info);
+  background: color-mix(in srgb, var(--color-info) 8%, var(--color-surface)) !important;
+  border-color: var(--color-info) !important;
 }
 
 html[data-theme="dark"] .receipt-form .payment-row {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] .receipt-form .modal-notes {
-  background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface));
-  border-color: var(--color-warning);
-  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 8%, var(--color-surface)) !important;
+  border-color: var(--color-warning) !important;
+  color: var(--color-warning) !important;
 }
 
 /* --- Chips & badges ----------------------------------------- */
 html[data-theme="dark"] .page-chip {
-  background: var(--color-surface-raised);
-  border-color: var(--color-border);
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] .badge {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
 }
 
 html[data-theme="dark"] .info-chip.status-pill {
-  background: var(--color-success-bg);
-  border-color: var(--color-success-border);
-  color: var(--color-success);
+  background: var(--color-success-bg) !important;
+  border-color: var(--color-success-border) !important;
+  color: var(--color-success) !important;
 }
 
 html[data-theme="dark"] .view-toggle-btn.active {
-  background: color-mix(in srgb, var(--primary-color) 15%, var(--color-surface));
-  border-color: color-mix(in srgb, var(--primary-color) 30%, var(--color-border));
-  color: var(--color-text);
+  background: color-mix(in srgb, var(--primary-color) 15%, var(--color-surface)) !important;
+  border-color: color-mix(in srgb, var(--primary-color) 30%, var(--color-border)) !important;
+  color: var(--color-text) !important;
 }
 
 /* --- Patient notes & pages ---------------------------------- */
 html[data-theme="dark"] .patient-notes,
 html[data-theme="dark"] .patient-pages {
-  background: var(--color-surface);
-  border-color: var(--color-border);
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
 }
 
 /* --- Merge preview ------------------------------------------ */
 html[data-theme="dark"] .merge-selection-preview {
-  background: color-mix(in srgb, var(--primary-color) 8%, var(--color-surface));
-  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 8%, var(--color-surface)) !important;
+  border-color: var(--primary-color) !important;
 }
 
 html[data-theme="dark"] .merge-suggestions {
-  background: var(--color-surface-raised);
-  border-color: var(--color-border);
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
 }
 
 /* --- Scrollbars (webkit) ------------------------------------ */
@@ -662,6 +765,10 @@ html[data-theme="dark"] .print-receipt-btn {
 
 html[data-theme="dark"] .print-receipt-btn:hover {
   background: var(--color-surface-sunken) !important;
+}
+
+html[data-theme="dark"] .print-actions {
+  border-color: var(--color-border) !important;
 }
 
 /* --- Patient detail (summary, meta) ------------------------- */
@@ -860,6 +967,43 @@ html[data-theme="dark"] .status-badge-doctor {
 html[data-theme="dark"] .status-badge-reception {
   background: rgba(245, 158, 11, 0.15) !important;
   color: #fcd34d !important;
+}
+
+/* Permission badges & "more" badge in admin */
+html[data-theme="dark"] .status-badge.permission {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #93c5fd !important;
+}
+
+html[data-theme="dark"] .status-badge.more {
+  background: var(--color-surface-sunken) !important;
+  color: var(--color-text-muted) !important;
+}
+
+html[data-theme="dark"] .status-badge.inactive {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #fca5a5 !important;
+}
+
+/* Logo preview boxes */
+html[data-theme="dark"] .logo-preview {
+  background: var(--color-surface-sunken) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-muted) !important;
+}
+
+html[data-theme="dark"] .logo-placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+/* Permission groups */
+html[data-theme="dark"] .permission-group {
+  border-color: var(--color-border) !important;
+  background: var(--color-surface-sunken) !important;
+}
+
+html[data-theme="dark"] .permission-group-title {
+  color: var(--color-text) !important;
 }
 
 html[data-theme="dark"] .duplicate-card {
@@ -1170,31 +1314,49 @@ html[data-theme="dark"] input[type="datetime-local"] {
 }
 
 /* ============================================================
-   5. THEME TOGGLE BUTTON
+   5. THEME TOGGLE BUTTON (Fixed FAB – bottom corner)
    ============================================================ */
 .theme-toggle-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  width: 48px;
+  height: 48px;
   padding: 0;
   border-radius: var(--radius-full, 999px);
-  font-size: 18px;
-  line-height: 1;
+  background: var(--color-surface-raised, #f8fafc);
+  border: 1px solid var(--color-border-strong, #d1d5db);
+  color: var(--color-text, #111827);
   cursor: pointer;
-  transition: background var(--transition-fast), transform var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
 }
 
 .theme-toggle-btn:hover {
-  transform: scale(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+  border-color: var(--primary-color, #3b82f6);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(0);
 }
 
 /* Show moon in light mode, sun in dark mode */
 .theme-icon-dark  { display: none; }
-.theme-icon-light { display: inline; }
-html[data-theme="dark"] .theme-icon-dark  { display: inline; }
+.theme-icon-light { display: block; }
+html[data-theme="dark"] .theme-icon-dark  { display: block; }
 html[data-theme="dark"] .theme-icon-light { display: none; }
+
+/* RTL: flip to left side */
+[dir="rtl"] .theme-toggle-btn {
+  right: auto;
+  left: 24px;
+}
 
 /* ============================================================
    6. SMOOTH THEME TRANSITION
@@ -1208,6 +1370,109 @@ html.theme-transition *::after {
               color 0.3s ease,
               border-color 0.3s ease,
               box-shadow 0.3s ease !important;
+}
+
+/* ============================================================
+   DIAG_PLUS STANDALONE PAGE DARK OVERRIDES
+   These pages don't extend _base.html — they have their own
+   minimal templates with design-system.css linked directly.
+   ============================================================ */
+html[data-theme="dark"] body {
+  background: var(--color-bg) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .head {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .card {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .btn.secondary {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+html[data-theme="dark"] .tag {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .qbtn {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border-strong) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .tooth {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border-strong) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .tooth:hover {
+  border-color: var(--primary-color, #3b82f6) !important;
+}
+html[data-theme="dark"] .tooth .note-dot {
+  background: var(--color-surface) !important;
+  border-color: var(--color-text) !important;
+}
+html[data-theme="dark"] .modal-ov {
+  background: rgba(0,0,0,0.65) !important;
+}
+html[data-theme="dark"] .modal {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .diag-select,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea,
+html[data-theme="dark"] input[type=text],
+html[data-theme="dark"] input[type=number] {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border-strong) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .patient-notes {
+  background: var(--color-surface-sunken) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .badge-pill {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .banner-danger {
+  background: rgba(239,68,68,0.12) !important;
+  border-color: rgba(239,68,68,0.3) !important;
+  color: #fca5a5 !important;
+}
+html[data-theme="dark"] .chip-warn {
+  background: rgba(234,179,8,0.12) !important;
+  border-color: rgba(234,179,8,0.3) !important;
+  color: #fcd34d !important;
+}
+html[data-theme="dark"] .chip-info {
+  background: rgba(14,165,233,0.12) !important;
+  border-color: rgba(14,165,233,0.3) !important;
+  color: #7dd3fc !important;
+}
+html[data-theme="dark"] .chip-danger {
+  background: rgba(239,68,68,0.12) !important;
+  border-color: rgba(239,68,68,0.3) !important;
+  color: #fca5a5 !important;
+}
+html[data-theme="dark"] .small,
+html[data-theme="dark"] .light,
+html[data-theme="dark"] .quadbar {
+  color: var(--color-text-muted) !important;
+}
+html[data-theme="dark"] .midline,
+html[data-theme="dark"] .splitline {
+  background: var(--color-border-strong) !important;
 }
 
 /* ============================================================

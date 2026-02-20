@@ -40,8 +40,8 @@ html[lang="ar"] body{font-family:var(--font-ar)}
 
 .tooth{width:46px;height:52px;border:2.25px solid #94a3b8;border-radius:10px;background:#ffffff;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12)}
 .tooth:hover{border-color:var(--primary-color,var(--mid));box-shadow:0 0 0 3px color-mix(in srgb, var(--primary-color,var(--mid)) 70%, transparent)}
-.tooth .label{font-size:12px;font-weight:600}
-.tooth .badge{position:absolute;bottom:2px;right:2px;font-size:10px;color:#fff;background:#0008;border-radius:4px;padding:1px 4px;display:none}
+.tooth .label{font-size:14px;font-weight:700;position:relative;z-index:1}
+.tooth .badge{position:absolute;bottom:1px;left:50%;transform:translateX(-50%);font-size:7px;line-height:1;color:#fff;background:#0008;border-radius:3px;padding:1px 3px;display:none;white-space:nowrap;max-width:42px;overflow:hidden;text-overflow:ellipsis}
 .tooth[data-status]:not([data-status=""]) .badge{display:inline-block}
 
 .tooth[data-status="Healthy"]{background:#10b981;color:#fff;border-color:#0f7658}

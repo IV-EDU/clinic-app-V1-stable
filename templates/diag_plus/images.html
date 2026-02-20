@@ -3,9 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+/* FOUC prevention – set theme before any CSS paints */
+(function(){
+  var t=localStorage.getItem('theme');
+  if(t==='dark'||((!t)&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)){
+    document.documentElement.setAttribute('data-theme','dark');
+  }
+})();
+function toggleTheme(){
+  var h=document.documentElement,d=h.getAttribute('data-theme')==='dark';
+  h.classList.add('theme-transition');
+  if(d){h.removeAttribute('data-theme');localStorage.setItem('theme','light');}
+  else{h.setAttribute('data-theme','dark');localStorage.setItem('theme','dark');}
+  setTimeout(function(){h.classList.remove('theme-transition');},350);
+}
+</script>
 <title>{{ t('images_page_title') }}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-system.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='diag_plus/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
 {% if theme_css %}<style>{{ theme_css|safe }}</style>{% endif %}
 <style>
     :root{ --bg:var(--bg-primary,#f7f7fb); --panel:var(--bg-surface,#fff); --ring:var(--border-strong,#e5e7eb); --hover:#f3f4f6; --accent: var(--primary-color, #2563eb); --danger:#ef4444; --muted:var(--text-muted,#6b7280); --font-ar:var(--font-arabic,'Tajawal','Noto Sans Arabic','Segoe UI',Arial,sans-serif); --font-lat:var(--font-latin,'Segoe UI',Arial,sans-serif); }

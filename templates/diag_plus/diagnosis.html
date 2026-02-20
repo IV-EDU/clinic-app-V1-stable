@@ -3,9 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+/* FOUC prevention – set theme before any CSS paints */
+(function(){
+  var t=localStorage.getItem('theme');
+  if(t==='dark'||((!t)&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)){
+    document.documentElement.setAttribute('data-theme','dark');
+  }
+})();
+function toggleTheme(){
+  var h=document.documentElement,d=h.getAttribute('data-theme')==='dark';
+  h.classList.add('theme-transition');
+  if(d){h.removeAttribute('data-theme');localStorage.setItem('theme','light');}
+  else{h.setAttribute('data-theme','dark');localStorage.setItem('theme','dark');}
+  setTimeout(function(){h.classList.remove('theme-transition');},350);
+}
+</script>
 <title>{{ t('diagnosis') }}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-system.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='diag_plus/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
 {% if theme_css %}<style>{{ theme_css|safe }}</style>{% endif %}
 </head>
 <body>

@@ -567,6 +567,608 @@ html[data-theme="dark"] .arabic-section {
   background: rgba(59, 130, 246, 0.08);
 }
 
+/* --- Button variants (primary / danger / success) ----------- */
+html[data-theme="dark"] .btn.primary:not(:disabled):hover,
+html[data-theme="dark"] button.primary:not(:disabled):hover {
+  filter: brightness(1.1);
+}
+
+html[data-theme="dark"] .btn.danger,
+html[data-theme="dark"] button.danger {
+  background: var(--color-danger) !important;
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .btn.danger:not(:disabled):hover,
+html[data-theme="dark"] button.danger:not(:disabled):hover {
+  filter: brightness(1.15);
+}
+
+html[data-theme="dark"] .btn.success,
+html[data-theme="dark"] button.success {
+  background: var(--color-success) !important;
+  color: #fff !important;
+}
+
+html[data-theme="dark"] .btn.format,
+html[data-theme="dark"] button.format,
+html[data-theme="dark"] a.format {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border-strong) !important;
+  color: var(--color-text) !important;
+}
+
+/* --- Excel grid inputs -------------------------------------- */
+html[data-theme="dark"] .grid.excel input {
+  background: var(--color-surface-sunken) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .grid.excel .c.readonly {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text-muted) !important;
+}
+
+/* --- Modal overlays & specific modals ----------------------- */
+html[data-theme="dark"] .modal-overlay,
+html[data-theme="dark"] .overlay {
+  background: rgba(0, 0, 0, 0.65) !important;
+}
+
+html[data-theme="dark"] #add-modal .modal-content,
+html[data-theme="dark"] #edit-modal .modal-content,
+html[data-theme="dark"] #view-modal .modal-content,
+html[data-theme="dark"] #receipt-modal .modal-content,
+html[data-theme="dark"] #print-modal .modal-content,
+html[data-theme="dark"] #treatment-modal .modal-content,
+html[data-theme="dark"] #delete-modal .modal-content {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .delete-modal p,
+html[data-theme="dark"] .delete-modal .modal-body {
+  color: var(--color-text-secondary) !important;
+}
+
+/* --- Admin forms -------------------------------------------- */
+html[data-theme="dark"] .admin-form {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .admin-form label {
+  color: var(--color-text-secondary) !important;
+}
+
+/* --- Payment headers & summaries ---------------------------- */
+html[data-theme="dark"] .payment-form .payment-header,
+html[data-theme="dark"] .payment-patient-header {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .payment-summary-card {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .print-receipt-btn {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border-strong) !important;
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .print-receipt-btn:hover {
+  background: var(--color-surface-sunken) !important;
+}
+
+/* --- Patient detail (summary, meta) ------------------------- */
+html[data-theme="dark"] .patient-summary {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .patient-meta {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .patient-detail-title {
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .detail-value {
+  color: var(--color-text) !important;
+}
+
+/* --- Appointment enhancements ------------------------------- */
+html[data-theme="dark"] .appt-stats {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .appt-card.status-scheduled {
+  background: color-mix(in srgb, var(--primary-color, #3b82f6) 10%, var(--color-surface)) !important;
+  border-color: color-mix(in srgb, var(--primary-color, #3b82f6) 25%, var(--color-border)) !important;
+}
+
+html[data-theme="dark"] .schedule-item {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .schedule-item:hover {
+  background: var(--color-surface-raised) !important;
+}
+
+/* --- Text color overrides ----------------------------------- */
+html[data-theme="dark"] .eyebrow,
+html[data-theme="dark"] .stat-label,
+html[data-theme="dark"] .hour-label,
+html[data-theme="dark"] .fin-label,
+html[data-theme="dark"] .detail-label,
+html[data-theme="dark"] .payments-heading {
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .bonus-inline,
+html[data-theme="dark"] .btn-link {
+  color: var(--primary-color, #3b82f6) !important;
+}
+
+html[data-theme="dark"] .patient-detail-value,
+html[data-theme="dark"] .payment-value,
+html[data-theme="dark"] .fin-value,
+html[data-theme="dark"] .treatments-main-title {
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .doctor-name {
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .receipt-title {
+  color: var(--color-text) !important;
+}
+
+/* --- Search bar --------------------------------------------- */
+html[data-theme="dark"] .search-bar {
+  background: var(--color-surface-sunken) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+/* --- Back link ---------------------------------------------- */
+html[data-theme="dark"] .back-link {
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .back-link:hover {
+  color: var(--color-text) !important;
+}
+
+/* --- Doctor chip -------------------------------------------- */
+html[data-theme="dark"] .doctor-chip {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* --- Cards (global catch-all) ------------------------------- */
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .u-card {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .no-appointments-card {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+/* --- Dashboard search input --------------------------------- */
+html[data-theme="dark"] .dashboard-search-card .search-input input {
+  background: var(--color-surface-sunken) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* --- Admin settings page ------------------------------------ */
+html[data-theme="dark"] .admin-settings-header {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--primary-color) 12%, #1a1d23),
+    #22252d,
+    color-mix(in srgb, var(--primary-color) 12%, #1a1d23)) !important;
+}
+
+html[data-theme="dark"] .admin-settings-header h2,
+html[data-theme="dark"] .admin-settings-header p {
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .admin-tabs {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .admin-tab {
+  background: var(--color-surface) !important;
+  color: var(--color-text-secondary) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .admin-tab.active {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text) !important;
+  border-bottom-color: var(--primary-color) !important;
+}
+
+html[data-theme="dark"] .admin-tab-content {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .admin-table,
+html[data-theme="dark"] .admin-compact-table {
+  background: var(--color-surface) !important;
+}
+
+html[data-theme="dark"] .admin-table th,
+html[data-theme="dark"] .admin-compact-table th {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text-secondary) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .admin-table td,
+html[data-theme="dark"] .admin-compact-table td {
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .admin-card-header {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .status-badge-active {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="dark"] .status-badge-inactive {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+}
+
+html[data-theme="dark"] .status-badge-admin {
+  background: rgba(99, 102, 241, 0.15) !important;
+  color: #a5b4fc !important;
+}
+
+html[data-theme="dark"] .status-badge-doctor {
+  background: rgba(14, 165, 233, 0.15) !important;
+  color: #7dd3fc !important;
+}
+
+html[data-theme="dark"] .status-badge-reception {
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #fcd34d !important;
+}
+
+html[data-theme="dark"] .duplicate-card {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .duplicate-chip {
+  background: var(--color-surface-sunken) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .data-subtab {
+  background: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .data-subtab.active {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .data-scroll-area {
+  background: var(--color-surface-sunken) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .checkbox-group-title {
+  color: var(--color-text) !important;
+  border-bottom-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .checkbox-label {
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .color-preview,
+html[data-theme="dark"] .color-input {
+  border-color: var(--color-border-strong) !important;
+}
+
+html[data-theme="dark"] .data-step .badge {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+/* --- Diagnosis / Medical / Images --------------------------- */
+html[data-theme="dark"] .palmer-chart {
+  background: var(--color-surface-raised) !important;
+}
+
+html[data-theme="dark"] .tooth-btn {
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .tooth-btn:hover {
+  background: var(--color-surface-raised) !important;
+}
+
+html[data-theme="dark"] .tooth-btn.selected {
+  background: color-mix(in srgb, var(--primary-color, #3b82f6) 20%, var(--color-surface)) !important;
+  border-color: var(--primary-color, #3b82f6) !important;
+}
+
+html[data-theme="dark"] .diag-form {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .medical-section {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .image-card {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* --- Expenses ----------------------------------------------- */
+html[data-theme="dark"] .expense-card {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .expense-summary {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* --- Global scrollbar --------------------------------------- */
+html[data-theme="dark"] * {
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 4px;
+}
+
+html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* --- Treatment cards ---------------------------------------- */
+html[data-theme="dark"] .treatment-card {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .treatment-header {
+  background: var(--color-surface-raised) !important;
+}
+
+html[data-theme="dark"] .treatment-header:hover {
+  background: var(--color-surface-sunken) !important;
+}
+
+html[data-theme="dark"] .treatment-name {
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .treatment-toggle {
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .meta-item {
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .visit-type-chip {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #93c5fd !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+html[data-theme="dark"] .status-badge.complete {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="dark"] .status-badge.active {
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #fcd34d !important;
+}
+
+html[data-theme="dark"] .status-badge.visit {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #93c5fd !important;
+}
+
+html[data-theme="dark"] .fin-value.remaining {
+  color: #f87171 !important;
+}
+
+html[data-theme="dark"] .progress-bar-container {
+  background: var(--color-surface-sunken) !important;
+}
+
+html[data-theme="dark"] .progress-text {
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .treatment-body {
+  background: var(--color-surface-sunken) !important;
+  border-top-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .section-actions {
+  border-bottom-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .details-section {
+  background: var(--color-surface-raised) !important;
+}
+
+html[data-theme="dark"] .payments-section {
+  background: var(--color-surface-raised) !important;
+}
+
+html[data-theme="dark"] .payment-row {
+  background: var(--color-surface-sunken) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .payment-row.initial {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+}
+
+html[data-theme="dark"] .payment-date {
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .payment-amount {
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .payment-method {
+  color: var(--color-text-muted) !important;
+}
+
+html[data-theme="dark"] .payment-doctor {
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .btn-icon {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .btn-icon:hover {
+  background: var(--color-border-strong) !important;
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .btn-icon.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #f87171 !important;
+}
+
+html[data-theme="dark"] .add-payment-wrapper {
+  border-top-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .empty-state {
+  background: var(--color-surface-sunken) !important;
+  border-color: var(--color-border-strong) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .treatment-card .total-row {
+  border-top-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .treatments-header-section {
+  background: linear-gradient(135deg, var(--color-surface-raised) 0%, var(--color-surface-sunken) 100%) !important;
+  border-color: var(--color-border) !important;
+}
+
+html[data-theme="dark"] .stat-badge {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+html[data-theme="dark"] .stat-badge.count {
+  background: rgba(99, 102, 241, 0.15) !important;
+  color: #a5b4fc !important;
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+
+html[data-theme="dark"] .stat-badge.active {
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #fcd34d !important;
+}
+
+html[data-theme="dark"] .stat-badge.complete {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="dark"] .stat-badge.visit {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #93c5fd !important;
+}
+
+html[data-theme="dark"] .stat-badge.due {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #fca5a5 !important;
+}
+
+html[data-theme="dark"] .doctor-filter {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
+html[data-theme="dark"] .loading-overlay {
+  background: rgba(26, 29, 35, 0.85) !important;
+}
+
+html[data-theme="dark"] .message-content {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text) !important;
+}
+
+/* --- Date / time inputs ------------------------------------- */
+html[data-theme="dark"] input[type="date"],
+html[data-theme="dark"] input[type="time"],
+html[data-theme="dark"] input[type="datetime-local"] {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+  color-scheme: dark;
+}
+
 /* ============================================================
    5. THEME TOGGLE BUTTON
    ============================================================ */
@@ -613,6 +1215,7 @@ html.theme-transition *::after {
    Always print in light mode regardless of theme.
    ============================================================ */
 @media print {
+  :root,
   html[data-theme="dark"] {
     --color-bg: #ffffff;
     --color-surface: #ffffff;
@@ -633,10 +1236,28 @@ html.theme-transition *::after {
     --color-info: #0ea5e9;
     --color-info-bg: #e0f2fe;
     --ink: #111827;
+    --muted: #64748b;
+    --border: #e2e8f0;
     --bg: #ffffff;
     --card: #ffffff;
+    --page-bg: #ffffff;
+    --text-primary: #111827;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
     color-scheme: light;
   }
 
-  .theme-toggle-btn { display: none !important; }
+  /* Force white background — background-image: none clears dark
+     gradient that would bleed into print margins */
+  html, body {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #111827 !important;
+  }
+
+  .theme-toggle-btn,
+  #theme-toggle,
+  .global-search-form,
+  .kebab { display: none !important; }
 }

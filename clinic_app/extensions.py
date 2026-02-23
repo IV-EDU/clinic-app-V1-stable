@@ -14,6 +14,8 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 
+from clinic_app.services.arabic_search import normalize_arabic
+
 
 class SQLAlchemyEngine:
     """Minimal SQLAlchemy integration for the app."""
@@ -36,6 +38,9 @@ class SQLAlchemyEngine:
             cursor.execute("PRAGMA busy_timeout=5000")
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.close()
+
+            # Register custom Arabic normalization function for search
+            dbapi_connection.create_function("normalize_arabic", 1, normalize_arabic)
 
         session_factory = sessionmaker(bind=self._engine, autoflush=False, future=True)
         self._session_factory = scoped_session(session_factory)

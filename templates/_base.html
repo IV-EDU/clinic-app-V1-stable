@@ -26,6 +26,9 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/print-receipts.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+  <script src="{{ url_for('static', filename='js/modal-system.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/toast.js') }}"></script>
   <script src="{{ url_for('static', filename='js/patient-receipts.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/patient-form-repeaters.js') }}"></script>
   <script defer src="{{ url_for('static', filename='js/status-chip.js') }}"></script>
@@ -146,5 +149,8 @@
     </svg>
   </button>
   {% block extra_js %}{% endblock %}
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
 </body>
 </html>

@@ -22,7 +22,7 @@
 | Phase | What | Priority | Risk |
 |-------|------|----------|------|
 | 1 | CSS design system + dark mode foundation | Highest | Low (CSS-only) | ✅ Done |
-| 2 | Modal system + toast notifications + loading states | Highest | Low (JS/CSS) |
+| 2 | Modal system + toast notifications + loading states | Highest | Low (JS/CSS) | ✅ Done |
 | 3 | Arabic search normalization + global search bar | Highest | Low-Med |
 | 4 | Split admin settings into 5 pages + fix bugs + add audit events | Highest | Medium |
 | 5 | Dashboard homepage + nav restructure + backup automation | Highest | Medium |
@@ -70,8 +70,10 @@
 
 ---
 
-## Phase 2: Modal System + Toast Notifications + Loading States
+## Phase 2: Modal System + Toast Notifications + Loading States ✅ COMPLETE
 **Priority:** Highest | **Risk:** Low (JS/CSS) | **Est:** 1 session
+
+> **Status (2026-02-23):** Done and browser-verified. Created `components.css`, `modal-system.js`, `toast.js`. Successfully tested light mode, dark mode, and RTL via browser screenshots.
 
 ### What
 - Create a reusable modal component (JS class + CSS):
@@ -364,7 +366,7 @@
 | Phase | Status | Date Started | Date Done | Notes |
 |-------|--------|-------------|-----------|-------|
 | 1 | Done | 2026-02-19 | 2026-02-19 | design-system.css, dark toggle, FOUC prevention, bridge aliases, comprehensive per-page dark overrides, diag_plus standalone page dark support, tooth badge layout fix |
-| 2 | Not started | | | |
+| 2 | Done | 2026-02-23 | 2026-02-23 | Created components.css, modal-system.js, toast.js. Added toast container to _base.html. Verified functioning properly across light, dark, and RTL modes. |
 | 3 | Not started | | | |
 | 4 | Not started | | | |
 | 5 | Not started | | | |

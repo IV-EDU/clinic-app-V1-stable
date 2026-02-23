@@ -1,0 +1,248 @@
+/* ============================================================
+   Components System: Modals, Toasts, Loaders
+   ============================================================ */
+
+/* --- Modals ------------------------------------------------- */
+.modal-container {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-normal), visibility var(--transition-normal);
+  padding: var(--space-md);
+}
+
+.modal-container.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal-dialog {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 500px; /* default size */
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.95) translateY(10px);
+  transition: transform var(--transition-normal);
+  overflow: hidden;
+}
+
+.modal-container.active .modal-dialog {
+  transform: scale(1) translateY(0);
+}
+
+/* Size Modifiers */
+.modal-dialog.modal-sm { max-width: 400px; }
+.modal-dialog.modal-lg { max-width: 800px; }
+.modal-dialog.modal-xl { max-width: 1140px; }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.modal-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.modal-close-btn:hover {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.modal-body {
+  padding: var(--space-lg);
+  overflow-y: auto;
+  color: var(--color-text);
+}
+
+.modal-footer {
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  background: var(--color-surface);
+}
+
+/* --- Toasts ------------------------------------------------- */
+.toast-container {
+  position: fixed;
+  bottom: 80px; /* Above the theme toggle */
+  right: var(--space-lg);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  pointer-events: none; /* Let clicks pass through container */
+}
+
+/* RTL Support for Toasts */
+html[dir="rtl"] .toast-container,
+body.rtl .toast-container {
+  right: auto;
+  left: var(--space-lg);
+}
+
+.toast {
+  pointer-events: auto; /* Re-enable clicks on the toast itself */
+  min-width: 300px;
+  max-width: 400px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  border-left: 4px solid var(--color-info); /* default accent */
+  transform: translateX(110%);
+  opacity: 0;
+  transition: transform var(--transition-normal), opacity var(--transition-normal);
+}
+
+html[dir="rtl"] .toast,
+body.rtl .toast {
+  border-left: none;
+  border-right: 4px solid var(--color-info);
+  transform: translateX(-110%);
+}
+
+.toast.toast-entering {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.toast.toast-exiting {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+/* Toast States */
+.toast.toast-success {
+  border-left-color: var(--color-success);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+html[dir="rtl"] .toast.toast-success,
+body.rtl .toast.toast-success {
+  border-right-color: var(--color-success);
+}
+
+.toast.toast-error {
+  border-left-color: var(--color-danger);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+html[dir="rtl"] .toast.toast-error,
+body.rtl .toast.toast-error {
+  border-right-color: var(--color-danger);
+}
+
+.toast.toast-warning {
+  border-left-color: var(--color-warning);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+html[dir="rtl"] .toast.toast-warning,
+body.rtl .toast.toast-warning {
+  border-right-color: var(--color-warning);
+}
+
+.toast.toast-info {
+  border-left-color: var(--color-info);
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+html[dir="rtl"] .toast.toast-info,
+body.rtl .toast.toast-info {
+  border-right-color: var(--color-info);
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-message {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.4;
+}
+
+.toast-close-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: currentColor;
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  transition: opacity var(--transition-fast);
+}
+
+.toast-close-btn:hover {
+  opacity: 1;
+}
+
+/* --- Loaders ------------------------------------------------ */
+.spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  border-top-color: var(--primary-color, #3b82f6);
+  animation: spinner-spin 0.8s linear infinite;
+}
+
+@keyframes spinner-spin {
+  to { transform: rotate(360deg); }
+}
+
+.skeleton {
+  background: var(--color-surface-sunken);
+  background-image: linear-gradient(
+    90deg,
+    var(--color-surface-sunken) 0px,
+    var(--color-surface-raised) 40px,
+    var(--color-surface-sunken) 80px
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius-sm);
+  animation: skeleton-shimmer 1.5s infinite linear;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}

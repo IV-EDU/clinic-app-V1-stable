@@ -42,6 +42,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Design token system + dark mode: `static/css/design-system.css`
   - Global styles and components: `static/css/app.css`
   - Theme tokens and utilities: `static/css/theme-system.css`
+  - Modals, Toasts, Loaders: `static/css/components.css`
 
 - **Key routes**
   - `/` → `core.index` (main dashboard, uses patients list and today’s stats)
@@ -360,6 +361,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 ## 15) Static Assets Detail
 
 - **JavaScript**
+  - Modals & Toasts: `static/js/modal-system.js`, `static/js/toast.js`
   - Patient form repeaters: `static/js/patient-form-repeaters.js`
   - Patient receipts: `static/js/patient-receipts.js`
   - Status chip: `static/js/status-chip.js`

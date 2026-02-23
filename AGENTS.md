@@ -335,12 +335,14 @@ data/
 
 ---
 
-## 9) Planning + Confirmation (always)
+## 9) Planning + Confirmation (Strict Protocol)
 
-- Before any edits: produce a short plan (2-5 bullets).
-- Share the plan and **wait for user confirmation** before changing files.
-- Stick to one focused goal per task.
-- Read `plan_Agents.md` for detailed planning rules.
+**CRITICAL RULE: NEVER START CODING UNTIL EXPLICITLY TOLD TO PROCEED.**
+
+1. **Read & Plan:** Read the relevant Handoff Brief or user request. Produce a short plan (2-5 bullets).
+2. **Acknowledge:** End your planning message with the exact phrase: *"I understand the plan. Awaiting your authorization to proceed."*
+3. **STOP AND WAIT:** Do not edit any files, run any commands, or execute any part of the plan until the user explicitly replies with "Proceed", "Yes", or "Go ahead".
+4. **Execution:** Once authorized, stick to one focused goal per task. See `plan_Agents.md` for detailed formatting rules.
 
 ---
 
@@ -462,6 +464,13 @@ CSS changes are cached by the browser. Always instruct the browser subagent to:
 - **Trust screenshots, not words.** Browser subagent text descriptions are unreliable.
 - After every browser verification task: use `find_by_name` to locate screenshot files, then `view_file` to inspect them directly.
 - If no screenshots were saved, the verification did not happen.
+
+## 12d) Visual QA Requirement (The "Manager" Check)
+
+Before completing *any* UI task, the coding agent MUST perform visual QA using the browser subagent (`browser_subagent` tool):
+1. **Take Screenshots:** The agent must take actual screenshots of the changed components in both Light and Dark modes.
+2. **Side Effects Check:** The agent must explicitly check if the new CSS or JS broke adjacent components (e.g., did a new modal backdrop break the z-index of the navbar?).
+3. **Manager Review:** The agent must save these screenshots to `data/agent-screenshots/` and explicitly notify the user (the Manager) to review them before declaring the task "Done". Do not rely on the agent saying "it looks good".
 
 ---
 

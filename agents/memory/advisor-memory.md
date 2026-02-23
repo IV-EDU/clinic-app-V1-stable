@@ -2,20 +2,17 @@
 Last updated: 2026-02-23
 
 ## Current Priorities
-1. UI Redesign — Phase 2 next (modal system + toast notifications)
-2. Fix remaining Phase 1 dark mode polish issues as they come up
-3. Decide on agent ecosystem — what other agents to build (use advisor for this)
+1. UI Redesign — **Phase 4 next** (Splitting the Admin Settings monolith)
+2. Handle the architectural risks of Phase 4 carefully (Excel import logic preservation).
+3. Continue enforcing the "Manager Authorization" rule for all coding agents.
 
 ## Recent Decisions
-- 2026-02-23: Updated `advisor.md` to include LLM tool class recommendations (heavyweight vs nimble coder) and updated the Handoff Brief format.
-- 2026-02-23: Created Strategic Advisor as first agent (`agents/advisor.md`)
-- 2026-02-23: Memory system uses rolling snapshot pattern (this file), max 40 lines
-- 2026-02-23: Fixed dark mode issues — modal backdrop, button lighting, patient card gradient
-- 2026-02-22: Completed Phase 1 of UI Redesign (design-system.css, dark toggle, FOUC prevention)
+- **2026-02-23:** Locked in the "Handoff Workflow." Advisor plans -> writes Handoff Brief -> User pastes to Coder (ChatGPT Pro). No fully autonomous loops to save Antigravity credits.
+- **2026-02-23:** Added "Manager Authorization" rule to `AGENTS.md` to stop agents from writing code before being explicitly told "Proceed."
+- **2026-02-23:** Completed Phase 2 (Modals) and Phase 3 (Arabic Search).
 
 ## Open Questions
-- What should the second agent be? (use Meta Mode to figure this out)
-- Should we do Phase 2 (modals) or Phase 3 (Arabic search) next? -> Decided Phase 2 Modals first.
+- How to safely split the 6000-line `admin_settings.py` monolith in Phase 4 without breaking the 8/10 fragility data import logic.
 
 ## Permanent Context
 - This is a PRODUCTION dental clinic app — real patients, real data, no cloud

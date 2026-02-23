@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from flask import Blueprint, current_app, flash, g, redirect, request, url_for, jsonify, abort
 from flask_login import current_user
-from sqlalchemy import or_, text, select
+from sqlalchemy import or_, text, select, func
 from sqlalchemy.orm import selectinload
 
 from clinic_app.services.appointments import (
@@ -22,6 +22,7 @@ from clinic_app.services.appointments import (
     delete_appointment,
     get_appointment_by_id,
 )
+from clinic_app.services.arabic_search import normalize_arabic
 from clinic_app.services.doctor_colors import (
     get_doctor_colors,
     get_all_doctors_with_colors,
@@ -338,12 +339,12 @@ def delete_appointment(appt_id):
     try:
         # Import here to avoid circular imports
         from clinic_app.services.appointments import get_appointment_by_id, delete_appointment as delete_appt
-        
+
         appointment = get_appointment_by_id(appt_id)
         if not appointment:
             flash("Appointment not found", "err")
             return redirect(request.form.get("next") or url_for("appointments.index"))
-        
+
         try:
             delete_appt(appt_id)
             flash(f"Appointment for {appointment['patient_name']} has been deleted", "ok")
@@ -792,10 +793,12 @@ def api_patients_search():
     if not query:
         return jsonify([])
 
+    norm_query = normalize_arabic(query) or query
+
     # Search patients by name, phone, or short_id
     patients = PatientModel.query.filter(
         or_(
-            PatientModel.full_name.ilike(f"%{query}%"),
+            func.normalize_arabic(PatientModel.full_name).ilike(f"%{norm_query}%"),
             PatientModel.phone.ilike(f"%{query}%"),
             PatientModel.short_id.ilike(f"%{query}%"),
         )

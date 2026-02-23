@@ -11,6 +11,7 @@ It includes:
 - Expenses
 - Reports
 - Admin / roles / users (includes data import/export)
+- Persistent Global Search with robust Arabic normalization
 
 This folder "Clinic-App-Local" is the main project folder.
 

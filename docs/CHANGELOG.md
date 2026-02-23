@@ -1,5 +1,15 @@
 # Changelog – Clinic-App-Local
 
+## Recent Changes (Managed by Agents)
+
+*   **2026-02-23**: [Phase 3] Implemented Arabic search normalization and added Global Search Bar to top navigation.
+    *   `clinic_app/services/arabic_search.py` (added normalize_arabic function)
+    *   `clinic_app/extensions.py` (registered custom SQLite function)
+    *   `clinic_app/blueprints/core/core.py` (updated search query)
+    *   `clinic_app/blueprints/appointments/routes.py` (updated API search)
+    *   `clinic_app/blueprints/patients/routes.py` (updated merge suggestions)
+    *   `templates/_nav.html` (added search form)
+    *   `clinic_app/services/i18n.py` (added placeholder translations).
 > Running log of all changes made by AI agents. Append one line per task.
 > Format: `YYYY-MM-DD | What changed | Files touched`
 >

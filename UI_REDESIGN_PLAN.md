@@ -23,7 +23,7 @@
 |-------|------|----------|------|
 | 1 | CSS design system + dark mode foundation | Highest | Low (CSS-only) | ✅ Done |
 | 2 | Modal system + toast notifications + loading states | Highest | Low (JS/CSS) | ✅ Done |
-| 3 | Arabic search normalization + global search bar | Highest | Low-Med |
+| 3 | Arabic search normalization + global search bar | Highest | Low-Med | ✅ Done |
 | 4 | Split admin settings into 5 pages + fix bugs + add audit events | Highest | Medium |
 | 5 | Dashboard homepage + nav restructure + backup automation | Highest | Medium |
 | E | Expense consolidation (kill full, evolve simple) | High | Medium |
@@ -100,7 +100,16 @@
 
 ---
 
-## Phase 3: Arabic Search Normalization + Global Search Bar
+## Phase 3: Arabic Search Normalization + Global Search Bar ✅ COMPLETE
+### Phase 3: Global Search & Arabic Normalization (COMPLETE)
+**Goal:** Address user complaints about search reliability and add a persistent search bar.
+
+- **Completed:**
+  - Implemented `normalize_arabic` custom SQLite function in Python (`arabic_search.py`).
+  - Registered function to SQLAlchemy engine on connect.
+  - Wrapped `full_name` fields in `normalize_arabic()` for search queries (Home page, API search, Merge Suggestions).
+  - Maintained strict duplicate checking (un-normalized) when creating patients.
+  - Added a global search bar to the top navigation (`_nav.html`).
 **Priority:** Highest | **Risk:** Low-Medium | **Est:** 1 session
 
 ### What

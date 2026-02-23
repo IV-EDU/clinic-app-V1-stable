@@ -17,8 +17,8 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 - **Configuration / extensions**
   - Flask extensions (DB, CSRF, etc.): `clinic_app/extensions.py`
   - Authentication helpers / login manager: `clinic_app/auth.py`
-  - UI helpers (render_page, theme overrides): `clinic_app/services/ui.py`
   - i18n / Arabic support: `clinic_app/services/i18n.py`
+  - Arabic name normalization: `clinic_app/services/arabic_search.py`
   - Theme settings storage: `clinic_app/services/theme_settings.py`
   - Security / RBAC: `clinic_app/services/security.py`, `clinic_app/models_rbac.py`
   - Main database models: `clinic_app/models.py`

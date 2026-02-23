@@ -8,6 +8,7 @@ import threading
 from flask import Blueprint, redirect, url_for, current_app, request, make_response, jsonify, session
 
 from clinic_app.services.i18n import SUPPORTED_LOCALES, T  # noqa: F401 - re-exported for tests
+from clinic_app.services.arabic_search import normalize_arabic
 from clinic_app.services.payments import (  # noqa: F401 - re-exported for tests
     cents_guard,
     money,
@@ -75,13 +76,14 @@ def index():
     where_sql = ""
     where_params: tuple[str, ...] = ()
     if q:
-        like = f"%{q}%"
+        norm_q = normalize_arabic(q) or q
+        like = f"%{norm_q}%"
         digits = "".join(ch for ch in q if ch.isdigit())
         digits_like = f"%{digits}%" if digits else ""
         if has_pages_table and has_patient_phones_table:
             if digits:
                 where_sql = """
-                WHERE p.full_name LIKE ?
+                WHERE normalize_arabic(p.full_name) LIKE ?
                    OR p.phone LIKE ?
                    OR replace(replace(replace(replace(replace(p.phone,' ',''),'-',''),'+',''),'(',''),')','') LIKE ?
                    OR p.short_id LIKE ?
@@ -120,7 +122,7 @@ def index():
                 )
             else:
                 where_sql = """
-                WHERE p.full_name LIKE ?
+                WHERE normalize_arabic(p.full_name) LIKE ?
                    OR p.phone LIKE ?
                    OR p.short_id LIKE ?
                    OR EXISTS (
@@ -142,7 +144,7 @@ def index():
                 where_params = (like, like, like, like, like, like)
         elif has_pages_table:
             where_sql = """
-            WHERE p.full_name LIKE ?
+            WHERE normalize_arabic(p.full_name) LIKE ?
                OR p.phone LIKE ?
                OR p.short_id LIKE ?
                OR EXISTS (
@@ -159,7 +161,7 @@ def index():
         elif has_patient_phones_table:
             if digits:
                 where_sql = """
-                WHERE p.full_name LIKE ?
+                WHERE normalize_arabic(p.full_name) LIKE ?
                    OR p.phone LIKE ?
                    OR replace(replace(replace(replace(replace(p.phone,' ',''),'-',''),'+',''),'(',''),')','') LIKE ?
                    OR p.short_id LIKE ?
@@ -187,7 +189,7 @@ def index():
                 )
             else:
                 where_sql = """
-                WHERE p.full_name LIKE ?
+                WHERE normalize_arabic(p.full_name) LIKE ?
                    OR p.phone LIKE ?
                    OR p.short_id LIKE ?
                    OR EXISTS (
@@ -200,7 +202,7 @@ def index():
                 where_params = (like, like, like, like)
         else:
             where_sql = """
-            WHERE p.full_name LIKE ?
+            WHERE normalize_arabic(p.full_name) LIKE ?
                OR p.phone LIKE ?
                OR p.short_id LIKE ?
             """
@@ -337,12 +339,12 @@ def index():
         )
     total_patients = filtered_total
     today_total = money(today_collected(conn))
-    
+
     # Enhanced appointment statistics
     appointments_count = 0
     upcoming_count = 0
     completed_count = 0
-    
+
     has_table = cur.execute(
         "SELECT 1 FROM sqlite_master WHERE type='table' AND name='appointments'"
     ).fetchone()
@@ -350,7 +352,7 @@ def index():
         today = date.today().isoformat()
         now = datetime.now()
         current_time = now.strftime("%H:%M")
-        
+
         # Get appointment statistics for today
         stats_row = cur.execute(
             """
@@ -362,11 +364,11 @@ def index():
             """,
             (today + ' ' + current_time, today),
         ).fetchone()
-        
+
         appointments_count = stats_row[0] or 0
         upcoming_count = stats_row[1] or 0
         completed_count = stats_row[2] or 0
-        
+
         # For backward compatibility, keep the preview but don't use it in enhanced template
         preview_rows = cur.execute(
             """
@@ -381,7 +383,7 @@ def index():
         appt_preview = [dict(r) for r in preview_rows]
     else:
         appt_preview = []
-    
+
     has_prev = page > 1
     total_pages = (filtered_total + per_page - 1) // per_page if filtered_total else 1
     has_next = page < total_pages

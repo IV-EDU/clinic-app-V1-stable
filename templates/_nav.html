@@ -32,6 +32,13 @@
         {% if user_has_permission(current_user, 'appointments:view') %}
           <a class="btn secondary" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
         {% endif %}
+
+        <form action="{{ url_for('index') }}" method="GET" class="nav-search-form" style="display:flex; margin-inline-start: 1rem; align-items:center;">
+          <input type="text" name="q" placeholder="{{ t('search_patients_placeholder') }}" class="nav-search-input" style="padding:0.4rem 0.8rem; border:1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-card); color: var(--text-color); font-size:0.9rem; width: 200px;">
+          <button type="submit" class="btn secondary" style="margin-inline-start: 4px; padding:0.4rem 0.6rem; min-width: auto; height: 100%; display:flex; align-items:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </button>
+        </form>
       {% endif %}
     </div>
     <div class="center">

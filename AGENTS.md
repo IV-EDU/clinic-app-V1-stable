@@ -1,6 +1,6 @@
 # Clinic-App-Local - Agent Guide
 
-> **Last Updated:** 2026-02-19
+> **Last Updated:** 2026-02-23
 >
 > This file is the single source of truth for any AI agent working on this codebase.
 > Reading this file should give you enough context to work without reading all source files.
@@ -419,7 +419,95 @@ data/
 
 ---
 
+## 12b) Definition of Done — UI / CSS Changes
+
+> **A UI change is NOT done until you have an actual screenshot proving it.**
+> Never mark a task complete based on text descriptions — yours or the subagent's.
+
+### Mandatory Checklist BEFORE Marking Any UI Task Complete
+- [ ] Server is running (`python wsgi.py`, confirmed "Running on http://127.0.0.1:8080")
+- [ ] Took a **BEFORE screenshot** showing the bug
+- [ ] Made the change, hard-refreshed (`Ctrl+Shift+R` clears CSS cache)
+- [ ] Took an **AFTER screenshot** showing the fix
+- [ ] Personally viewed the screenshot with `view_file` tool and confirmed it matches expectations
+- [ ] If dark mode was changed: tested BOTH light and dark mode
+- [ ] If a modal was changed: tested the modal open state AND the backdrop
+
+### Why This Rule Exists
+A previous agent reported "PASSED" on all 4 UI bug fixes based on the browser subagent's verbal description — without viewing the actual screenshot files. All 4 were wrong. The screenshots were saved and would have caught the errors immediately. Always view them.
+
+---
+
+## 12c) Browser Verification Protocol
+
+### Starting the Server (REQUIRED before browser testing)
+```
+python wsgi.py
+```
+Wait for: `* Running on http://127.0.0.1:8080`
+This is in `.agent/workflows/start-and-verify.md` — use `/start-and-verify` workflow.
+
+### Key URLs
+- Login: `http://127.0.0.1:8080/auth/login` (username: `admin`, password: `admin`)
+- Home: `http://127.0.0.1:8080/`
+- Patient list: `http://127.0.0.1:8080/patients/`
+- **Do NOT use** `/home` or `/login` — those don't exist
+
+### Hard Refresh After CSS Changes
+CSS changes are cached by the browser. Always instruct the browser subagent to:
+1. Open the URL fresh (navigate, don't reload clicks)
+2. Or press `Ctrl+Shift+R` before taking screenshots
+
+### Trust Rule
+- **Trust screenshots, not words.** Browser subagent text descriptions are unreliable.
+- After every browser verification task: use `find_by_name` to locate screenshot files, then `view_file` to inspect them directly.
+- If no screenshots were saved, the verification did not happen.
+
+---
+
+## 12d) CSS Scoping Contracts (Read Before Touching Any CSS)
+
+### Rule: Grep Before Override
+Before writing ANY dark mode override for a CSS class, run:
+1. `grep_search` for the class name in ALL templates — understand every place it's used
+2. `grep_search` for the class name in ALL CSS files — understand all existing rules
+3. Only then write the narrowest possible override
+
+### Known Dual-Use Classes (Traps)
+
+| Class | Used as | On page |
+|-------|---------|---------|
+| `.modal` | **Full-screen backdrop** (position:fixed, bg:rgba) | `templates/patients/detail.html`, `templates/patients/print_receipt_modal.html` |
+| `.modal` | **Dialog box** (small centered box) | `templates/diag_plus/diagnosis.html` (always nested inside `.modal-ov`) |
+| `.modal-ov` | **Backdrop** for diagnosis tooth editor | `templates/diag_plus/diagnosis.html` only |
+| `.card` | Generic card wrapper | Site-wide in `app.css` |
+| `.card.patient-card` | Diagnosis page patient info card | `templates/diag_plus/` pages only |
+| `.btn` | Generic button | Site-wide |
+| `.head` | Diagnosis page top header strip | `templates/diag_plus/` pages only |
+
+### Safe Override Patterns
+```css
+/* ✅ Safe — scoped to diagnosis context */
+html[data-theme="dark"] .modal-ov .modal { ... }
+
+/* ❌ Dangerous — applies to patient page backdrop too */
+html[data-theme="dark"] .modal { ... }
+
+/* ✅ Safe — specific to patient card in diag pages */
+html[data-theme="dark"] .card.patient-card { ... }
+```
+
+### Hardcoded Colors to Avoid
+Never use these raw rgba values in new CSS — they are hardcoded blue and ignore theme settings:
+- `rgba(59, 130, 246, ...)` → replace with `color-mix(in srgb, var(--primary-color) X%, transparent)`
+- `rgba(37, 99, 235, ...)` → same replacement
+- `#3b82f6`, `#1d4ed8`, `#2563eb` → replace with `var(--primary-color, #0ea5e9)`
+- `#f3f4ff` as gradient endpoint → replace with `var(--color-surface-raised)` or `color-mix(...)`
+
+---
+
 ## 13) Known Issues and Decisions
+
 
 ### Known Bugs
 1. ~~`admin_settings.py` lines ~3055-3062: 4x duplicated `merge_mode` fallback check (copy-paste).~~ **Fixed 2026-02-19** — reduced to single check.

@@ -1401,12 +1401,18 @@ html[data-theme="dark"] .tag {
   border-color: var(--color-border) !important;
   color: var(--color-text) !important;
 }
-html[data-theme="dark"] .qbtn {
+/* Quick-pick buttons: only style the uncolored (no status) ones in dark mode.
+   Teeth with data-status get their color from style.css attribute selectors
+   and must NOT be overridden or the status colors (Healthy=green etc.) vanish. */
+html[data-theme="dark"] .qbtn:not([data-status]):not(.on),
+html[data-theme="dark"] .qbtn[data-status=""] {
   background: var(--color-surface-raised) !important;
   border-color: var(--color-border-strong) !important;
   color: var(--color-text) !important;
 }
-html[data-theme="dark"] .tooth {
+/* Unset/white tooth: apply dark surface */
+html[data-theme="dark"] .tooth:not([data-status]),
+html[data-theme="dark"] .tooth[data-status=""] {
   background: var(--color-surface) !important;
   border-color: var(--color-border-strong) !important;
   color: var(--color-text) !important;
@@ -1421,10 +1427,23 @@ html[data-theme="dark"] .tooth .note-dot {
 html[data-theme="dark"] .modal-ov {
   background: rgba(0,0,0,0.65) !important;
 }
-html[data-theme="dark"] .modal {
+/* diag_plus: .modal is only a dialog box (nested inside .modal-ov).
+   On the patient page, .modal IS the backdrop overlay - do NOT make it solid.
+   Scope the dialog-box dark style to .modal-ov .modal only. */
+html[data-theme="dark"] .modal-ov .modal {
   background: var(--color-surface) !important;
   border-color: var(--color-border) !important;
   color: var(--color-text) !important;
+}
+/* Patient card in dark mode: subtle gradient so it has depth like the light version */
+html[data-theme="dark"] .card.patient-card {
+  background: linear-gradient(180deg, var(--color-surface-raised), var(--color-surface)) !important;
+  border-color: var(--color-border) !important;
+}
+html[data-theme="dark"] .card.patient-card .patient-avatar {
+  background: color-mix(in srgb, var(--primary-color, #0ea5e9) 25%, var(--color-surface-raised)) !important;
+  color: #fff !important;
+  border: 1px solid var(--color-border-strong);
 }
 html[data-theme="dark"] .diag-select,
 html[data-theme="dark"] select,
@@ -1475,8 +1494,47 @@ html[data-theme="dark"] .splitline {
   background: var(--color-border-strong) !important;
 }
 
+/* diag_plus .head bar: override the light-mode blue-tinted gradient */
+html[data-theme="dark"] .head {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--primary-color, #0ea5e9) 10%, var(--color-surface-raised)) 0%,
+    var(--color-surface-raised) 50%,
+    color-mix(in srgb, var(--primary-color, #0ea5e9) 10%, var(--color-surface-raised)) 100%
+  ) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25) !important;
+}
+/* diag_plus .tag elements in dark mode */
+html[data-theme="dark"] .tag {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+/* Patient page modal dialog box dark mode (.modal is the backdrop, .modal-dialog is the box) */
+html[data-theme="dark"] .modal-dialog {
+  background: var(--color-surface-raised) !important;
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .modal-header {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+}
+html[data-theme="dark"] .modal-title {
+  color: var(--color-text) !important;
+}
+html[data-theme="dark"] .modal-close,
+html[data-theme="dark"] .close {
+  color: var(--color-text-muted) !important;
+}
+html[data-theme="dark"] .modal-body,
+html[data-theme="dark"] .modal-footer {
+  background: var(--color-surface-raised) !important;
+  border-color: var(--color-border) !important;
+  color: var(--color-text) !important;
+}
+
 /* ============================================================
    7. PRINT PROTECTION
+
    Always print in light mode regardless of theme.
    ============================================================ */
 @media print {

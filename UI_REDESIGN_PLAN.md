@@ -3,7 +3,7 @@
 > Comprehensive plan for remaking the UI to be clinical, modern, dark-mode-ready, and user-friendly.
 > Agreed upon after full codebase review. All phases are independent and shippable.
 >
-> **Last Updated:** 2025-02-13
+> **Last Updated:** 2026-02-23
 
 ---
 
@@ -21,7 +21,7 @@
 
 | Phase | What | Priority | Risk |
 |-------|------|----------|------|
-| 1 | CSS design system + dark mode foundation | Highest | Low (CSS-only) |
+| 1 | CSS design system + dark mode foundation | Highest | Low (CSS-only) | ✅ Done |
 | 2 | Modal system + toast notifications + loading states | Highest | Low (JS/CSS) |
 | 3 | Arabic search normalization + global search bar | Highest | Low-Med |
 | 4 | Split admin settings into 5 pages + fix bugs + add audit events | Highest | Medium |
@@ -40,8 +40,10 @@
 
 ---
 
-## Phase 1: CSS Design System + Dark Mode Foundation
+## Phase 1: CSS Design System + Dark Mode Foundation ✅ COMPLETE
 **Priority:** Highest | **Risk:** Low (CSS-only, no backend) | **Est:** 1 session
+
+> **Status (2026-02-23):** Done and browser-verified. `design-system.css` created (1500+ lines), FOUC prevention + FAB toggle in `_base.html` and all 3 standalone diag pages. Phase 1 bugs fixed: modal backdrop, tooth/quick-pick colors in dark mode, patient card dark gradient, theme toggle on diagnosis/medical/images pages.
 
 ### What
 - Create `static/css/design-system.css` with:

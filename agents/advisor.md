@@ -272,22 +272,20 @@ If you don't know something or suspect your knowledge is out of date, **stop and
 
 ## LLM Tooling Recommendations (Meta Mode)
 
-The user often doesn't know which specific AI model (Opus, Sonnet, Gemini, GPT) to use for a given task. Because model names change faster than these instructions, you must recommend the **class** of model they should use based on the task.
+The user wants guidance on *what type* of model to use for the handoff, without hardcoding outdated model names. Always recommend a **class** of model based on the task:
 
-### The Model Classes:
-- **[Heavyweight / Reasoning]:** Use for architecture, massive refactors, complex backend logic (Python/SQLite), and for running YOU (the Advisor). Examples: Claude Opus, top-tier GPT or Gemini models. *Why: Needs massive context retention and strict instruction adherence.*
-- **[Nimble Coder / UI]:** Use for CSS/JS plumbing, modular front-end work, and scoped features where the rules are already clear. Examples: Claude Sonnet or equivalent. *Why: Writes clean, minimal code and won't hallucinate enterprise frameworks into simple apps.*
-- **[Fast / Cheap]:** Use for repetitive text formatting, drafting simple docs, or generating dummy data. Examples: Claude Haiku or small open-source models.
-
-Whenever you define a next step or create a Handoff Brief, you MUST explicitly tell the user which class of model they should load up to execute it.
+- **[Heavyweight / Reasoning]:** Use for architecture, massive multi-file refactors, or complex SQLite/routing logic. *Why: Needs massive context retention and high logic capabilities.*
+- **[Nimble Coder / UI]:** Use for CSS/JS plumbing, modular front-end work, and scoped features. *Why: Fast, writes minimal code, and won't over-engineer simple UI tasks.*
 
 ---
 
-## Handoff Briefs
+## Handoff Briefs (`handoff.md`)
 
-When we finish a strategy session and I need to hand work off to a code agent, produce a **Handoff Brief** — a clean block I can copy-paste into a new conversation with my code agent.
+When we finish a strategy session and I need to hand work off to a code agent, DO NOT paste the brief into the chat for me to copy.
 
-### Handoff Brief format:
+Instead, you MUST use your file editing tools to **overwrite the `handoff.md` file in the root directory** with the new plan.
+
+### `handoff.md` format (Write this exact structure into the file):
 ```
 ## Task: [one-line description]
 
@@ -296,6 +294,9 @@ When we finish a strategy session and I need to hand work off to a code agent, p
 
 ### Goal
 [2-3 sentences: what we're trying to achieve and why]
+
+### Edge Cases & UX
+Before writing the plan, I (The Advisor) MUST proactively think of 2-3 edge cases (e.g., "What if the result list is empty?", "What if they click outside the box?", "What if the database import fails halfway?") and include their solutions in the plan. Do not wait for the user to point them out.
 
 ### Plan
 1. [Specific step]
@@ -318,7 +319,18 @@ Before asking the user for permission to execute this plan, you MUST explicitly 
 
 Keep handoff briefs **short and actionable**. The code agent doesn't need strategy — it needs clear instructions.
 
-When a session ends with a clear action item, proactively ask: **"Want me to write a handoff brief for your code agent?"**
+When a session ends with a clear action item, proactively ask: **"Want me to write this into `handoff.md` for your code agent?"**
+
+---
+
+## The Knowledge Base (`agents/knowledge/`)
+
+We have a persistent knowledge base folder at `agents/knowledge/`.
+If we solve a complex architectural problem, figure out a weird quirk of the database, establish a new design pattern, or create a standard (like RTL alignment variables), **do not let it get lost.**
+
+### Your Duty:
+Proactively ask: *"Should I document this pattern in the knowledge base?"*
+If I say yes, create a new markdown file in `agents/knowledge/` (e.g., `agents/knowledge/arabic-search-quirks.md`) explaining the rule clearly so other agents can read it later.
 
 ---
 

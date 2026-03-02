@@ -410,6 +410,38 @@ def index():
     )
 
 
+@bp.route("/api/patients/live-search")
+@require_permission("patients:view")
+def api_live_search():
+    q = (request.args.get("q") or "").strip()
+    if not q:
+        return jsonify([])
+
+    conn = db()
+    cur = conn.cursor()
+
+    norm_q = normalize_arabic(q) or q
+    like = f"%{norm_q}%"
+
+    # Simple search for top 5 matches
+    rows = cur.execute(
+        """
+        SELECT id, full_name, short_id, phone
+        FROM patients
+        WHERE normalize_arabic(full_name) LIKE ?
+           OR phone LIKE ?
+           OR short_id LIKE ?
+        ORDER BY created_at DESC
+        LIMIT 5
+        """,
+        (like, like, like),
+    ).fetchall()
+
+    results = [dict(r) for r in rows]
+    conn.close()
+    return jsonify(results)
+
+
 @bp.route("/diagnostics", methods=["GET"], endpoint="diagnostics")
 @require_permission("diagnostics:view")
 def diagnostics_dashboard():

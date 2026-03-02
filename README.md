@@ -11,7 +11,11 @@ It includes:
 - Expenses
 - Reports
 - Admin / roles / users (includes data import/export)
-- Persistent Global Search with robust Arabic normalization
+
+### Navigation & Global Search
+- **Persistent Navbar**: Access core modules from any page.
+- **Live Patient Search**: Real-time patient suggestions as you type (Name, File#, Phone).
+- **Arabic-First Search**: Smart normalization for Arabic characters (أ/ا, ة/ه, etc.).
 
 This folder "Clinic-App-Local" is the main project folder.
 

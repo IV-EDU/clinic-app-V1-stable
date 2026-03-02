@@ -376,7 +376,7 @@
 |-------|--------|-------------|-----------|-------|
 | 1 | Done | 2026-02-19 | 2026-02-19 | design-system.css, dark toggle, FOUC prevention, bridge aliases, comprehensive per-page dark overrides, diag_plus standalone page dark support, tooth badge layout fix |
 | 2 | Done | 2026-02-23 | 2026-02-23 | Created components.css, modal-system.js, toast.js. Added toast container to _base.html. Verified functioning properly across light, dark, and RTL modes. |
-| 3 | Not started | | | |
+| 3 | Done | 2026-02-23 | 2026-02-23 | Navbar responsiveness, kebab menu migration, and live search dropdown with Arabic normalization and keyboard navigation. |
 | 4 | Not started | | | |
 | 5 | Not started | | | |
 | E | Not started | | | |

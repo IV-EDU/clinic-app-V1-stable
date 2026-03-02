@@ -11,6 +11,9 @@
         <button class="kebab-btn" onclick="toggleKebab(event, this)">⋮</button>
         <div class="kebab-menu">
           {% if current_user and not hide_app_nav %}
+            {% if user_has_permission(current_user, 'appointments:view') %}
+              <a class="secondary" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
+            {% endif %}
             {% if user_has_permission(current_user, 'reports:view') %}
               <a class="secondary" href="{{ url_for('reports.collections') }}">{{ t('collections') }}</a>
             {% endif %}
@@ -29,16 +32,16 @@
       {% endif %}
       {% if current_user and not hide_app_nav %}
         <a class="btn secondary home-btn" href="{{ url_for('index') }}">{{ t('home') }}</a>
-        {% if user_has_permission(current_user, 'appointments:view') %}
-          <a class="btn secondary" href="{{ url_for('appointments.vanilla') }}">{{ t('appointments') }}</a>
-        {% endif %}
 
-        <form action="{{ url_for('index') }}" method="GET" class="nav-search-form" style="display:flex; margin-inline-start: 1rem; align-items:center;">
-          <input type="text" name="q" placeholder="{{ t('search_patients_placeholder') }}" class="nav-search-input" style="padding:0.4rem 0.8rem; border:1px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-card); color: var(--text-color); font-size:0.9rem; width: 200px;">
-          <button type="submit" class="btn secondary" style="margin-inline-start: 4px; padding:0.4rem 0.6rem; min-width: auto; height: 100%; display:flex; align-items:center;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          </button>
-        </form>
+        <div class="nav-search-container" style="position: relative; margin-inline-start: 8px; flex-grow: 1; max-width: 320px; min-width: 200px;">
+          <form action="{{ url_for('index') }}" method="GET" class="nav-search-form" style="display:flex; align-items:center; width: 100%;">
+            <button type="submit" class="nav-search-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </button>
+            <input type="text" name="q" id="nav-search-input" placeholder="{{ t('search_patients_placeholder') }}" autocomplete="off" class="nav-search-input">
+          </form>
+          <div id="nav-search-results" class="nav-search-dropdown" style="display: none;"></div>
+        </div>
       {% endif %}
     </div>
     <div class="center">
@@ -49,7 +52,7 @@
           </div>
           {% if clinic_name_enabled and clinic_name %}
             <div class="brand-text" dir="ltr">
-              <div class="brand-name" style="{% if clinic_brand_color %}color: {{ clinic_brand_color }};{% endif %}">
+              <div class="brand-name" style="{% if clinic_brand_color %}color: {{ clinic_brand_color }};{% endif %} white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;">
                 {{ clinic_name }}
               </div>
               {% if clinic_tagline_enabled and clinic_tagline %}
@@ -63,7 +66,7 @@
       {% else %}
         {% if clinic_name_enabled %}
           <div class="brand-text" dir="ltr">
-            <div class="brand-name" style="{% if clinic_brand_color %}color: {{ clinic_brand_color }};{% endif %}">
+            <div class="brand-name" style="{% if clinic_brand_color %}color: {{ clinic_brand_color }};{% endif %} white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;">
               {{ clinic_name if clinic_name else t('app_title') }}
             </div>
             {% if clinic_tagline_enabled and clinic_tagline %}
@@ -106,3 +109,339 @@
     </div>
   </div>
 </div>
+
+<style>
+  /* Base refinements */
+  .header .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 60px;
+    position: relative; /* Reference for absolute centering */
+  }
+
+  .header .start, .header .end {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .header .center {
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    text-align: center;
+    z-index: 10;
+    pointer-events: none; /* Let clicks pass through empty areas */
+  }
+
+  .header .center > * {
+    pointer-events: auto; /* Re-enable clicks on the logo/text */
+  }
+
+  /* --- Premium Search Bar UI --- */
+  .nav-search-form {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px; /* Use a slight rounded corner, not a pill */
+    padding: 0px 8px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); /* Very subtle inner shadow */
+    transition: all var(--transition-normal);
+  }
+  .nav-search-form:focus-within {
+    border-color: var(--color-primary, #3b82f6);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    background: #ffffff;
+  }
+
+  .nav-search-btn {
+    background: transparent;
+    border: none;
+    padding: 0.4rem;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+  }
+
+  .nav-search-input {
+    border: none;
+    background: transparent;
+    padding: 0.4rem 0.5rem 0.4rem 0px;
+    width: 100%;
+    outline: none;
+    color: var(--color-text);
+    font-size: 0.9rem; /* Slightly smaller typography */
+  }
+  .nav-search-input::placeholder {
+    color: var(--color-text-faint);
+  }
+
+  /* --- Premium Search Dropdown UI --- */
+  .nav-search-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 0;
+  }
+
+  .nav-search-dropdown a {
+    display: block;
+    padding: 10px 16px;
+    color: var(--color-text);
+    text-decoration: none;
+    border-bottom: 1px solid var(--color-border);
+    transition: background var(--transition-fast);
+  }
+  .nav-search-dropdown a:last-child {
+    border-bottom: none;
+  }
+  .nav-search-dropdown a:hover, .nav-search-dropdown a.selected {
+    background: var(--color-surface-sunken);
+  }
+
+  /* --- Dark Mode Enhancements --- */
+  html[data-theme="dark"] .nav-search-form {
+    background: var(--color-surface-sunken);
+    border-color: var(--color-border);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+  }
+  html[data-theme="dark"] .nav-search-dropdown {
+    background: var(--color-surface-raised);
+    border-color: var(--color-border-strong);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.7);
+  }
+  html[data-theme="dark"] .nav-search-dropdown a:hover, html[data-theme="dark"] .nav-search-dropdown a.selected {
+    background: var(--color-surface);
+  }
+
+  /* --- Generic Search State UI --- */
+  .nav-search-dropdown .no-results, .nav-search-dropdown .loading {
+    padding: 1.5rem 1rem;
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+    text-align: center;
+  }
+  .nav-search-dropdown .view-all {
+    font-weight: 600;
+    color: var(--color-info);
+    text-align: center;
+  }
+
+  html[dir="rtl"] .nav-search-dropdown {
+    text-align: right;
+  }
+  html[dir="rtl"] .nav-search-input {
+    padding: 0.4rem 0px 0.4rem 0.5rem; /* Flip padding for Arabic */
+  }
+
+  /* Responsive Strategy */
+  @media (max-width: 1200px) {
+    .brand-tagline, .user-meta { display: none; }
+    .brand-name { max-width: 180px !important; font-size: 20px !important; }
+  }
+
+  @media (max-width: 900px) {
+    .nav-search-container { max-width: 180px !important; }
+    .home-btn { font-size: 0; padding: 10px !important; }
+    .home-btn::before { content: '🏠'; font-size: 1.2rem; }
+  }
+
+  @media (max-width: 768px) {
+    .header .bar { flex-wrap: wrap; padding: 10px; gap: 8px; }
+    .header .start, .header .end { display: contents; }
+    .header .center {
+      position: static !important;
+      transform: none !important;
+      order: 1;
+      flex: 1 1 100%;
+      margin-bottom: 4px;
+    }
+
+    .kebab { order: 2; }
+    .back-btn { order: 3; }
+    .home-btn { order: 4; }
+
+    .lang-toggle { order: 5; margin-inline-start: auto; }
+    .user-meta { display: none !important; }
+    .header .end > a.secondary { order: 6; margin-inline-start: auto; }
+
+    .nav-search-container {
+      order: 7;
+      flex: 1 1 100% !important;
+      max-width: none !important;
+      margin: 4px 0 0 0 !important;
+    }
+  }
+</style>
+
+<script>
+  (function() {
+    const searchInput = document.getElementById('nav-search-input');
+    const resultsDiv = document.getElementById('nav-search-results');
+    if (!searchInput || !resultsDiv) return;
+
+    let debounceTimer;
+    let selectedIndex = -1;
+
+    searchInput.addEventListener('input', function() {
+      clearTimeout(debounceTimer);
+      const query = this.value.trim();
+
+      if (query.length < 2) {
+        resultsDiv.innerHTML = '';
+        resultsDiv.style.display = 'none';
+        return;
+      }
+
+      debounceTimer = setTimeout(() => {
+        fetchLiveResults(query);
+      }, 300);
+    });
+
+    async function fetchLiveResults(query) {
+      console.log('Fetching live results for:', query);
+      resultsDiv.innerHTML = '<div class="loading">{{ t("searching") }}...</div>';
+      resultsDiv.style.display = 'block';
+      selectedIndex = -1;
+
+      try {
+        const response = await fetch(`/api/patients/live-search?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        console.log('API Response:', data);
+
+        let patients = [];
+        if (Array.isArray(data)) {
+          patients = data;
+        } else if (data && typeof data === 'object' && Array.isArray(data.results)) {
+          patients = data.results;
+        } else if (data && typeof data === 'object') {
+          // If it's an object but not a direct array or .results, maybe it's a single result or some other structure
+          patients = Object.values(data).find(Array.isArray) || [];
+        }
+
+        console.log('Extracted patients:', patients);
+        renderResults(patients, query);
+      } catch (error) {
+        console.error('Search fetch error:', error);
+        resultsDiv.innerHTML = '<div class="no-results" style="color:var(--color-danger)">Search failed.</div>';
+      }
+    }
+
+    function renderResults(patients, query) {
+      console.log('Rendering results for:', patients);
+      // Clear results
+      resultsDiv.innerHTML = '';
+
+      if (!Array.isArray(patients)) {
+        console.error('CRITICAL: patients is not an array in renderResults!', patients);
+        resultsDiv.innerHTML = '<div class="no-results" style="color:var(--color-danger)">Internal error: invalid data.</div>';
+        return;
+      }
+
+      if (patients.length === 0) {
+        resultsDiv.innerHTML = '<div class="no-results">{{ t("no_patients_found") }}</div>';
+      } else {
+        patients.forEach((p, idx) => {
+          if (!p || typeof p !== 'object') {
+            console.warn(`Skipping invalid patient at index ${idx}:`, p);
+            return;
+          }
+
+          const name = p.full_name || p.name || '{{ t("unknown") }}';
+          const id = p.short_id || p.file_number || p.id || '';
+          const phone = p.phone || p.phone_number || '';
+
+          const item = document.createElement('a');
+          item.href = `/patients/${p.id}`;
+          item.className = 'search-item';
+
+          item.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--color-bg); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; color: var(--color-text-secondary); flex-shrink: 0;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div style="flex-grow: 1; overflow: hidden; display: flex; flex-direction: column; gap: 4px;">
+                <div style="font-weight: 600; font-size: 0.95rem; color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1;">${name}</div>
+                <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                  <span style="font-family: monospace; font-size: 0.75rem; background: var(--color-bg); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--color-border); color: var(--color-text-secondary); line-height: 1;">${id}</span>
+                  ${phone ? `<span style="font-size: 0.8rem; color: var(--color-text-secondary); opacity: 0.9; line-height: 1;" dir="ltr"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-inline-end: 2px; vertical-align: -1px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>${phone}</span>` : ''}
+                </div>
+              </div>
+            </div>
+          `;
+
+          resultsDiv.appendChild(item);
+        });
+      }
+
+      // View all results fallback
+      const viewAll = document.createElement('a');
+      viewAll.href = `/?q=${encodeURIComponent(query)}`;
+      viewAll.className = 'view-all';
+      viewAll.innerHTML = `{{ t("view_all_results_for") }} &quot;<b dir="auto">${query}</b>&quot;`;
+      viewAll.addEventListener('click', (e) => {
+        e.preventDefault();
+        const form = searchInput.closest('form');
+        if (form) form.submit();
+      });
+      resultsDiv.appendChild(viewAll);
+    }
+
+    // Keyboard navigation
+    searchInput.addEventListener('keydown', function(e) {
+      const items = resultsDiv.querySelectorAll('a');
+      if (resultsDiv.style.display === 'none' || !items.length) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+        updateSelection(items);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, 0);
+        updateSelection(items);
+      } else if (e.key === 'Enter' && selectedIndex >= 0) {
+        e.preventDefault();
+        items[selectedIndex].click();
+      }
+    });
+
+    function updateSelection(items) {
+      items.forEach((item, index) => {
+        if (index === selectedIndex) {
+          item.classList.add('selected');
+          item.scrollIntoView({ block: 'nearest' });
+        } else {
+          item.classList.remove('selected');
+        }
+      });
+    }
+
+    // Close on click away
+    document.addEventListener('click', function(e) {
+      if (!searchInput.contains(e.target) && !resultsDiv.contains(e.target)) {
+        resultsDiv.style.display = 'none';
+      }
+    });
+
+    // Re-open on focus if query is valid
+    searchInput.addEventListener('focus', function() {
+      if (this.value.trim().length >= 2 && resultsDiv.innerHTML !== '') {
+        resultsDiv.style.display = 'block';
+      }
+    });
+  })();
+</script>

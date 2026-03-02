@@ -1,36 +1,76 @@
-## Task: Navbar Responsiveness & Live Patient Search
+## Task: Fix Admin Analyze Tab CSS and Nav Search Bar Layout Bugs
 
 ### Recommended Agent:
-[Nimble Coder / UI] - Use a fast, UI-focused model that writes minimal code and won't over-engineer UI tasks.
+**Nimble Coder / UI:** This task is purely CSS/HTML plumbing to fix layout regressions caused by recent UI Redesign phases. No complex backend logic or database migrations are required.
 
 ### Goal
-Polish the `_nav.html` bar. Fix overflow issues caused by long clinic names and too many buttons. Upgrade the generic search input into a "Live Search" dropdown that fetches top patient results dynamically (vanilla JS), while preserving the ability to do a full-page search.
+We recently completed Phase 1-3 of the UI Redesign. In the process, two critical UI bugs were introduced that need immediate fixing before we add new features:
+1. The `.btn-sm` class was lost, breaking the pagination and mode buttons in the Admin -> Data -> Analyze tab.
+2. The global search bar added to `_nav.html` is visually broken/glitchy. The manager wants this fixed *perfectly*.
 
-### Edge Cases & UX (Mandatory Fixes)
-- **Empty Results:** If the query returns 0 patients, show a simple "No patients found" row in the dropdown.
-- **Click-away:** Clicking anywhere outside the search input or dropdown must instantly close the dropdown.
-- **Fallback Search:** The last row of the dropdown must always be a link saying "View all results for '[query]'" which submits the full search form normally.
-- **Keyboard Navigation:** Users should be able to use the Up/Down arrow keys to navigate the dropdown results and hit Enter to select a patient.
-- **RTL Alignment:** Ensure the dropdown text aligns properly for Arabic (right).
+### Plan (Execute Exactly This)
 
-### Plan
-1. **Fix Overflow & Responsiveness:**
-   - Open `templates/_nav.html`.
-   - Move the "Appointments" button inside the `<div class="kebab-menu">`, placing it at the very top.
-   - Update the search `<form>` input to be responsive: `width: 100%; max-width: 250px; min-width: 120px;`.
-   - Add inline CSS truncation to `<div class="brand-name">`: `white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px;`.
+#### 1. Fix Admin Button CSS
+Open `static/css/app.css` and add the missing `.btn-sm` class definition exactly as follows:
+```css
+.btn.btn-sm, button.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm, 6px);
+  gap: 4px;
+}
+```
 
-2. **Backend API for Live Search:**
-   - Create a lightweight JSON endpoint in `clinic_app/blueprints/core.py` (or `.patients.py`) accepting `?q=`.
-   - Query the `Patient` model using the *exact same Arabic normalization logic* used by the main search route.
-   - Return a maximum of 5 recent results as JSON (`[{"id": "...", "name": "...", "short_id": "P001", "phone": "..."}]`).
+#### 2. Fix Nav Search Bar CSS (`templates/_nav.html`)
+The search bar needs to look embedded, subtle, and premium. In `templates/_nav.html`, find the `<style>` block and update the search bar CSS exactly like this:
 
-3. **Frontend Live Search (Vanilla JS):**
-   - Modify the search `<form>` in `_nav.html` to include `autocomplete="off"`. Ensure the container wrapper has `position: relative`.
-   - Create a hidden, `position: absolute` `<div>` directly under the input for the dropdown results.
-   - Add Vanilla JS to listen for `input` events with a ~300ms debounce.
-   - Fetch the API results and render them as clickable rows linking directly to their profile (`/patients/<id>`). Implement the Edge Cases listed above.
+Replace the `.nav-search-form` block with:
+```css
+  .nav-search-form {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px; /* Use a slight rounded corner, not a pill */
+    padding: 0px 8px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); /* Very subtle inner shadow */
+    transition: all var(--transition-normal);
+  }
+  .nav-search-form:focus-within {
+    border-color: var(--color-primary, #3b82f6);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    background: #ffffff;
+  }
+```
+
+Replace the `.nav-search-input` block with:
+```css
+  .nav-search-input {
+    border: none;
+    background: transparent;
+    padding: 0.4rem 0.5rem 0.4rem 0px;
+    width: 100%;
+    outline: none;
+    color: var(--color-text);
+    font-size: 0.9rem; /* Slightly smaller typography */
+  }
+  html[dir="rtl"] .nav-search-input {
+    padding: 0.4rem 0px 0.4rem 0.5rem; /* Flip padding for Arabic */
+  }
+```
+
+#### 3. Visual QA (CRITICAL)
+Start the server (`python wsgi.py`). Use your browser to take screenshots of BOTH fixes:
+1. Navigate to `/auth/login`, login with `admin`/`admin`.
+2. Navigate to Admin -> Data -> Analyze. Take a screenshot showing the fixed `.btn-sm` buttons.
+3. Take a screenshot of the fixed Nav Search Bar.
+4. Save these to `data/agent-screenshots/` and explicitly tell the user to open them.
 
 ### Constraints
-- **NO React/Vue/jQuery.** Pure Vanilla JS only.
-- Do NOT modify `admin_settings.py` or the `/data/` folder.
+- **NEVER touch the import logic.**
+- Do not introduce new CSS frameworks (no Tailwind/Bootstrap).
+- Do NOT mark this task as complete until you have taken screenshots.
+
+### Manager Review Step (Mandatory)
+Before executing, state:
+1. "I will be modifying `static/css/app.css` and `templates/_nav.html`."
+2. "I will NOT be touching backend routing or import/merge logic."
+3. "I will provide screenshots of both fixes before declaring done."

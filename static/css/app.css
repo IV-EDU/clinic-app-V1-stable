@@ -101,6 +101,12 @@ textarea{resize:none}
 .btn.secondary:not(:disabled):hover,button.secondary:not(:disabled):hover{background:var(--bg,#f7f7f8)}
 .btn:active,button:active{transform:translateY(0)}
 .btn.full-width,button.full-width{width:100%}
+.btn.btn-sm, button.btn-sm {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm, 6px);
+  gap: 4px;
+}
 .btn:focus-visible{
   outline:2px solid var(--primary-color,#2563eb);
   outline-offset:2px;
@@ -1304,7 +1310,7 @@ table td.actions .btn{margin-left:4px}
     overflow-y: auto !important;
     overflow-x: hidden !important;
   }
-  
+
   .modal-content {
     width: 100% !important;
     max-width: 95vw !important;
@@ -1314,13 +1320,13 @@ table td.actions .btn{margin-left:4px}
     flex-direction: column !important;
     overflow: hidden !important;
   }
-  
+
   .modal-header,
   .modal-footer {
     flex-shrink: 0 !important;
     padding: 1rem !important;
   }
-  
+
   .modal-body {
     flex: 1 !important;
     overflow-y: auto !important;
@@ -1328,35 +1334,35 @@ table td.actions .btn{margin-left:4px}
     padding: 1rem !important;
     min-height: 0 !important;
   }
-  
+
   .form-row {
     grid-template-columns: 1fr !important;
     gap: 1rem !important;
   }
-  
+
   .payment-grid {
     grid-template-columns: 1fr !important;
     gap: 1rem !important;
     padding: 1rem !important;
   }
-  
+
   .payment-row {
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 0.5rem !important;
     padding: 1rem !important;
   }
-  
+
   .payment-value {
     text-align: left !important;
     font-size: 1.125rem !important;
   }
-  
+
   .patient-details {
     flex-direction: column !important;
     gap: 0.75rem !important;
   }
-  
+
   .patient-details span {
     white-space: normal !important;
     font-size: 1rem !important;
@@ -1373,84 +1379,84 @@ table td.actions .btn{margin-left:4px}
     overflow-y: auto !important;
     overflow-x: hidden !important;
   }
-  
+
   .modal-content {
     border-radius: 8px !important;
     max-height: calc(100vh - 0.5rem) !important;
     margin: 0 !important;
   }
-  
+
   .modal-header,
   .modal-body,
   .modal-footer {
     padding: 0.75rem !important;
   }
-  
+
   .admin-form {
     gap: 0.75rem !important;
   }
-  
+
   .form-group {
     gap: 0.375rem !important;
   }
-  
+
   /* Responsive receipt header */
   .receipt-header {
     margin-bottom: 1.5rem !important;
     padding: 1rem !important;
   }
-  
+
   .receipt-title {
     font-size: 1.5rem !important;
   }
-  
+
   .receipt-subtitle {
     font-size: 1rem !important;
   }
-  
+
   /* Responsive receipt sections */
   .receipt-section {
     padding: 1.5rem !important;
     margin-bottom: 1.5rem !important;
   }
-  
+
   .receipt-section-title {
     font-size: 1.25rem !important;
     margin-bottom: 1rem !important;
   }
-  
+
   /* Responsive form elements */
   .receipt-form {
     font-size: 1rem !important;
   }
-  
+
   .receipt-form .form-label {
     font-size: 1rem !important;
   }
-  
+
   .receipt-form .form-input,
   .receipt-form .modal-form-input {
     font-size: 1rem !important;
     padding: 0.75rem 1rem !important;
     min-height: 2.5rem !important;
   }
-  
+
   .receipt-form .patient-name {
     font-size: 1.25rem !important;
   }
-  
+
   .receipt-form .patient-details {
     font-size: 1rem !important;
   }
-  
+
   .receipt-form .payment-label {
     font-size: 1rem !important;
   }
-  
+
   .receipt-form .payment-value {
     font-size: 1.125rem !important;
   }
-  
+
   .receipt-form .modal-notes {
     font-size: 1rem !important;
   }
@@ -1462,31 +1468,31 @@ table td.actions .btn{margin-left:4px}
     background: #000000;
     border-color: #ffffff;
   }
-  
+
   .receipt-title {
     color: #ffffff;
   }
-  
+
   .receipt-subtitle {
     color: #cccccc;
   }
-  
+
   .receipt-section {
     border-color: #000000;
     background: #ffffff;
   }
-  
+
   .receipt-form .form-label {
     color: #000000;
   }
-  
+
   .receipt-form .form-input,
   .receipt-form .modal-form-input {
     border-color: #000000;
     background: #ffffff !important;
     color: #000000;
   }
-  
+
   .modal-notes {
     background: #ffffff;
     border-color: #000000;
@@ -1499,7 +1505,7 @@ table td.actions .btn{margin-left:4px}
   .modal-close {
     transition: none;
   }
-  
+
   * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

@@ -15,11 +15,22 @@
   {% if _metric %}--metric-color: {{ _metric }};{% endif %}
 }
 
+/* Widen the .wrap shell so admin settings are not clipped at 1100px */
+.wrap:has(.admin-settings-container) {
+  max-width: none;
+  overflow-x: visible;
+}
+
 /* Admin Settings Styles */
 .admin-settings-container {
   max-width: 1400px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+/* Let cards inside data tab scroll instead of clipping */
+#data-tab .card {
+  overflow: visible;
 }
 
 .admin-settings-header {
@@ -330,6 +341,9 @@
   border-radius: 12px;
   background: rgba(255,255,255,0.85);
 }
+.data-scroll-area .admin-table {
+  min-width: 1100px;
+}
 
 /* Doctor Colors Styles */
 .color-preview {
@@ -455,6 +469,17 @@
 
 .modal-body {
   padding: 1.5rem;
+}
+
+.audit-technical-pre {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #1f2937;
+}
+[data-theme="dark"] .audit-technical-pre {
+  background: #1e2330;
+  border-color: #374151;
+  color: #d1d5db;
 }
 
 .modal-footer {
@@ -653,9 +678,17 @@
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 1200px) {
   .admin-settings-container {
     padding: 1rem;
+  }
+  .admin-tab-content {
+    padding: 1rem;
+  }
+}
+@media (max-width: 768px) {
+  .admin-settings-container {
+    padding: 0.5rem;
   }
 
   .admin-settings-header {
@@ -3766,8 +3799,7 @@ function openAuditRowModal(index) {
   var beforeUnknown = '{{ tf("audit_prev_not_recorded", "(previous value not recorded)") }}';
   var changes = '';
   var showBeforeAfter = (action === 'payment_update');
-  var beforeTitle = showBeforeAfter ? '{{ tf("before", "Before") }}' : '{{ tf("current", "Current") }}';
-  var afterTitle = showBeforeAfter ? '{{ tf("after", "After") }}' : '{{ tf("current", "Current") }}';
+  var isDelete = (action === 'payment_delete');
 
   var prevPaidAt = meta.prev_paid_at || beforeUnknown;
   var prevAmount = (typeof meta.prev_amount_cents === 'number') ? fmtMoney(meta.prev_amount_cents) : beforeUnknown;
@@ -3787,11 +3819,11 @@ function openAuditRowModal(index) {
   var curRemaining = (typeof meta.remaining_cents === 'number') ? fmtMoney(meta.remaining_cents) : '—';
   var curVisit = meta.visit_type || '—';
 
-  changes += '<table class="table-compact"><thead><tr>' +
-    '<th></th><th>' + escapeHtml(beforeTitle) + '</th><th>' + escapeHtml(afterTitle) + '</th>' +
-    '</tr></thead><tbody>';
-
   if (showBeforeAfter) {
+    // Update: show Before / After columns
+    changes += '<table class="table-compact"><thead><tr>' +
+      '<th></th><th>{{ tf("before", "Before") }}</th><th>{{ tf("after", "After") }}</th>' +
+      '</tr></thead><tbody>';
     changes += row('{{ tf("paid_at", "Paid at") }}', prevPaidAt, curPaidAt);
     changes += row('{{ tf("amount", "Amount") }}', prevAmount, curAmount);
     changes += row('{{ tf("method", "Method") }}', prevMethod, curMethod);
@@ -3801,14 +3833,23 @@ function openAuditRowModal(index) {
     changes += row('{{ tf("remaining", "Remaining") }}', prevRemaining, curRemaining);
     changes += row('{{ tf("visit_type", "Visit type") }}', prevVisit, curVisit);
   } else {
-    changes += row('{{ tf("paid_at", "Paid at") }}', '', curPaidAt);
-    changes += row('{{ tf("amount", "Amount") }}', '', curAmount);
-    changes += row('{{ tf("method", "Method") }}', '', curMethod);
-    changes += row('{{ tf("doctor", "Doctor") }}', '', curDoctor);
-    changes += row('{{ tf("discount", "Discount") }}', '', curDiscount);
-    changes += row('{{ tf("total", "Total") }}', '', curTotal);
-    changes += row('{{ tf("remaining", "Remaining") }}', '', curRemaining);
-    changes += row('{{ tf("visit_type", "Visit type") }}', '', curVisit);
+    // Create or Delete: single-value table (2 columns: label + value)
+    var valTitle = isDelete ? '{{ tf("audit_deleted_value", "Deleted") }}' : '{{ tf("audit_created_value", "Value") }}';
+    function row2(label, val) {
+      return '<tr><th style="width:180px;">' + escapeHtml(label) + '</th>' +
+        '<td>' + escapeHtml(val) + '</td></tr>';
+    }
+    changes += '<table class="table-compact"><thead><tr>' +
+      '<th></th><th>' + escapeHtml(valTitle) + '</th>' +
+      '</tr></thead><tbody>';
+    changes += row2('{{ tf("paid_at", "Paid at") }}', curPaidAt);
+    changes += row2('{{ tf("amount", "Amount") }}', curAmount);
+    changes += row2('{{ tf("method", "Method") }}', curMethod);
+    changes += row2('{{ tf("doctor", "Doctor") }}', curDoctor);
+    changes += row2('{{ tf("discount", "Discount") }}', curDiscount);
+    changes += row2('{{ tf("total", "Total") }}', curTotal);
+    changes += row2('{{ tf("remaining", "Remaining") }}', curRemaining);
+    changes += row2('{{ tf("visit_type", "Visit type") }}', curVisit);
   }
   changes += '</tbody></table>';
 
@@ -3824,7 +3865,7 @@ function openAuditRowModal(index) {
     changes +
     '<details style="margin-top:12px;">' +
       '<summary style="cursor:pointer; font-weight:700;">{{ tf("technical_details", "Technical details") }}</summary>' +
-      '<pre style="margin-top:8px; white-space:pre-wrap; background:#f9fafb; padding:10px; border-radius:10px; border:1px solid #e5e7eb;">' + escapeHtml(metaJson) + '</pre>' +
+      '<pre class="audit-technical-pre" style="margin-top:8px; white-space:pre-wrap; padding:10px; border-radius:10px;">' + escapeHtml(metaJson) + '</pre>' +
     '</details>';
 
   modal.classList.add('active');

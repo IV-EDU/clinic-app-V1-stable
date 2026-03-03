@@ -582,10 +582,16 @@ def analyze_first_stable_excel(path: Path, max_preview_rows: int = 200, mode: st
     counts = dict(counts or {})
     counts["patients"] = len(patients)
 
+    # Generate sequential preview file numbers (P000001, P000002, …) so the
+    # Analyze table shows what will be assigned during a real import.
+    preview_file_seq = 0
+
     rows_payload: List[Dict[str, Any]] = []
     for key, grp in sorted(patients.items(), key=lambda it: ((it[1].base_short_id or ""), it[1].full_name))[
         :max_preview_rows
     ]:
+        preview_file_seq += 1
+        preview_file_number = f"P{preview_file_seq:06d}"
         payments_payload: List[Dict[str, Any]] = []
         for p in grp.payments:
             status = "done" if p.remaining_cents == 0 else "owing"
@@ -615,9 +621,9 @@ def analyze_first_stable_excel(path: Path, max_preview_rows: int = 200, mode: st
         rows_payload.append(
             {
                 # Legacy Excel uses notebook/page numbers, not the app's file numbers.
-                # Keep file number empty in the preview, and show the notebook number
-                # in the page-number chip instead.
-                "short_id": "",
+                # Show a preview file number (P000001 …) so the user sees the format
+                # that will be assigned during actual import.
+                "short_id": preview_file_number,
                 "primary_page_number": primary_page,
                 "full_name": grp.full_name,
                 "phone": grp.phone,

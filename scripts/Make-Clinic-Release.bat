@@ -1,6 +1,6 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 set "OUT_ZIP=ClinicApp-Release.zip"
 set "STAGE=%TEMP%\ClinicApp-Release-%RANDOM%%RANDOM%"
@@ -16,7 +16,7 @@ for %%D in (clinic_app templates static migrations) do (
   )
 )
 
-for %%F in (alembic.ini requirements.txt wsgi.py Start-Clinic.bat Run-Migrations.bat) do (
+for %%F in (alembic.ini requirements.txt wsgi.py Start-Clinic.bat scripts\Run-Migrations.bat) do (
   if not exist "%%F" (
     echo [ERROR] Required file missing: %%F
     goto :halt
@@ -39,7 +39,7 @@ copy /y "alembic.ini" "%STAGE%\alembic.ini" >nul || goto :copy_fail
 copy /y "requirements.txt" "%STAGE%\requirements.txt" >nul || goto :copy_fail
 copy /y "wsgi.py" "%STAGE%\wsgi.py" >nul || goto :copy_fail
 copy /y "Start-Clinic.bat" "%STAGE%\Start-Clinic.bat" >nul || goto :copy_fail
-copy /y "Run-Migrations.bat" "%STAGE%\Run-Migrations.bat" >nul || goto :copy_fail
+copy /y "scripts\Run-Migrations.bat" "%STAGE%\Run-Migrations.bat" >nul || goto :copy_fail
 if exist "Start-Clinic-Preview.bat" copy /y "Start-Clinic-Preview.bat" "%STAGE%\Start-Clinic-Preview.bat" >nul
 
 mkdir "%STAGE%\data" >nul 2>nul

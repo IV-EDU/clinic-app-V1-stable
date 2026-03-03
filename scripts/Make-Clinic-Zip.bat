@@ -4,7 +4,7 @@ setlocal EnableExtensions EnableDelayedExpansion
 REM Clinic-friendly ZIP builder: includes only what a clinic needs to run the app.
 REM This script intentionally does NOT include clinic data, tests, dev tools, or extra BAT files.
 
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 set "OUT_ZIP=ClinicApp-Clinic.zip"
 set "STAGE=%TEMP%\ClinicApp-Release-%RANDOM%%RANDOM%"

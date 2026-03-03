@@ -1,6 +1,6 @@
 @echo off
-setlocal
-cd /d "%~dp0"
+setlocal EnableExtensions EnableDelayedExpansion
+cd /d "%~dp0\.."
 
 echo [INFO] Using project venv (Python 3.12)...
 where py >nul 2>nul || goto :no_py
@@ -23,7 +23,7 @@ if exist requirements.txt (
 )
 
 set PYTHONUTF8=1
-echo [INFO] Checking database updates...
+echo [INFO] Running database updates...
 set "MIGRATE_LOG=%TEMP%\clinic_migrate_%RANDOM%%RANDOM%.log"
 "%VENV_PY%" -m flask --app clinic_app.app db upgrade >"%MIGRATE_LOG%" 2>&1 || goto :migrate_fail
 type "%MIGRATE_LOG%"
@@ -35,18 +35,13 @@ if errorlevel 1 (
 )
 del /q "%MIGRATE_LOG%" >nul 2>&1
 
-echo [INFO] Starting Clinic App...
+echo [INFO] Ensuring default admin exists...
+"%VENV_PY%" -m flask --app clinic_app.app seed-admin --username admin --password ChangeMe!123 || goto :seed_fail
 
-rem Auto-open browser ~2s after start (no policy issues; single command)
-powershell -NoProfile -Command "Start-Sleep -Seconds 2; Start-Process 'http://127.0.0.1:8080/'" 2>nul
-
-"%VENV_PY%" -m clinic_app.app
-set EXITCODE=%ERRORLEVEL%
-echo.
-echo [INFO] App exited with code %EXITCODE%.
+echo [OK] Done.
 echo Press any key to close...
 pause >nul
-endlocal & exit /b %EXITCODE%
+endlocal & exit /b 0
 
 :no_py
 echo [ERROR] Python launcher 'py' not found. Install Python 3.12 (64-bit) and ensure it's on PATH.
@@ -69,7 +64,9 @@ if exist "%MIGRATE_LOG%" (
   del /q "%MIGRATE_LOG%" >nul 2>&1
 )
 echo [ERROR] Automatic database update failed.
-echo [ERROR] Please run scripts\Run-Migrations.bat and try again.
+goto :halt
+:seed_fail
+echo [ERROR] Failed to create/check default admin user.
 goto :halt
 :halt
 echo Press any key to close...

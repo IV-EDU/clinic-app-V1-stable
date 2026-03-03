@@ -7,7 +7,7 @@ if /I "%~1" NEQ "__stay" (
   exit /b 0
 )
 
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 set "OUT_ZIP=ClinicApp-Release.zip"
 set "STAGE=%TEMP%\\ClinicApp-Release-%RANDOM%%RANDOM%"

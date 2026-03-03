@@ -86,7 +86,7 @@ if exist "%MIGRATE_LOG%" (
   del /q "%MIGRATE_LOG%" >nul 2>&1
 )
 echo [ERROR] Automatic preview database update failed.
-echo [ERROR] Please run Run-Migrations.bat and try again.
+echo [ERROR] Please run scripts\Run-Migrations.bat and try again.
 goto :halt
 :import_fail
 echo [ERROR] Preview import from Excel failed. Check the message above (file path, format, etc.).

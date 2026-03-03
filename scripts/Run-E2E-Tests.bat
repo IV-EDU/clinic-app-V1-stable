@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 echo [INFO] Preparing Python environment...
 where py >nul 2>nul || goto :no_py

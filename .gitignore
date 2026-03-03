@@ -71,6 +71,10 @@ data/logs/
 ehthumbs.db
 Thumbs.db
 
+# Agent artifacts (not tracked)
+.agent/
+.agent_tmp/
+
 # Media files (if not committed)
 /*.jpg
 /*.jpeg

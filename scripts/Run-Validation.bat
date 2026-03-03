@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 echo [INFO] Running backend logic tests (pytest)...
 where py >nul 2>nul || goto :no_py
@@ -23,7 +23,7 @@ set PYTEST_EXIT=%ERRORLEVEL%
 if not %PYTEST_EXIT%==0 goto :pytest_fail
 
 echo [INFO] Running browser smoke tests (Playwright)...
-call Run-E2E-Tests.bat
+call scripts\Run-E2E-Tests.bat
 set E2E_EXIT=%ERRORLEVEL%
 if not %E2E_EXIT%==0 goto :e2e_fail
 

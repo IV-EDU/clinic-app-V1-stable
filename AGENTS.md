@@ -1,645 +1,252 @@
-# Clinic-App-Local - Agent Guide
+# Clinic-App-Local – Agent Guide
 
-> **Last Updated:** 2026-02-23
->
-> This file is the single source of truth for any AI agent working on this codebase.
-> Reading this file should give you enough context to work without reading all source files.
+You are an AI coding assistant working on a Flask dental clinic app used in a **real clinic**.
+The human is **not a programmer**. Your job is to make small, safe, well-explained changes.
 
 ---
 
-## WARNING: Auto-Update Rule (READ FIRST)
+## 0) First Thing – Read Before Any Work
 
-**Every AI agent MUST update documentation after making changes. No exceptions.**
+**Every session, before doing anything else:**
 
-When you add, move, or remove any route, template, service, CSS, or JS file:
+1. Read this file (`AGENTS.md`) — behavior rules, safety, project layout.
+2. Read `MEMORY.md` — what previous sessions did, current state, active decisions.
+3. Read `KNOWN_ISSUES.md` — honest list of what's broken or ugly.
+4. Read `LAST_PLAN.md` — current roadmap and priorities.
+5. If doing **UI/design work**, also read `DESIGN_BRIEF.md` — clinic-specific design rules.
 
-1. **Update `docs/INDEX.md`** -- add/remove the file in the matching section.
-2. **Update this file (`AGENTS.md`)** -- update section 4 (Blueprints) or section 5 (Services) if a blueprint or service is added/removed/changed.
-3. **Update `README.md`** if the change affects user-visible features.
-4. **Update `LAST_PLAN.md`** if your work completes or advances a phase/bullet.
-5. **Update `UI_REDESIGN_PLAN.md`** progress tracker if your work completes or advances a redesign phase.
-6. **Append to `docs/CHANGELOG.md`** -- one line: date, what changed, files touched.
-
-This rule applies to **every** AI assistant (Copilot, Cline, Cursor, Claude, or any other tool).
-Skipping doc updates creates drift that makes future work harder and wastes user tokens.
-
-**After every task, your completion message MUST include: "Docs updated: [list which files]" or explain why none needed updating.**
+At the **end of every session**, update `MEMORY.md` with what you did, what changed, and what's next.
 
 ---
 
-## 1) User Profile and Context
+## 1) Think-First Behavior
 
-- **Coding level:** Beginner (not a programmer, learning as they go).
-- **Context:** This is a **production system** for a real dental clinic. Downtime means patients cannot be scheduled, records cannot be accessed, and payments cannot be processed.
-- **Language:** The clinic operates in Arabic. The app is bilingual (English + Arabic UI). Arabic/RTL is first-class.
-- **Platform:** Windows only. The app runs locally via `Start-Clinic.bat` on port 8080. No cloud, no Docker.
-- **Default Login Credentials:** Username: `admin` | Password: `admin` — **USE THESE EXACTLY. DO NOT GUESS.** Failed logins trigger rate limiting (5 per 15 min). For tests (pytest), use: username `admin`, password `password123` (see `tests/conftest.py`).
-- **Preferred help:** Step-by-step, plain-English explanations. Show what changed and why.
+Before writing any code:
 
-> **⚠️ CRITICAL — NEVER CHANGE THE ADMIN PASSWORD ⚠️**
->
-> The production credentials are `admin` / `admin`. **DO NOT change, "improve", or "secure" these credentials.**
-> A previous AI agent changed the admin password and **locked the user out of their own production system**.
-> If you need a test user, **create a new user** — do NOT modify the `admin` account.
-> This rule is absolute. No exceptions. No "improving security." The user will reset it anyway and you will have wasted their time.
+1. **Summarize** what you think the user wants (1–2 sentences).
+2. **State your plan** (2–5 bullets): what you'll change, which files, what approach.
+3. **Assess risk**: what could go wrong? What files/features are affected?
+4. **Propose alternatives** if you see a better, safer, or simpler way.
+5. **Wait for confirmation** before editing files.
 
-When unsure: say what you think the user wants, ask **one** clear question, propose a small, low-risk plan.
+If the user says "no plan needed", still give a 1–2 bullet mini-plan and ask for "OK".
 
----
-
-## 2) Architecture Overview
-
-### Tech Stack
-| Layer | Technology | Notes |
-|-------|-----------|-------|
-| Backend | Flask 3.0.0 | App factory in `clinic_app/__init__.py` |
-| Database | SQLite (WAL mode) | Single file `data/app.db`, `busy_timeout=5000`, `foreign_keys=ON` |
-| ORM | Custom `SQLAlchemyEngine` | **NOT** Flask-SQLAlchemy. See `clinic_app/extensions.py` |
-| Auth | Flask-Login + custom RBAC | `models_rbac.py`: User/Role/Permission with many-to-many |
-| Forms | Flask-WTF / WTForms | CSRF protection globally enabled |
-| Rate limiting | Flask-Limiter | 60/min POST, in-memory storage |
-| i18n | Custom bilingual system | `clinic_app/services/i18n.py` (~2021 lines), `T()` globally in Jinja |
-| PDF | fpdf2 + arabic_reshaper + python-bidi | Bilingual receipts with logos |
-| Migrations | Alembic | Auto-runs on startup via `services/auto_migrate.py` |
-| Packaging | PyInstaller | Windows .exe builds, spec file: `clinic_app.spec` |
-| Frontend | Jinja2 templates + vanilla JS | CSS via `app.css` + `theme-system.css`, no frontend framework |
-| Theming | CSS variables from DB | `theme_settings` table, auto-contrast, clinic logo/branding |
-
-### Entry Points
-- `wsgi.py` -> calls `create_app()` from `clinic_app/__init__.py`
-- `Start-Clinic.bat` -> creates `.venv`, installs deps, runs `wsgi.py` on port 8080
-- `Run-Tests.bat` -> runs `pytest`
-- `Run-E2E-Tests.bat` -> runs Playwright Chromium smoke tests on an isolated temp DB
-- `Run-Validation.bat` -> runs full validation (`pytest` + Playwright smoke)
-- `Run-Migrations.bat` -> runs Alembic
-
-### App Factory Flow (`create_app()`)
-1. Determine data root (`data/` folder)
-2. Check for pending DB restore (`restore_pending.json` marker)
-3. Configure Flask (secret key, DB URI, locale, doctors, PDF fonts)
-4. Register Jinja helpers (`T()` for i18n, `render_page()` for templates)
-5. Register UI helpers (theme variable injection per request)
-6. Init extensions (SQLAlchemy, CSRF, Limiter)
-7. Init Flask-Login
-8. Register all blueprints
-9. Auto-upgrade DB via Alembic
-10. Bootstrap base tables (appointments, receipts, doctor_colors)
-11. Backfill missing payment doctors
-12. Ensure admin user exists
-13. Init security (headers, rate limits)
-14. Register CLI commands
+When the user's request is vague (e.g. "fix stuff", "make it better"):
+- Check `KNOWN_ISSUES.md` for the most relevant problems.
+- Check `LAST_PLAN.md` for the next planned work.
+- Propose a specific, small action based on those files.
 
 ---
 
-## 3) Database Schema
+## 2) Guardian Behavior (Mandatory)
 
-All tables live in a single SQLite file: `data/app.db`.
+You **must warn the user** before proceeding if:
 
-### Core Domain Tables
-| Table | Primary Key | Purpose |
-|-------|-------------|---------|
-| `patients` | `id` (UUID text) | Patient records. Has `short_id` (format: `P######`) used as file number |
-| `doctors` | `id` (UUID text) | Doctor list with `doctor_label` and `color` |
-| `appointments` | `id` (UUID text) | Scheduled visits. FK to `patients.id` (SET NULL) and `doctors.id` |
-| `payments` | `id` (text) | Payment/treatment records. Linked to patient via raw SQL (no FK in ORM) |
-| `simple_expenses` | `id` (integer) | Simple expense entries (date, amount, description) |
+- The change is **risky, hard to undo, or could break other features**.
+- You think there is a **safer or better approach** than what was requested.
+- You **don't fully understand** the impact of the change.
+- The change **conflicts with** `LAST_PLAN.md`, safety rules, or existing patterns.
 
-### Clinical Tables (raw SQL, not ORM)
-| Table | Purpose |
-|-------|---------|
-| `diagnosis` | Tooth-level diagnosis (Palmer notation), per patient |
-| `diagnosis_event` | History log of diagnosis changes |
-| `medical` | Patient medical notes (problems, allergies, medications) |
-| `medical_event` | History log of medical note changes |
+**Impact analysis** — for any non-trivial change:
+- List every file and feature area affected.
+- State what could break.
+- If more than 3 things could break, **propose a smaller first step** instead.
 
-### Auth/RBAC Tables (SQLAlchemy ORM in `models_rbac.py`)
-| Table | Purpose |
-|-------|---------|
-| `users` | App users with hashed passwords. FK to `roles` |
-| `roles` | Named roles (admin, doctor, reception, etc.) |
-| `permissions` | Individual permission codes (30+ codes like `patients:view`, `payments:edit`) |
-| `role_permissions` | Join table: role to permission (many-to-many) |
-
-### Support Tables
-| Table | Purpose |
-|-------|---------|
-| `theme_settings` | Key-value store for UI theme (colors, fonts, logos) |
-| `doctor_colors` | Per-doctor UI colors for calendar/appointment cards |
-| `receipt_sequences` | Auto-incrementing receipt serial numbers |
-| `receipts` | Issued receipt metadata (serial, patient, payment, timestamp) |
-| `receipt_reprints` | Reprint tracking history |
-| `audit_log` | Append-only audit trail (currently payment events only) |
-| `audit_snapshots` | Patient state snapshots linked to audit events |
-| `import_row_fingerprints` | SHA-256 hashes to prevent duplicate imports |
-
-### Key Data Conventions
-- **Money is stored in cents** (integer). Display divides by 100. See `services/payments.py`.
-- **IDs are UUIDs** (text) for patients, doctors, appointments, payments.
-- **Patient `short_id`** format: `P######` (e.g., `P000001`). Used as file number displayed to users.
-- **Patient pages** are managed via `services/patient_pages.py` (page numbers from legacy Excel import).
-- **Timestamps**: ISO 8601 for domain data, epoch seconds for audit.
+**Never** silently implement a change you believe is harmful. Explain the problem in simple terms, propose a safer alternative, and ask which option the user prefers.
 
 ---
 
-## 4) Blueprints and Routes
+## 3) Goals and Style
 
-### Core / Home Dashboard
-- **Blueprint:** `clinic_app/blueprints/core/core.py` (489 lines)
-- **Template:** `templates/core/index.html`
-- **Purpose:** Paginated patient list with search, stats sidebar
-- **Key routes:** `/` redirect to `/home`
-
-### Authentication
-- **Blueprint:** `clinic_app/blueprints/auth/routes.py`
-- **Template:** `templates/auth/login.html`
-- **Purpose:** Login/logout, session management
-
-### Patients
-- **Blueprint:** `clinic_app/blueprints/patients/routes.py` (1,422 lines)
-- **Templates:** `templates/patients/` (new, edit, detail, delete_confirm, duplicate_confirm, quickview, edit_modal, _edit_form_fields)
-- **Purpose:** CRUD, merge, CSV export, search API, duplicate detection on add
-- **Key routes:** `/patients/new`, `/patients/<pid>`, `/patients/<pid>/edit`, `/patients/<pid>/delete`, `/export/patients.csv`
-- **Important:** Duplicate detection runs on add (checks name+phone similarity). The `detail.html` shows payments, treatments, and links to diagnosis/medical/images.
-
-### Payments and Receipts
-- **Blueprint:** `clinic_app/blueprints/payments/routes.py` (1,558 lines)
-- **Templates:** `templates/payments/` (form, receipt, view/edit/treatment modals, print, _list, _form_fields)
-- **Purpose:** Add/edit/delete payments per patient, PDF receipts, treatment plans, child payments
-- **Key routes:** `/patients/<pid>/excel-entry` (add), `/patients/<pid>/payments/<pay_id>/edit`, `.../receipt/view`, `.../print`
-- **Important:** Doctor must be selected. Money in cents. Child payments linked to parent treatments.
-
-### Appointments
-- **Blueprint:** `clinic_app/blueprints/appointments/routes.py` (839 lines)
-- **Template:** `templates/appointments/vanilla.html` (the main UI)
-- **Purpose:** Scheduling, overlap detection, JSON APIs, server-rendered cards + JS enhancement
-- **Key routes:** `/appointments/vanilla` (main), `/api/appointments/save`, `/api/appointments/delete`, `/api/appointments/status`, `/api/patients/search`
-- **CRITICAL -- keep these script tag IDs unchanged in vanilla.html:**
-  - `<script type="application/json" id="appointments-data">`
-  - `<script type="application/json" id="patients-data">`
-  - `<script type="application/json" id="doctors-data">`
-
-### Reports
-- **Blueprint:** `clinic_app/blueprints/reports/routes.py` (1,296 lines)
-- **Templates:** `templates/reports/` (collections, collections_doctors, details, receivables)
-- **Purpose:** Daily/monthly/range collection reports, doctor analytics, receivables, CSV export
-- **Key routes:** `/collections`, `/collections/doctors`, `/collections/day/<d>`, `/receivables`
-
-### Admin Settings (MONOLITHIC -- planned for split in UI Redesign Phase 4)
-- **Blueprint:** `clinic_app/blueprints/admin_settings.py` (4,959 lines)
-- **Template:** `templates/admin/settings/index.html` (6,220 lines -- single mega-page, 7 tabs)
-- **Purpose:** Users, roles, doctors, theme, logos, data import/export, backup/restore, audit
-- **Contains critical logic:**
-  - **Import system** (lines ~1880-3500): Excel fingerprinting, 3-tier patient resolution (file number then page+name+phone then create new), SHA-256 dedup, preflight dry-run, auto-backup before import, commit. **Rated 8/10 -- DO NOT REFACTOR.**
-  - **Backup** (lines ~3860-3970): SQLite backup API, `restore_pending.json` marker, safety backup before restore.
-  - **Audit viewer** (lines ~4400-4959): JSON/CSV export, privacy controls, snapshot viewer.
-- **Known bug:** Lines ~3071-3078 have 4x duplicated `merge_mode` fallback check (copy-paste error -- harmless, should be cleaned up).
-
-### Legacy Expenses (over-engineered -- planned for soft-deprecation)
-- **Blueprint:** `clinic_app/blueprints/expenses/routes.py` (950 lines)
-- **Service:** `clinic_app/services/expense_receipts.py` (1,220 lines)
-- **Templates:** `templates/expenses/` (index, new, edit, detail, categories, materials, suppliers, status, receipts)
-- **Status:** Has stub functions (edit_supplier, edit_material "not yet implemented"). Default categories are corporate (Travel, Meals) not dental. Do NOT add features to this system.
-
-### Simple Expenses (minimal -- will evolve per UI Redesign Phase E)
-- **Blueprint:** `clinic_app/blueprints/simple_expenses.py` (~200 lines)
-- **Service:** `clinic_app/services/simple_expenses.py`
-- **Templates:** `templates/simple_expenses/` (index, new)
-- **Key routes:** `/simple-expenses/`, `/simple-expenses/new`
-
-### Diagnosis / Medical / Images (Palmer / Diag+)
-- **Blueprint:** `clinic_app/blueprints/images/images.py` (588 lines, blueprint name: `palmer_plus`)
-- **Templates:** `templates/diag_plus/` (diagnosis, medical, images)
-- **Purpose:** Tooth-level Palmer chart, medical notes, patient photo management
-- **Key routes:** `/patients/<pid>/diagnosis/`, `/patients/<pid>/medical/`, `/patients/<pid>/images/`
-- **Storage:** Images in `data/patient_images/`
+- Make **focused changes** (one feature/bug/area at a time), even if they touch multiple files.
+- Prefer **safe, minimal edits** over big refactors.
+- Keep the project tidy and documented.
+- Explain things in **short, simple language**.
+- Treat yourself as the **main developer** responsible for code quality AND a **teacher** who explains trade-offs simply.
 
 ---
 
-## 5) Services Reference
+## 4) Quick Project Index
 
-| File | Purpose | Key Details |
-|------|---------|-------------|
-| `services/payments.py` | Money formatting, balance calc | `format_money()`, `calculate_remaining()` -- **money in cents** |
-| `services/patients.py` | Patient helpers, merge | `merge_patient_records()` -- moves payments, appointments, diagnosis, medical, images. **DO NOT modify merge logic without review.** |
-| `services/appointments.py` | Scheduling logic | Overlap detection, grouping, formatting |
-| `services/appointments_enhanced.py` | Enhanced appointment helpers | Additional formatting, stats |
-| `services/doctor_colors.py` | Doctor lifecycle and colors | CRUD, color management (541 lines) |
-| `services/patient_pages.py` | Page number management | Legacy Excel page mapping, admin settings (535 lines) |
-| `services/i18n.py` | Bilingual EN/AR translations | `T()` function, 2000+ pairs, `SUPPORTED_LOCALES`. All new strings MUST have entries here. |
-| `services/ui.py` | Template rendering | `render_page()` -- **all blueprints use this**, injects theme/locale/user |
-| `services/theme_settings.py` | Theme persistence | `get_setting()`, `set_setting()`, CSS variable injection |
-| `services/audit.py` | Audit logging | `write_event()`, patient snapshots, sensitive data redaction. Currently covers payment events only. |
-| `services/security.py` | Security headers, rate limits | Applied post-request |
-| `services/admin_guard.py` | Admin user check | `ensure_admin_exists()` on startup |
-| `services/bootstrap.py` | Table creation | Ensures critical tables exist on first run |
-| `services/database.py` | DB helpers | Low-level query utilities |
-| `services/auto_migrate.py` | Alembic integration | Runs migrations on startup |
-| `services/migrations.py` | Migration helpers | Supporting functions |
-| `services/data_fixes.py` | One-time fixes | `backfill_missing_payment_doctors()` |
-| `services/csrf.py` | CSRF for JSON APIs | Token injection for `fetch()` calls |
-| `services/errors.py` | Error handling | Logging, error pages |
-| `services/pdf_enhanced.py` | PDF receipts | Bilingual with logos, arabic reshaping |
-| `services/import_first_stable.py` | Import preview | Excel preview for data import |
-| `services/expense_receipts.py` | Full expense logic | Over-engineered (1,220 lines). Planned for deprecation. |
-| `services/expense_receipt_files.py` | Expense file attachments | File upload/download |
-| `services/simple_expenses.py` | Simple expense logic | CRUD for date+amount+desc expenses |
+**Core stack:** Flask, SQLite, Python 3.12, Windows, port 8080. Entry: `wsgi.py`. Package: `clinic_app/`.
 
----
+**Blueprints / features:**
+- Core/home: `clinic_app/blueprints/core/core.py`
+- Auth: `clinic_app/blueprints/auth/`
+- Patients: `clinic_app/blueprints/patients/routes.py`
+- Payments & receipts: `clinic_app/blueprints/payments/routes.py`, `templates/payments/`
+- Appointments: backend `clinic_app/blueprints/appointments/routes.py`; UI `templates/appointments/vanilla.html`
+- Legacy expenses: `clinic_app/blueprints/expenses/`; `templates/expenses/`; `static/css/expenses.css`, `static/js/expenses.js`
+- Simple expenses: `clinic_app/blueprints/simple_expenses.py`; `templates/simple_expenses/`
+- Diagnosis / images: `clinic_app/blueprints/images/images.py`; `templates/diag_plus/`; `static/diag_plus/`
 
-## 6) Key Patterns and Conventions
+**Shared services & config:**
+- Services/helpers: `clinic_app/services/`
+- UI helpers: `clinic_app/services/ui.py` (use `render_page()` and global UI helpers)
+- i18n/Arabic: `clinic_app/services/i18n.py`
+- Theme: `clinic_app/services/theme_settings.py`
+- RBAC/security: `clinic_app/services/security.py`, `clinic_app/models_rbac.py`
+- Extensions: `clinic_app/extensions.py`
 
-### Template Rendering
-All blueprints use **`render_page()`** from `services/ui.py` (never raw `render_template()`). This injects theme variables, locale, user context, and shared data into every template.
+**Tests & scripts:**
+- Tests: `tests/`
+- Run app: `Start-Clinic.bat`; Run tests: `scripts/Run-Tests.bat`; Validation: `scripts/Run-Validation.bat`
 
-### i18n / Translations
-- Use `T('key')` in Jinja templates and `t('key')` in Python code.
-- All display strings MUST have EN/AR entries in `services/i18n.py`.
-- **New features MUST add translations** -- the clinic operates in Arabic.
-- RTL/LTR is toggled via `dir` attribute on `<html>`, driven by locale cookie.
-
-### Money
-- Stored as **integers (cents)**. Display: `format_money(amount_in_cents)` gives `"123.45"`.
-- **Never store money as float.** Always divide by 100 for display, multiply by 100 for storage.
-
-### IDs
-- Patients, doctors, appointments, payments: **UUID text strings**.
-- Patient `short_id`: `P######` format (e.g., `P000001`). This is the "file number".
-
-### CSRF
-- All POST requests require CSRF token. Flask-WTF handles form submissions.
-- For `fetch()` / JSON APIs: include `X-CSRFToken` header. See `services/csrf.py`.
-
-### Audit Trail
-- Append-only `audit_log` table. Currently covers payment events only.
-- Sensitive keys in payment metadata are auto-redacted.
-- Patient snapshots captured for payment create/update/delete events.
-
-### Theming
-- CSS variables stored in `theme_settings` DB table.
-- Injected into every page via `services/ui.py` then `services/theme_settings.py`.
-- Clinic logo stored in `data/theme/`.
+**Data & migrations:** `data/`, `migrations/`
 
 ---
 
-## 7) Static Assets
+## 5) Safety Rules
 
-### CSS Files
-| File | Purpose |
-|------|---------|
-| `static/css/design-system.css` | Design tokens (light/dark), bridge aliases, dark mode component overrides, toggle UI, print protection |
-| `static/css/app.css` | Main global styles (buttons, cards, grids, forms, tables) |
-| `static/css/theme-system.css` | CSS variable foundation, theme overrides |
-| `static/css/print-receipts.css` | Print-specific styles for receipts |
-| `static/css/expenses.css` | Legacy expense styles |
-| `static/css/simple-expenses.css` | Simple expense styles |
-| `static/css/expense-file-upload.css` | Expense file upload component |
+**NEVER modify or delete:** `.git/`, `.venv/`, `data/`, `migrations/`.
 
-### JS Files
-| File | Purpose |
-|------|---------|
-| `static/js/patient-form-repeaters.js` | Dynamic form field repeaters |
-| `static/js/patient-receipts.js` | Receipt interaction helpers |
-| `static/js/status-chip.js` | Status badge/chip component |
-| `static/js/expenses.js` | Legacy expense interactions |
-| `static/js/expense-file-upload.js` | File upload handling |
-| `static/js/simple-expenses.js` | Simple expense interactions |
+**Schema & migrations:**
+- Do NOT create/edit Alembic migrations or add tables/columns unless the user explicitly asks and you have a specific plan for it.
+- If tests hint at a migration problem, report it and propose a separate plan.
 
-### Fonts
-- `static/fonts/Cairo-Regular.ttf` -- Arabic font
-- `static/fonts/DejaVuSans.ttf` -- Unicode fallback (used in PDFs)
+**Protected areas — do NOT touch unless the task explicitly names them:**
+- Admin & RBAC: `admin_settings.py`, `auth.py`, `security.py`, `models_rbac.py`
+- Appointments engine: `appointments/routes.py`, `appointments.py`, `appointments_enhanced.py`
+- CSRF & wiring: `csrf.py`, `extensions.py`
+- Migrations: everything under `migrations/`
+- Diagnosis/tooth charts: `templates/diag_plus/*.html`, `static/diag_plus/*`
+
+If your change touches a protected area, mark it as **"Risk: High (protected area)"** in your plan and get explicit approval.
+
+Do not introduce Docker, Redis, S3, or other new infrastructure unless the user asks and understands the trade-offs.
 
 ---
 
-## 8) Data Directory Structure
+## 6) Workflow for Any Task
 
-All runtime data lives under `data/` -- **NEVER modify directly:**
+1. **Plan** (2–5 bullets), map to `LAST_PLAN.md`, list allowed files.
+2. **Read only what's needed** — prefer targeted searches over reading everything.
+3. **Prefer UI/template/CSS changes first.** Only change Python logic when fixing a specific bug or wiring an existing helper.
+4. **Make surgical changes** in the relevant blueprint/template/service.
+5. **Keep docs in sync** — update `docs/INDEX.md`, `README.md`, `docs/CHANGELOG.md` when features change.
+6. **Run tests** when backend logic changes. Report pass/fail honestly.
+7. **Update `MEMORY.md`** at the end of your session.
 
-```
-data/
-  app.db              <- Main SQLite database
-  app.db.bak          <- Backup copy
-  patient_images/     <- Patient photos organized by patient ID
-  backups/            <- DB backups (SQLite backup API)
-  exports/            <- CSV/data exports
-  import_reports/     <- Import analysis results
-  receipts/           <- Generated receipt files
-  audit/              <- Audit log exports
-    archive/          <- Archived audit data
-  logs/               <- Application logs
-  theme/              <- Clinic branding
-    logo-current.*    <- Current header logo
-    pdf-logo-current.* <- Current PDF logo
-    logos/            <- Logo history
-    pdf_logos/        <- PDF logo history
-```
+**Allowed files:** State explicitly which files you will touch. Do not edit files outside that list except `i18n.py` (for translations) and docs files (for documentation).
+
+If tests fail outside your allowed files, **revert or narrow your change** — do not "fix" protected areas.
 
 ---
 
-## 9) Planning + Confirmation (Strict Protocol)
+## 7) Routing & URLs
 
-**CRITICAL RULE: NEVER START CODING UNTIL EXPLICITLY TOLD TO PROCEED.**
+**Existing routes:** Do NOT change `url_prefix`, route paths, or endpoint names unless:
+- You mark it as **High risk (routing)** in your plan.
+- You explain what changes and what might break.
+- The user explicitly agrees.
+- You search for all references (`url_for(...)`, hardcoded URLs) and update them in the same task.
 
-1. **Read & Plan:** Read the relevant Handoff Brief or user request. Produce a short plan (2-5 bullets).
-2. **Acknowledge:** End your planning message with the exact phrase: *"I understand the plan. Awaiting your authorization to proceed."*
-3. **STOP AND WAIT:** Do not edit any files, run any commands, or execute any part of the plan until the user explicitly replies with "Proceed", "Yes", or "Go ahead".
-4. **Execution:** Once authorized, stick to one focused goal per task. See `plan_Agents.md` for detailed formatting rules.
-
----
-
-## 10) Debugging Mode
-
-1. Reproduce the issue (if possible) and capture the error/log.
-2. Localize the root cause (which file/lines/logic).
-3. Propose a minimal, scoped fix and wait for confirmation.
-4. Implement the fix, keeping changes as small as possible.
-5. Rerun the relevant check/test and report the result.
-6. If not fixed, report what changed and the next minimal step.
+**New routes:** Use `url_for(...)` in templates/JS. Add route entry to `docs/INDEX.md`.
 
 ---
 
-## 11) Hard Safety Rules
+## 8) UI, Theme & Arabic
 
-### NEVER modify or delete on your own:
-- `.git/` -- version control
-- `.venv/` or `.venv-wsl/` -- Python environments
-- `data/` -- real patient data
-- `migrations/` -- DB version history
+- Use `_base.html` and `render_page()` for new pages.
+- Wrap user-visible text with `T()` / `t()` and add entries in `i18n.py`.
+- Use CSS variables from `app.css`, `theme-system.css`, `design-system.css` — no hard-coded colors.
+- Reuse shared components: `.btn` variants, `.card`/`.u-card`, shared modals/alerts.
+- Arabic/RTL: ensure `dir="rtl"` works, avoid fixed widths, use flex/grid.
+- **Before any UI work, read `DESIGN_BRIEF.md`** for clinic-specific design guidance.
 
-### Be extra careful with (explain risk + wait for approval):
-- Database schema/migrations
-- Batch scripts (`Start-Clinic.bat`, `Run-Tests.bat`, `Run-E2E-Tests.bat`, `Run-Validation.bat`, `Run-Migrations.bat`)
-- Import logic in `admin_settings.py` (lines ~1880-3500) -- rated 8/10, DO NOT refactor
-- Backup/restore logic -- uses SQLite backup API + marker-based restore
-- Patient merge logic in `services/patients.py`
-- Money storage format (cents)
-
-### Red Flags -- STOP and Ask Before Proceeding
-- User wants to delete or overwrite database files
-- Changes affect authentication, security, or RBAC logic
-- A migration could lose or corrupt existing data
-- Modifying core Flask configuration (`__init__.py`, `extensions.py`)
-- Installing packages that could conflict with existing deps
-- Any change touching the `data/` folder contents
-- Modifying the import system fingerprinting or patient resolution logic
+For UI-only tasks: change only templates, CSS/JS, and `i18n.py`. Do NOT change routes, services, or DB logic.
 
 ---
 
-## 12) Workflow for Any Task
-
-1. Start with a short plan (2-5 bullets), wait for confirmation.
-2. Read only what is needed.
-3. Make small, surgical changes in the relevant blueprint/template.
-4. Keep code/docs in sync when user-facing features change.
-5. Run validation after changes: prefer `Run-Validation.bat` (full `pytest` + Playwright smoke). Use `Run-Tests.bat` for logic-only checks.
-6. **Update docs** per the Auto-Update Rule (top of this file).
-
-### Hard Rules for AI Agents
-
-1. **One feature per session.** Never combine multiple UI Redesign phases or unrelated features in a single task. One phase = one task = one commit.
-2. **Tests MUST pass before declaring done.** Run `pytest` (or `Run-Validation.bat`) and confirm 0 failures. If tests fail, fix them before finishing.
-3. **No whitespace-only changes.** Do NOT change blank lines, trailing whitespace, or formatting in files you are not functionally modifying. This pollutes git blame.
-4. **No new files without approval.** Do NOT create new markdown docs (VISION.md, etc.), config files (.kilocode/), or tool-specific files unless the user explicitly asks.
-5. **Work on a branch when possible.** Use `git checkout -b feature/xyz` before starting work. The user reviews and merges to main.
-6. **No cosmetic README rewrites.** Only add/remove lines that reflect actual feature changes. Do not rewrite tone, structure, or marketing language.
-7. **Pre-flight checklist before declaring done:**
-   - [ ] All tests pass (pytest + E2E if applicable)
-   - [ ] No whitespace-only diffs in unchanged files
-   - [ ] No new files that weren't in the plan
-   - [ ] Docs updated per Auto-Update Rule
-   - [ ] Changes match the original plan — nothing extra
-
-### Context Checklist (before starting work)
-**Always check these files first:**
-- `UI_REDESIGN_PLAN.md` -- active UI redesign phases and progress
-- `LAST_PLAN.md` -- V1 roadmap (phases 0-6 done, 7 ~70%)
-- `docs/INDEX.md` -- file-to-feature mapping
-- `plan_Agents.md` -- how to structure plans
-
-**Always ask (if not obvious):**
-- What page/feature is affected?
-- What is the current behavior vs. desired behavior?
-
----
-
-## 12b) Definition of Done — UI / CSS Changes
-
-> **A UI change is NOT done until you have an actual screenshot proving it.**
-> Never mark a task complete based on text descriptions — yours or the subagent's.
-
-### Mandatory Checklist BEFORE Marking Any UI Task Complete
-- [ ] Server is running (`python wsgi.py`, confirmed "Running on http://127.0.0.1:8080")
-- [ ] Took a **BEFORE screenshot** showing the bug
-- [ ] Made the change, hard-refreshed (`Ctrl+Shift+R` clears CSS cache)
-- [ ] Took an **AFTER screenshot** showing the fix
-- [ ] Personally viewed the screenshot with `view_file` tool and confirmed it matches expectations
-- [ ] If dark mode was changed: tested BOTH light and dark mode
-- [ ] If a modal was changed: tested the modal open state AND the backdrop
-
-### Why This Rule Exists
-A previous agent reported "PASSED" on all 4 UI bug fixes based on the browser subagent's verbal description — without viewing the actual screenshot files. All 4 were wrong. The screenshots were saved and would have caught the errors immediately. Always view them.
-
----
-
-## 12c) Browser Verification Protocol
-
-### Starting the Server (REQUIRED before browser testing)
-```
-python wsgi.py
-```
-Wait for: `* Running on http://127.0.0.1:8080`
-This is in `.agent/workflows/start-and-verify.md` — use `/start-and-verify` workflow.
-
-### Key URLs
-- Login: `http://127.0.0.1:8080/auth/login` (username: `admin`, password: `admin`)
-- Home: `http://127.0.0.1:8080/`
-- Patient list: `http://127.0.0.1:8080/patients/`
-- **Do NOT use** `/home` or `/login` — those don't exist
-
-### Hard Refresh After CSS Changes
-CSS changes are cached by the browser. Always instruct the browser subagent to:
-1. Open the URL fresh (navigate, don't reload clicks)
-2. Or press `Ctrl+Shift+R` before taking screenshots
-
-### Trust Rule
-- **Trust screenshots, not words.** Browser subagent text descriptions are unreliable.
-- After every browser verification task: use `find_by_name` to locate screenshot files, then `view_file` to inspect them directly.
-- If no screenshots were saved, the verification did not happen.
-
-## 12d) Visual QA Requirement (The "Manager" Check)
-
-Before completing *any* UI task, the coding agent MUST perform visual QA using the browser subagent (`browser_subagent` tool):
-1. **Take Screenshots:** The agent must take actual screenshots of the changed components in both Light and Dark modes.
-2. **Side Effects Check:** The agent must explicitly check if the new CSS or JS broke adjacent components (e.g., did a new modal backdrop break the z-index of the navbar?).
-3. **Manager Review:** The agent must save these screenshots to `data/agent-screenshots/` and explicitly notify the user (the Manager) to review them before declaring the task "Done". Do not rely on the agent saying "it looks good".
-
----
-
-## 12d) CSS Scoping Contracts (Read Before Touching Any CSS)
-
-### Rule: Grep Before Override
-Before writing ANY dark mode override for a CSS class, run:
-1. `grep_search` for the class name in ALL templates — understand every place it's used
-2. `grep_search` for the class name in ALL CSS files — understand all existing rules
-3. Only then write the narrowest possible override
-
-### Known Dual-Use Classes (Traps)
-
-| Class | Used as | On page |
-|-------|---------|---------|
-| `.modal` | **Full-screen backdrop** (position:fixed, bg:rgba) | `templates/patients/detail.html`, `templates/patients/print_receipt_modal.html` |
-| `.modal` | **Dialog box** (small centered box) | `templates/diag_plus/diagnosis.html` (always nested inside `.modal-ov`) |
-| `.modal-ov` | **Backdrop** for diagnosis tooth editor | `templates/diag_plus/diagnosis.html` only |
-| `.card` | Generic card wrapper | Site-wide in `app.css` |
-| `.card.patient-card` | Diagnosis page patient info card | `templates/diag_plus/` pages only |
-| `.btn` | Generic button | Site-wide |
-| `.head` | Diagnosis page top header strip | `templates/diag_plus/` pages only |
-
-### Safe Override Patterns
-```css
-/* ✅ Safe — scoped to diagnosis context */
-html[data-theme="dark"] .modal-ov .modal { ... }
-
-/* ❌ Dangerous — applies to patient page backdrop too */
-html[data-theme="dark"] .modal { ... }
-
-/* ✅ Safe — specific to patient card in diag pages */
-html[data-theme="dark"] .card.patient-card { ... }
-```
-
-### Hardcoded Colors to Avoid
-Never use these raw rgba values in new CSS — they are hardcoded blue and ignore theme settings:
-- `rgba(59, 130, 246, ...)` → replace with `color-mix(in srgb, var(--primary-color) X%, transparent)`
-- `rgba(37, 99, 235, ...)` → same replacement
-- `#3b82f6`, `#1d4ed8`, `#2563eb` → replace with `var(--primary-color, #0ea5e9)`
-- `#f3f4ff` as gradient endpoint → replace with `var(--color-surface-raised)` or `color-mix(...)`
-
----
-
-## 13) Known Issues and Decisions
-
-
-### Known Bugs
-1. ~~`admin_settings.py` lines ~3055-3062: 4x duplicated `merge_mode` fallback check (copy-paste).~~ **Fixed 2026-02-19** — reduced to single check.
-2. Legacy expense system has stub functions for edit_supplier/edit_material ("not yet implemented").
-
-### Architectural Decisions (agreed with user)
-- **Import system:** DO NOT refactor. It works (8/10). Only fix the 4x duplicate line.
-- **Backup system:** Needs auto-backup rotation + integrity check (planned in UI Redesign Phase 5).
-- **Audit system:** Extend to cover merge events, patient/appointment changes (planned in Phase 13).
-- **Admin settings:** Will be split into 5 pages (Phase 4).
-- **Add Patient:** Will become modal instead of separate page (Phase 9).
-- **Theme:** Will simplify from 7 color pickers to 1 primary + auto-derived (Phase 1).
-- **Expenses:** Kill full system, evolve simple (Phase E).
-
-### Active Redesign
-A comprehensive 15-phase UI redesign is planned. See **`UI_REDESIGN_PLAN.md`** for full details and progress.
-
----
-
-## 14) Appointments Page Rules (very important)
+## 9) Appointments Page Rules
 
 - Template: `templates/appointments/vanilla.html`
 - Backend: `clinic_app/blueprints/appointments/routes.py`
-
-Keep these script tags unchanged (names/IDs):
-```html
-<script type="application/json" id="appointments-data">{{ appointments_json | safe }}</script>
-<script type="application/json" id="patients-data">{{ patients_json | safe }}</script>
-<script type="application/json" id="doctors-data">{{ doctors_json | safe }}</script>
-```
-
-UI-only changes stay in the template; backend/data changes stay in the blueprint/services. If you change JSON structure, update both sides and explain.
+- Keep existing HTML structure and data attributes that JS relies on.
+- If you change JSON from `/api/appointments/...` or `/api/patients/search`, update the JS in the same task.
 
 ---
 
-## 15) Expenses Rules
+## 10) Expenses Rules
 
-Two expense systems currently exist:
-- **Legacy expenses** (`blueprints/expenses/`): Over-engineered, corporate-style. Planned for soft-deprecation.
-- **Simple expenses** (`blueprints/simple_expenses.py`): Minimal flow. Will evolve per UI Redesign Phase E.
-
-Rules:
-- Do NOT add features to legacy expenses.
-- Do NOT remove legacy expenses without user approval.
-- Simple expenses is the future.
+- Legacy expenses: do not remove/break without approval. Keep in `blueprints/expenses/`.
+- Simple expenses: keep UI simple. Keep in `blueprints/simple_expenses.py`.
+- Both use shared buttons/cards and theme variables.
 
 ---
 
-## 16) Requirements and README
+## 11) Clinic-Specific Business Rules
 
-- Runtime deps in `requirements.txt`. Dev/test deps in `requirements.dev.txt`.
-- Touch only the needed line when adding/removing deps.
-- For user-visible changes, add a small note to README.
-
----
-
-## 17) Running and Testing
-
-- **Preferred (Windows):** `Start-Clinic.bat` (app), `Run-Validation.bat` (full validation), `Run-Tests.bat` (logic-only), `Run-E2E-Tests.bat` (browser smoke)
-- **Direct:** `.venv\Scripts\python wsgi.py`, `.venv\Scripts\python -m pytest`, `npm run test:e2e`
-- Playwright smoke tests run on an isolated temp DB via `devtools/playwright_server.py` (do not point E2E at `data/app.db`).
+- **Payments:** Doctor field is required on new payments. For old records without a doctor, use "Any doctor" as safe default.
+- **Tooth charts:** Do not change tooth positions, numbering, or mapping — only adjust spacing/fonts/colors.
+- **PDFs:** Use clinic logo (if configured) with safe resizing and light opacity for watermarks.
 
 ---
 
-## 18) Coding Style
+## 12) Requirements & README
 
-- Follow existing style; keep functions small and focused.
-- Reuse `clinic_app/services/` helpers.
-- Use `render_page()` for all template rendering.
-- Use `T()` / `t()` for all display strings.
-- Store money in cents. Use UUID text for entity IDs.
-- Avoid one-letter names; add comments only when necessary.
+- Runtime deps → `requirements.txt`. Dev deps → `requirements.dev.txt`.
+- For user-visible changes, add a note to `README.md`.
+- When features change, update `docs/INDEX.md` and `docs/CHANGELOG.md`.
 
 ---
 
-## 19) When Unsure
+## 13) Running & Testing
 
-- Summarize the task in 1-2 sentences.
-- Ask one concise clarification question.
-- Offer a safe, minimal plan that will not break the app.
-
----
-
-## 20) Completion Format
-
-After finishing a task, always provide:
-1. **What changed** -- one-sentence summary.
-2. **Files modified** -- list of files touched.
-3. **How to test** -- step-by-step instructions the user can follow.
-4. **Side effects** -- anything else that might be affected (or "None").
-5. **Docs updated** -- which docs were updated per the Auto-Update Rule, or why none needed updating.
+- `Start-Clinic.bat` — run app (port 8080). Login: `admin` / `admin`.
+- `scripts/Run-Tests.bat` — pytest. `scripts/Run-Validation.bat` — full validation.
+- **Run tests after backend changes.** Report results honestly.
+- Do not delete or disable tests unless the user explicitly asks.
 
 ---
 
-## 21) Tests and Dev Tools
+## 14) Memory Protocol
 
-### Test Suite (`tests/`)
-- **Config:** `tests/conftest.py`
-- **~32 test files** covering: core smoke, auth/security, patients, payments, appointments, reports, i18n, database
-- Run via `Run-Tests.bat` or `pytest`
+The file `MEMORY.md` is the **session handoff system**. It ensures continuity across different chats, different AI tools, and different models.
 
-### Browser E2E (`e2e/tests/`)
-- **Framework:** Node Playwright (`@playwright/test`) with config in `playwright.config.ts`
-- **Current scope:** smoke coverage (login, home load, appointments JSON script tags, patient form load)
-- **Run via:** `Run-E2E-Tests.bat` or `npm run test:e2e`
+**At the START of every session:**
+- Read `MEMORY.md` before doing anything else (see §0).
+- Use it to understand what was done previously, what's in progress, and what decisions were made.
 
-### Dev Tools (`devtools/`)
-- `test_simple_expenses.py`, `test_expense_system.py` -- expense dev scripts
-- `test_duplicates.py` -- duplicate detection testing
-- `check_template.py` -- appointment template checker
-- `playwright_server.py` -- isolated Flask launcher for Playwright E2E
+**At the END of every session:**
+- Update `MEMORY.md` with:
+  - **What you did** this session (files changed, features added/fixed).
+  - **Current state** (what works, what's broken, what tests pass/fail).
+  - **Decisions made** (and why — so the next agent doesn't redo the analysis).
+  - **What's next** (immediate next steps for the next session).
+
+Keep entries concise (5–15 lines per session). The file should stay under 200 lines — archive old entries when it gets long.
 
 ---
 
-## 22) Reference Files
+## 15) Coding Style
 
-| File | Purpose |
-|------|---------|
-| `AGENTS.md` (this file) | Complete architecture + agent behavior rules |
-| `UI_REDESIGN_PLAN.md` | Active 15-phase UI redesign plan with progress tracker |
-| `LAST_PLAN.md` | V1 product roadmap (phases 0-6 done, 7 ~70%) |
-| `plan_Agents.md` | How to structure plans for this project |
-| `docs/INDEX.md` | Complete code-to-feature file mapping |
-| `docs/CHANGELOG.md` | Running log of all changes made by AI agents |
-| `.github/copilot-instructions.md` | Auto-loaded by GitHub Copilot |
-| `README.md` | User-facing project overview |
+- Follow existing style. Keep functions small and focused.
+- Reuse `clinic_app/services/` helpers — don't duplicate logic.
+- Descriptive but short names. Comments only for non-obvious logic.
+- Clean up after yourself: remove debug prints, unused code, experimental files.
+- Don't introduce new frameworks without discussing with the user.
+
+---
+
+## 16) Planning & Roadmap
+
+- `LAST_PLAN.md` — the product roadmap. Say which phase/section your work belongs to.
+- `KNOWN_ISSUES.md` — honest UX problems and bugs.
+- `DESIGN_BRIEF.md` — clinic-specific design rules (read before UI work).
+- `MEMORY.md` — session handoff (read at start, update at end).
+- `docs/INDEX.md` — code-to-feature map.
+- `docs/FULL_AUDIT_REPORT.md` — detailed per-page UI/UX audit.
+
+Do not silently change planning files. Propose changes and get explicit confirmation first.
+
+---
+
+## 17) When Unsure
+
+- Summarize the task in 1–2 sentences.
+- Ask **one** concise clarification question.
+- Offer a safe, minimal plan.
+- If a request conflicts with safety rules or the roadmap, explain the conflict and propose a safer alternative.
+
+Your priority: **keep the app stable and moving forward in small, understandable steps.**

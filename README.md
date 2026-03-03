@@ -80,15 +80,20 @@ Root-level important files:
 
 - wsgi.py              → entry point for the app
 - Start-Clinic.bat     → run the app on Windows
-- Run-Tests.bat        → run tests on Windows
-- Run-E2E-Tests.bat    → run Playwright browser smoke tests
-- Run-Validation.bat   → run full validation (pytest + Playwright smoke)
-- Run-Migrations.bat   → run database migrations
 - requirements.txt     → runtime Python dependencies
 - requirements.dev.txt → dev/test dependencies
 - package.json         → Node scripts/dependency for Playwright
 - playwright.config.ts → Playwright config (isolated E2E server + Chromium)
 - README.md            → this file
+
+Scripts (inside scripts/ folder):
+
+- scripts/Run-Tests.bat        → run tests on Windows
+- scripts/Run-E2E-Tests.bat    → run Playwright browser smoke tests
+- scripts/Run-Validation.bat   → run full validation (pytest + Playwright smoke)
+- scripts/Run-Migrations.bat   → run database migrations
+- scripts/Build-Clinic.bat     → build standalone .exe
+- scripts/Make-Clinic-*.bat    → create release packages
 
 --------------------------------------------------
 3. Appointments page (the "fancy" UI)
@@ -126,7 +131,7 @@ If the appointments page is broken, it usually means:
 
 Recommended for non-coders after any code change:
 
-- Run-Validation.bat
+- scripts\Run-Validation.bat
   - Runs full `pytest` suite (backend/function logic)
   - Runs Playwright Chromium smoke tests (real browser checks)
   - Returns one pass/fail result
@@ -134,14 +139,14 @@ Recommended for non-coders after any code change:
 Other options:
 
 Option 1: Double-click
-- Run-Tests.bat
+- scripts\Run-Tests.bat
 
 Option 2: From a terminal in the project folder, with the virtual environment active:
 
 - .venv\Scripts\python -m pytest
 
 Browser smoke tests only:
-- Run-E2E-Tests.bat
+- scripts\Run-E2E-Tests.bat
 - or: npm run test:e2e
 
 All tests live under:
@@ -223,7 +228,7 @@ Install Chromium browser for Playwright (first run only):
   - See `LAST_PLAN.md` for the current V1 UI/branding/Arabic roadmap.
 - Always start by showing a short plan before making changes.
 - Prefer small, local edits over big refactors, and keep docs updated when features change.
-- After code changes, run `Run-Validation.bat` by default (full `pytest` + Playwright smoke).
+- After code changes, run `scripts/Run-Validation.bat` by default (full `pytest` + Playwright smoke).
 
 ==================================================
 END OF README CONTENT

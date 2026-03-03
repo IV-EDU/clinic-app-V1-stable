@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0"
+cd /d "%~dp0\.."
 
 echo [INFO] Building offline Clinic App (folder build)...
 where py >nul 2>nul || goto :no_py
@@ -19,7 +19,7 @@ if exist requirements.txt "%VENV_PY%" -m pip install -r requirements.txt || goto
 if exist requirements.dev.txt "%VENV_PY%" -m pip install -r requirements.dev.txt || goto :deps_fail
 
 echo [INFO] Running PyInstaller...
-"%VENV_PY%" -m PyInstaller --noconfirm clinic_app.spec || goto :build_fail
+"%VENV_PY%" -m PyInstaller --noconfirm scripts\clinic_app.spec || goto :build_fail
 
 echo [INFO] Creating ZIP...
 REM Safety: never ship real clinic data. If the packaged app was run from dist, it may have created dist\ClinicApp\data.

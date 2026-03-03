@@ -1,66 +1,7 @@
-# Cursor Rules – Clinic-App-Local
+All agent behavior and project rules are defined in `AGENTS.md` at the project root.
 
-# Auto-read by Cursor AI. For full rules see AGENTS.md.
+When working in this repository:
+- Read `AGENTS.md` first and follow it strictly.
+- `AGENTS.md` will tell you when to consult `MEMORY.md`, `LAST_PLAN.md`, `KNOWN_ISSUES.md`, `DESIGN_BRIEF.md`, and `docs/INDEX.md`.
 
-## About
-Dental clinic management system (Flask + SQLite, Windows).
-The user is **not a programmer** — use simple language, small safe changes.
-
-## Safety — NEVER modify or delete
-- `data/` — real patient data
-- `migrations/` — DB version history
-- `.venv/` — Python environment
-- `.git/` — version control
-
-## Key Conventions
-- Plan first (2–5 bullets), then implement. **One feature per session — never combine multiple phases.**
-- Reuse helpers in `clinic_app/services/`. Follow existing code style.
-- Use `render_page()` for template rendering, `T()` for i18n strings.
-- Money stored in cents (integer). IDs are UUID text strings.
-- Runtime deps → `requirements.txt`. Dev deps → `requirements.dev.txt`.
-- Run `Run-Validation.bat` after code changes (full `pytest` + Playwright smoke).
-- Use `Run-Tests.bat` for logic-only runs and `Run-E2E-Tests.bat` for browser-only runs.
-- **Tests MUST pass before declaring done.** No exceptions.
-- **No whitespace-only changes** in files you're not functionally modifying.
-- **No new files** (markdown, configs, etc.) unless the user explicitly asks.
-- Start app via `Start-Clinic.bat` (port 8080).
-- Login: `admin` / `admin`. **NEVER change the admin password.**
-
-## Active Work
-- **UI Redesign:** See `UI_REDESIGN_PLAN.md` for the 15-phase plan.
-- **V1 Roadmap:** See `LAST_PLAN.md` (phases 0–6 done, 7 ~70%).
-
-## Appointments Page — Important
-Template: `templates/appointments/vanilla.html`. Keep these script tag IDs unchanged:
-- `#appointments-data`, `#patients-data`, `#doctors-data`
-
-## Auto-Update Rule (MANDATORY)
-When you add, move, or remove any route, template, service, CSS, or JS file:
-1. Update `docs/INDEX.md` — add/remove the file in the matching section.
-2. Update `AGENTS.md` §4 (Blueprints & Routes) if a blueprint or service is added/removed.
-3. Update `README.md` if the change affects user-visible features.
-4. Update `LAST_PLAN.md` if your work completes or advances a phase/bullet.
-5. Update `UI_REDESIGN_PLAN.md` progress tracker if applicable.
-6. Append to `docs/CHANGELOG.md` — one line: date, what changed, files touched.
-
-## Reference Docs (read before working)
-- `AGENTS.md` — full agent behavior rules + complete architecture reference
-- `plan_Agents.md` — how to design plans
-- `UI_REDESIGN_PLAN.md` — active UI redesign phases and progress
-- `LAST_PLAN.md` — V1 product roadmap (phases 0-6 done, 7 in progress)
-- `docs/INDEX.md` — complete code-to-feature map
-- `docs/CHANGELOG.md` — running log of all AI agent changes
-
-## Project Layout
-```
-clinic_app/             ← Main Python package
-  blueprints/           ← Feature modules
-  services/             ← Shared business logic (24 files)
-  forms/                ← WTForms
-  models.py, models_rbac.py
-templates/              ← Jinja2 HTML pages
-static/css/ static/js/  ← Frontend assets
-tests/                  ← pytest suite (~32 files)
-e2e/tests/              ← Playwright browser smoke suite
-data/                   ← DO NOT TOUCH
-```
+This file is intentionally minimal to avoid conflicting instructions.

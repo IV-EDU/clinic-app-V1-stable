@@ -24,33 +24,33 @@
 - Theme settings (admin), clinic logo/branding
 - Admin Data tab: analyze preview with P000XXX file numbers, responsive layout
 - Admin Audit tab: proper Before/After modal, dark mode technical details
-- **Collapsible sidebar** in all opted-in pages (`use_sidebar = true`)
+- **Collapsible sidebar** on ALL major pages — Dashboard, Patients, Appointments, Payments, Expenses, Reports, Admin Settings
 - **Dashboard** (`/`) with stat cards + today's appointments + quick actions
 - **Patient list** (`/patients/list`) with stat strip, balance filter pills, sort, paginate
 - Full test suite passes
 
 ### Known Problems
 - See `KNOWN_ISSUES.md` for detailed list
-- Admin settings is a 6,000-line monolith (index.html)
-- Dark mode has gaps on some pages
-- Two expense systems exist (legacy + simple)
+- Admin settings is a 6,000-line monolith (templates/admin/settings/index.html) — now in sidebar but not split
+- Dark mode has occasional minor gaps on specialty pages (diagnosis, print views)
+- Two expense systems exist but legacy is removed from nav and UI; only simple expenses shown
 - Diagnosis pages are disconnected from main app flow
 
 ---
 
 ## What's Next - IMPORTANT
 
-### Immediate: Sidebar Step 3 — Appointments page (see LAST_PLAN.md)
+### THE V1 SIDEBAR ROLLOUT IS COMPLETE
 
-**Steps 0, 1, and 2 are DONE.** Steps 0 (sidebar shell), 1 (dashboard), and 2 (patient list) are complete.
+All 7 steps of the Sidebar Phase (see `LAST_PLAN.md`) are **DONE** as of March 8, 2026.
 
-**Step 3:** Opt the Appointments page (`/appointments`) into the sidebar.
-- Template: `templates/appointments/vanilla.html` — add `{% set use_sidebar = true %}` at the top
-- The page already has its own JS-heavy layout; just wrapping it in the sidebar context is enough for Step 3
-- Add any needed CSS scoping to `static/css/app.css` if the sidebar layout conflicts with existing appointments CSS
-- **Do NOT change route paths, JS logic, appointment data, or the `/api/appointments/...` endpoints**
+The next phase of work is documented in `LAST_PLAN.md` under "Future Phases (After Sidebar Rollout)". The top priorities are:
 
-**After Step 3:** Step 4 = Patient file flow (detail/edit/new), Step 5 = Payments/Expenses/Reports, Step 6 = Admin Settings
+1.  **Reception Workflow** (High priority) — Check-in, status tracking, quick appointment actions
+2.  **Expense Consolidation** (Medium) — Evolve simple expenses, soft-deprecate legacy
+3.  **Patient Detail Redesign** (Medium) — Tabs, better layout, add patient modal
+
+The user will specify which of these to start next.
 
 ### Agent startup order (important)
 
@@ -69,32 +69,50 @@ Every new chat agent should read files in this order before proposing work:
 - `<head>` loads: app.css -> theme-system.css -> design-system.css -> components.css + JS files
 - `{{ theme_css|safe }}` injects admin theme overrides as inline `:root` CSS
 - `{% include '_nav.html' %}` - top horizontal nav bar (~450 lines)
-- `<div class="wrap">` - main content wrapper (max-width: 1100px, overflow-x: hidden)
+- `<aside class="sidebar" id="app-sidebar">` — Collapsed sidebar (240px wide, 64px when collapsed). An INLINE `<script>` immediately follows the `<aside>` tag to read `localStorage('sidebar_collapsed')` and apply `.collapsed` before the browser paints, preventing flash.
+- `<div class="sidebar-main">` - main content wrapper pushed to the right of the sidebar
 - `{% block content %}` - child templates inject here
-- Theme toggle FAB at bottom-right
+- Theme toggle FAB at bottom-right (hidden on sidebar pages)
 - Blocks: `extra_css`, `content`, `extra_js`
 
-**_nav.html structure (448 lines):**
-- Horizontal top bar with 3 sections: `.start` (kebab menu + back + home + search), `.center` (logo/brand), `.end` (lang toggle + user/logout)
-- Kebab menu has: Appointments, Collections, Expenses, Admin Settings (permission-gated)
-- Patient live search with dropdown
-- Responsive breakpoints at 1200px, 900px, 768px
-
-**.wrap in app.css:**
-- `max-width:1100px; margin:20px auto; padding:0 12px; overflow-x:hidden`
-- Admin settings already overrides this with `.wrap:has(.admin-settings-container) { max-width: none; overflow-x: visible; }`
-
-**Theme CSS variables available:** `--primary-color`, `--accent-color`, `--page-bg`, `--bg-surface`, `--text-primary`, `--text-secondary`, `--border`, `--card-shadow`, `--radius-md`, `--radius-lg`, `--spacing-sm/md/lg`, etc. Full list in `static/css/design-system.css` and `static/css/theme-system.css`.
+**Sidebar key facts:**
+- Opt-in per-template: `{% set use_sidebar = true %}` at top of template
+- Sidebar collapse state stored in `localStorage` key `sidebar_collapsed`
+- Collapse state read INLINE (directly after `<aside>` tag) to avoid FOUC on heavy pages
+- Toggle button is at `left: 240px` (flush with outer edge, NOT overlapping menu items)
+- RTL: sidebar flips to right, toggle button uses `right: 240px`
+- Branding: logo (`theme_logo_url`), clinic name (`clinic_name`) in primary color, tagline (`clinic_tagline`) below name
+- Active nav item: gold active background (`.sidebar-item.active`)
+- CSS: `static/css/app.css` (sections 5-7, ~300 lines, starting at `.sidebar-collapse-btn`)
 
 **render_page() injects:** `lang`, `dir`, `t` (translation), `theme_css`, `theme_logo_url`, `clinic_name`, `clinic_tagline`, `user_has_permission`, `show_file_numbers`
 
-**35 templates** extend `_base.html` (21 direct, 14 via sub-bases). All get the sidebar wrapper, but only opted-in pages show it.
 
 ---
 
 ## Recent Sessions
 
-### Session: Sidebar Step 4 (Patient File Flow) (Mar 8 2026)
+### Session: Sidebar Steps 5, 6, 7 + Bug Fixes (Mar 8 2026)
+**What was done:**
+- **Sidebar Steps 5, 6, 7** fully completed — all major pages now use the sidebar shell.
+  - Step 5 (Payments, Expenses, Reports): Opted in `templates/payments/form.html`, `templates/simple_expenses/base.html`, `templates/reports/collections.html` and related report templates. Fixed `.simple-expenses-container` to use `flex: 1` instead of `min-height: 100vh` to prevent over-stretching.
+  - Step 6 (Admin Settings): Opted in `templates/admin/settings/index.html`. Re-targeted the wide-container override from `.wrap:has(...)` to `.wrapper:has(...)`.
+  - Step 7 (Coverage Review): Visually audited the Dashboard, Patient List, Patient File, and Admin Settings in all 4 combinations (LTR/RTL + Light/Dark). Zero regressions found.
+- **Legacy Expenses cleanup**: Deleted `clinic_app/blueprints/expenses/` and `templates/expenses/` directories. Unregistered from `__init__.py`. User confirmed no old data to preserve.
+- **Sidebar FOUC bug fixed**: The toggle button's `localStorage` state check was moved **inline** immediately after the `<aside>` tag in `_base.html`. This ensures the browser applies the `.collapsed` class *before* painting on heavy pages like Admin Settings, eliminating the visual flash.
+- **Sidebar toggle button overlap fixed**: Shifted the toggle button from `left: 228px` to `left: 240px` (and corresponding RTL `right:` values), so it sits flush with the outer sidebar edge without imposing on the menu items.
+- **Sidebar branding**: Logo enlarged, clinic name styled in primary brand color, clinic tagline from Admin Theme settings injected below the name.
+- **107 tests passing** throughout.
+
+**Key decisions:**
+- FOUC fix must be inline (not DOMContentLoaded) because heavy pages delay script execution.
+- Toggle button must sit at exactly `left: 240px` (the sidebar width boundary), not inside it.
+- Legacy expenses removed only after confirming user had no previous expense data.
+
+**What's next:**
+- V1 Sidebar Rollout is COMPLETE. The next task is one of the Future Phases in `LAST_PLAN.md` (Reception Workflow, Expense Consolidation, Patient Detail Redesign, etc.)
+
+
 **What was done:**
 - Integrated the core Patient File flow (`templates/patients/detail.html`, `edit.html`, `new.html`) into the sidebar shell using the `{% set use_sidebar = true %}` switch.
 - Verified visual stability: The embedded `payments/_list.html` component scales down gracefully inside the `.sidebar-main` container.

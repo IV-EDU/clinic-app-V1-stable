@@ -272,7 +272,7 @@ Confirm:
 | Sidebar Step 4 (Patient file flow) | DONE | Mar 8 2026 - detail/edit/new wrapped in shell |
 | Sidebar Step 5 (Payments, Expenses, Reports) | DONE | Mar 8 2026 - Wrapped in shell
 | Sidebar Step 6 (Admin Settings) | DONE | Mar 8 2026 - Last major rollout area |
-| Sidebar Step 7 (Coverage review) | Not started | Confirm whole-app alignment target is met |
+| Sidebar Step 7 (Coverage review) | DONE | Mar 8 2026 - Visual audit verified app-wide alignment |
 
 ---
 

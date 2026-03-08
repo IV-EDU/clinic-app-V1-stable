@@ -1,4 +1,5 @@
 {% extends '_base.html' %}
+{% set use_sidebar = true %}
 {% block content %}
 <style>
 {# Override theme variables on this page using saved settings, since this view does not go through render_page() #}
@@ -15,8 +16,8 @@
   {% if _metric %}--metric-color: {{ _metric }};{% endif %}
 }
 
-/* Widen the .wrap shell so admin settings are not clipped at 1100px */
-.wrap:has(.admin-settings-container) {
+/* Widen the .wrapper shell so admin settings are not clipped at 1100px */
+.wrapper:has(.admin-settings-container) {
   max-width: none;
   overflow-x: visible;
 }
@@ -6192,7 +6193,7 @@ function saveImportSettings() {
 function addPageRange() {
   var container = document.getElementById('page-ranges-container');
   var rangeCount = container.querySelectorAll('.page-range-row').length;
-  
+
   var rangeRow = document.createElement('div');
   rangeRow.className = 'page-range-row';
   rangeRow.setAttribute('data-range-id', rangeCount);
@@ -6207,7 +6208,7 @@ function addPageRange() {
       <button type="button" class="btn btn-danger btn-sm" onclick="removePageRange(${rangeCount})">{{ tf('remove', 'Remove') }}</button>
     </div>
   `;
-  
+
   container.appendChild(rangeRow);
 }
 
@@ -6222,7 +6223,7 @@ function removePageRange(rangeId) {
 document.addEventListener('DOMContentLoaded', function() {
   var pageFormatSelect = document.getElementById('default-page-format');
   var customFormatGroup = document.getElementById('custom-format-group');
-  
+
   if (pageFormatSelect && customFormatGroup) {
     pageFormatSelect.addEventListener('change', function() {
       if (this.value === 'custom') {

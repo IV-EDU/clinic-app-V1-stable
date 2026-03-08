@@ -9,4 +9,5 @@ This workflow provides the safest and most reliable way to start the local Flask
 python wsgi.py
 ```
 
-2. When you are done testing in the browser, remember to use the `send_command_input` tool with `Terminate: true` on the command ID returned by step 1 so the port is freed for the next task.
+2. When you are done testing in the browser, remember to use the `send_command_input` tool with EXACTLY `Terminate: true` (and no `Input` argument) on the command ID returned by step 1 so the port is freed for the next task.
+  - *Note for AI Agents:* NEVER pass `Terminate: false` without providing an `Input` string. This causes syntax errors and forces the user to interrupt the stall.

@@ -197,7 +197,10 @@ For UI-only tasks: change only templates, CSS/JS, and `i18n.py`. Do NOT change r
 
 - `python wsgi.py` — run app (port 8080). (Prefer this over `Start-Clinic.bat` if Powershell is strict). Login: `admin` / `admin`.
 - `.\scripts\Run-Tests.bat` — run pytest. `.\scripts\Run-Validation.bat` — full validation (always prefix `.bat` executions with `.\` in Powershell).
-- **CRITICAL:** When running the server via a background command for testing, ALWAYS cleanly close it using the `send_command_input` tool with `Terminate: true` when done.
+- **CRITICAL - RE: TERMINATION:** When running *any* background command via a tool, pay strict attention to its output:
+  - If a server or process needs to be forcefully closed to free the port, you MUST use the `send_command_input` tool with EXACTLY `Terminate: true` (and no `Input` argument at all).
+  - If a `.bat` script finishes and says `Press any key to close...`, DO NOT use `Terminate: true`. Instead, you MUST use `send_command_input` with `Input: "\n"` to gracefully close it.
+  - NEVER pass `Terminate: false` without an `Input`. Doing so causes syntax errors and wastes time.
 - **Run tests after backend changes.** Report results honestly.
 - Do not delete or disable tests unless the user explicitly asks.
 

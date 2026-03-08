@@ -1,6 +1,7 @@
 # Reception Desk Spec
 
 > Temporary planning file for the Reception Desk + Manager Review workflow.
+> For the frozen first implementation contract, see `docs/RECEPTION_DESK_IMPLEMENTATION_CONTRACT.md`.
 > Delete this file after the feature is fully implemented and the final docs are updated.
 
 ## Goal

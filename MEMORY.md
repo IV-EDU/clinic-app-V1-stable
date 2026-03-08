@@ -92,6 +92,26 @@ Every new chat agent should read files in this order before proposing work:
 
 ## Recent Sessions
 
+### Session: Reception Desk Phase 0 Freeze (Mar 8 2026)
+**What was done:**
+- Re-read the Reception Desk planning docs and checked them against the live code integration points before starting implementation.
+- Confirmed the current live anchors: patient detail lives in `templates/patients/detail.html`, live treatment/payment controls live in `templates/payments/_list.html`, and permissions are enforced through `require_permission(...)` with definitions in `clinic_app/models_rbac.py`.
+- Added a new planning handoff file: [docs/RECEPTION_DESK_IMPLEMENTATION_CONTRACT.md](/c:/Users/ivxti/OneDrive/Desktop/GitHub/Clinic-App-Local/docs/RECEPTION_DESK_IMPLEMENTATION_CONTRACT.md).
+- Froze the first implementation cycle around: 3 entry sources, 5 core statuses, 3 new workflow permissions, minimum pending-entry field set, validation rules, review rules, and explicit first-release exclusions.
+- Updated [docs/RECEPTION_DESK_PHASES.md](/c:/Users/ivxti/OneDrive/Desktop/GitHub/Clinic-App-Local/docs/RECEPTION_DESK_PHASES.md) so Phase 0 is marked frozen for implementation handoff, and linked the spec to the new contract.
+
+**Key decisions:**
+- The contract now locks `reception_desk`, `patient_file`, and `treatment_card` as the only initial source codes.
+- The first workflow permission set is locked as `reception_entries:create`, `reception_entries:review`, and `reception_entries:approve`.
+- Optional queue helper labels stay derived UI labels for later; they are not part of the stored status model in the first slice.
+- Receptionist draft controls must remain clearly separate from the existing live `payments:edit` treatment/payment controls.
+- Approval posting remains deferred until after pending-entry storage and manager review are working.
+
+**What's next:**
+- Start Phase 1 only: design and implement the pending-entry backbone as a separate staging layer.
+- Treat `clinic_app/models_rbac.py` as high-attention work when Phase 2 starts.
+- Do not start UI or live posting before the staging layer is in place.
+
 ### Session: Reception Desk Workflow Planning (Mar 8 2026)
 **What was done:**
 - Deeply reviewed the live patient/treatment/payment structure before planning the receptionist workflow.

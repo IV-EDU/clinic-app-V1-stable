@@ -2,6 +2,7 @@
 
 > Temporary implementation roadmap for the Reception Desk + Manager Review system.
 > Keep this separate from `docs/RECEPTION_DESK_SPEC.md`, which defines the workflow itself.
+> Use `docs/RECEPTION_DESK_IMPLEMENTATION_CONTRACT.md` as the Phase 0 freeze before starting code.
 > Delete or fold this into permanent docs after the feature is fully implemented.
 
 ## Purpose
@@ -32,6 +33,7 @@ Freeze the design and confirm integration points before coding.
 
 - `docs/RECEPTION_DESK_SPEC.md`
 - this phases file
+- `docs/RECEPTION_DESK_IMPLEMENTATION_CONTRACT.md`
 - exact UI insertion points confirmed
 - exact permission plan confirmed
 
@@ -51,7 +53,7 @@ Freeze the design and confirm integration points before coding.
 
 ### Status
 
-- In planning
+- Frozen for implementation handoff
 
 ## Phase 1: Pending Entry Backbone
 

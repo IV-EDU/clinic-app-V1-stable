@@ -1,4 +1,5 @@
 {% extends '_base.html' %}
+{% set use_sidebar = true %}
 {% macro tf(key, default_text) -%}
   {%- set val = t(key) if t else default_text -%}
   {{ default_text if val == key else val }}

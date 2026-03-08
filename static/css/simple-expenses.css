@@ -10,7 +10,7 @@
 }
 
 .simple-expenses-container {
-  min-height: 100vh;
+  flex: 1;
   background:
     radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--se-accent, #3b82f6) 16%, transparent), transparent 32%),
     radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--se-accent-2, #0ea5e9) 12%, transparent), transparent 28%),

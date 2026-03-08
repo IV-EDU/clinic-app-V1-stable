@@ -1,4 +1,5 @@
 {% extends 'simple_expenses/base.html' %}
+{% set use_sidebar = true %}
 
 {% block title %}{{ tf('expenses', 'Expenses') }}{% endblock %}
 
@@ -7,7 +8,7 @@
     {%- set val = t(key) if t else default_text -%}
     {{ default_text if val == key else val }}
   {%- endmacro %}
-  <div class="expense-page u-stack-md">
+  <div class="wrap expense-page u-stack-md">
     <div class="page-header u-card">
       <div>
         <p class="eyebrow">{{ tf('clinic_spending', 'Clinic spending') }}</p>

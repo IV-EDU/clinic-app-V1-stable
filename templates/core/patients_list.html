@@ -1,0 +1,156 @@
+{% extends '_base.html' %}
+{% set use_sidebar = true %}
+{% block content %}
+<div class="dashboard-page">
+
+  <!-- Page header -->
+  <div class="dash-header">
+    <div class="dash-header-left">
+      <h1 class="dash-title">{{ t('patients') }}</h1>
+      <p class="dash-subtitle">{{ t('manage_patient_records') }}</p>
+    </div>
+  </div>
+
+  <!-- Stat strip -->
+  <div class="pl-stat-strip">
+    <div class="pl-stat-card">
+      <svg class="pl-stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <div class="pl-stat-body">
+        <div class="pl-stat-label">{{ t('patients') }}</div>
+        <div class="pl-stat-value">{{ overall_total }}</div>
+      </div>
+    </div>
+    <div class="pl-stat-card warn">
+      <svg class="pl-stat-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <div class="pl-stat-body">
+        <div class="pl-stat-label">{{ t('outstanding_balances') }}</div>
+        <div class="pl-stat-value">{{ with_balance_count }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search + actions bar -->
+  <div class="dash-search-bar">
+    <form method="get" action="{{ url_for('core.patients_list') }}" class="dash-search-form">
+      <input type="hidden" name="sort" value="{{ sort or 'new' }}">
+      <input type="hidden" name="balance" value="{{ balance or 'all' }}">
+      <div class="dash-search-input-wrap">
+        <svg class="dash-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="dash-search-input" name="q" placeholder="{{ t('search_placeholder') }}" value="{{ q or '' }}" autocomplete="off">
+      </div>
+      <button class="btn primary" type="submit">{{ t('search') }}</button>
+      {% if q or (balance and balance != 'all') %}
+        <a class="btn secondary" href="{{ url_for('core.patients_list', sort=sort or 'new') }}">{{ t('clear') }}</a>
+      {% endif %}
+    </form>
+    <div class="dash-search-actions">
+      <!-- Balance filter pills -->
+      <div class="pl-filter-pills" role="group" aria-label="{{ t('balance_filter_label') }}">
+        <a class="pl-pill{{ ' active' if (balance or 'all') == 'all' else '' }}"
+           href="{{ url_for('core.patients_list', q=q or '', sort=sort or 'new', balance='all') }}">{{ t('balance_filter_all') }}</a>
+        <a class="pl-pill{{ ' active' if balance == 'owed' else '' }}"
+           href="{{ url_for('core.patients_list', q=q or '', sort=sort or 'new', balance='owed') }}">{{ t('balance_filter_owed') }}</a>
+        <a class="pl-pill{{ ' active' if balance == 'paid' else '' }}"
+           href="{{ url_for('core.patients_list', q=q or '', sort=sort or 'new', balance='paid') }}">{{ t('balance_filter_paid') }}</a>
+      </div>
+      <a class="btn secondary" href="{{ url_for('core.patients_list', q=q or '', sort='old' if (sort or 'new') == 'new' else 'new', balance=balance or 'all') }}">
+        {{ t('sort_oldest_first') if (sort or 'new') == 'new' else t('sort_newest_first') }}
+      </a>
+      {% if current_user.is_authenticated and current_user.has_permission('patients:edit') %}
+        <a class="btn primary" href="{{ url_for('patients.new_patient') }}">{{ t('add_patient') }}</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Patient table card -->
+  <div class="card patient-list-card">
+    {% set home_return_to = request.full_path if request.query_string else request.path %}
+    <div class="patient-card-header">
+      <div>
+        <h2 class="patient-card-title">{{ t('recent_patients') }}</h2>
+        <p class="patient-card-subtitle">{{ t('manage_patient_records') }}</p>
+      </div>
+    </div>
+    {% if patients %}
+    <div class="overflow-x-auto">
+      <table class="patient-table">
+        <thead>
+          <tr>
+            <th scope="col" class="file-col">{{ t('file_no') }}</th>
+            {% if show_file_numbers %}
+            <th scope="col" class="page-col">{{ t('page_numbers') }}</th>
+            {% endif %}
+            <th scope="col">{{ t('name') }}</th>
+            <th scope="col">{{ t('phone') }}</th>
+            <th scope="col" class="balance-col num">{{ t('balance') }}</th>
+            <th scope="col" class="actions-col">{{ t('actions') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for p in patients %}
+          <tr>
+            <td class="file-col mono">{{ p.short_id or '—' }}</td>
+            {% if show_file_numbers %}
+            <td class="page-col wrap-text">
+              {{ p.primary_page_number or '—' }}
+              {% if q and p.matched_extra_page and (p.primary_page_number or '') != p.matched_extra_page %}
+                <div class="matched-hint">{{ t('matched') }}: {{ p.matched_extra_page }}</div>
+              {% endif %}
+            </td>
+            {% endif %}
+            <td class="wrap-text">
+              <div class="patient-name-cell">
+                <div class="patient-avatar">{{ (p.full_name or '?')[:2]|upper }}</div>
+                <span>{{ p.full_name }}</span>
+              </div>
+            </td>
+            <td class="wrap-text" dir="ltr">
+              {{ p.phone or '—' }}
+              {% if q and p.matched_extra_phone and (p.phone or '') != p.matched_extra_phone %}
+                <div class="matched-hint">{{ t('matched') }}: {{ p.matched_extra_phone }}</div>
+              {% endif %}
+            </td>
+            <td class="balance-col num">
+              <div class="bal-box {{ 'bal-0' if p.balance_cents==0 else 'bal-pos' }}">{{ '{:.2f}'.format(p.balance_cents/100) }}</div>
+            </td>
+            <td class="actions">
+              <a class="btn primary btn-sm" href="{{ url_for('patients.patient_detail', pid=p.id, return_to=home_return_to) }}">{{ t('open') }}</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination-row">
+      <div class="pagination-info">
+        {{ t('showing') }} {{ ((page-1)*per_page)+1 }}–{{ [page*per_page, filtered_total]|min }} {{ t('of') }} {{ filtered_total }}
+      </div>
+      <div class="pagination-controls">
+        {% if has_prev %}
+          <a class="btn secondary" href="{{ url_for('core.patients_list', page=page-1, q=q, sort=sort or 'new', balance=balance or 'all') }}">{{ t('prev') }}</a>
+        {% else %}
+          <button class="btn secondary" disabled>{{ t('prev') }}</button>
+        {% endif %}
+
+        {% for pnum in range(1, total_pages + 1) %}
+          {% if pnum == page %}
+            <span class="btn primary">{{ pnum }}</span>
+          {% else %}
+            <a class="btn secondary" href="{{ url_for('core.patients_list', page=pnum, q=q, sort=sort or 'new', balance=balance or 'all') }}">{{ pnum }}</a>
+          {% endif %}
+        {% endfor %}
+
+        {% if has_next %}
+          <a class="btn primary" href="{{ url_for('core.patients_list', page=page+1, q=q, sort=sort or 'new', balance=balance or 'all') }}">{{ t('next') }}</a>
+        {% else %}
+          <button class="btn secondary" disabled>{{ t('next') }}</button>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+      <div class="no-patients">{{ t('no_patients') }}</div>
+    {% endif %}
+  </div>
+
+</div>{# end .dashboard-page #}
+{% endblock %}

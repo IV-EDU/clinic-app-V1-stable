@@ -79,7 +79,7 @@ def _seed_sort_cases() -> dict[str, str]:
 
 def test_home_default_sort_is_payment_first_then_new_patients(logged_in_client):
     names = _seed_sort_cases()
-    resp = logged_in_client.get("/")
+    resp = logged_in_client.get("/patients/list")
     html = resp.data.decode("utf-8")
     assert resp.status_code == 200
 
@@ -97,7 +97,7 @@ def test_home_default_sort_is_payment_first_then_new_patients(logged_in_client):
 
 def test_home_old_sort_is_payment_first_then_old_patients(logged_in_client):
     names = _seed_sort_cases()
-    resp = logged_in_client.get("/?sort=old")
+    resp = logged_in_client.get("/patients/list?sort=old")
     html = resp.data.decode("utf-8")
     assert resp.status_code == 200
 
@@ -115,7 +115,7 @@ def test_home_old_sort_is_payment_first_then_old_patients(logged_in_client):
 
 def test_home_invalid_sort_falls_back_to_new(logged_in_client):
     names = _seed_sort_cases()
-    resp = logged_in_client.get("/?sort=invalid")
+    resp = logged_in_client.get("/patients/list?sort=invalid")
     html = resp.data.decode("utf-8")
     assert resp.status_code == 200
 
@@ -132,7 +132,7 @@ def test_home_invalid_sort_falls_back_to_new(logged_in_client):
 
 def test_home_search_keeps_selected_sort(logged_in_client):
     names = _seed_sort_cases()
-    resp = logged_in_client.get("/?q=SortCase&sort=old")
+    resp = logged_in_client.get("/patients/list?q=SortCase&sort=old")
     html = resp.data.decode("utf-8")
     assert resp.status_code == 200
 
@@ -152,7 +152,7 @@ def test_home_links_preserve_sort_in_toggle_and_pagination(logged_in_client):
     for i in range(51):
         _insert_patient(f"PageCase {i:02d}", f"2024-01-{(i % 28) + 1:02d}")
 
-    resp = logged_in_client.get("/?sort=old")
+    resp = logged_in_client.get("/patients/list?sort=old")
     html = resp.data.decode("utf-8")
     assert resp.status_code == 200
 
@@ -162,11 +162,11 @@ def test_home_links_preserve_sort_in_toggle_and_pagination(logged_in_client):
 
 
 def test_home_sort_preference_is_remembered_across_plain_home(logged_in_client):
-    resp_old = logged_in_client.get("/?sort=old")
+    resp_old = logged_in_client.get("/patients/list?sort=old")
     assert resp_old.status_code == 200
     assert 'name="sort" value="old"' in resp_old.data.decode("utf-8")
 
-    resp_plain = logged_in_client.get("/")
+    resp_plain = logged_in_client.get("/patients/list")
     html_plain = resp_plain.data.decode("utf-8")
     assert resp_plain.status_code == 200
     assert 'name="sort" value="old"' in html_plain
@@ -177,7 +177,7 @@ def test_patient_open_link_carries_return_to_and_back_restores_page_sort(logged_
     for i in range(80):
         _insert_patient(f"BackNavCase {i:02d}", f"2024-01-{(i % 28) + 1:02d}")
 
-    home = logged_in_client.get("/?page=2&sort=old")
+    home = logged_in_client.get("/patients/list?page=2&sort=old")
     home_html = unescape(home.data.decode("utf-8"))
     assert home.status_code == 200
 
@@ -225,13 +225,13 @@ def test_patient_detail_rejects_external_return_to(logged_in_client):
 def test_home_button_stays_plain_home_and_keeps_sort_preference(logged_in_client):
     pid = _insert_patient("BackHomeCase", "2024-01-01")
 
-    logged_in_client.get("/?sort=old")
+    logged_in_client.get("/patients/list?sort=old")
     detail = logged_in_client.get(f"/patients/{pid}")
     detail_html = unescape(detail.data.decode("utf-8"))
     assert detail.status_code == 200
     assert re.search(r'class="btn secondary home-btn" href="/"', detail_html)
 
-    home = logged_in_client.get("/")
-    home_html = home.data.decode("utf-8")
-    assert home.status_code == 200
-    assert 'name="sort" value="old"' in home_html
+    list_page = logged_in_client.get("/patients/list")
+    list_html = list_page.data.decode("utf-8")
+    assert list_page.status_code == 200
+    assert 'name="sort" value="old"' in list_html

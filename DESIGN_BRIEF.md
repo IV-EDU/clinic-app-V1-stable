@@ -61,7 +61,7 @@ Use the CSS variables defined in `static/css/design-system.css` and `static/css/
 
 ## Layout & Spacing
 
-- **Structure:** Use `_base.html` layout → nav + main content area.
+- **Structure:** Use `_base.html` layout. On legacy pages this means top nav + main content. On opted-in reskin pages this means sidebar + slim topbar + main content.
 - **Cards** for all main content sections. Avoid content directly on the page background.
 - **Spacing scale** (4px base): 4, 8, 12, 16, 20, 24, 32, 48, 64px.
 - **Max content width:** ~1200px centered on large screens.
@@ -115,7 +115,7 @@ Use the CSS variables defined in `static/css/design-system.css` and `static/css/
 - **No decorative illustrations or icons** that don't serve a function.
 - **No animations** except subtle transitions (opacity, transform) on hover/focus.
 - **No custom scrollbars** — use browser defaults.
-- **No sidebar navigation** — the app uses a top nav bar.
+- **No second competing navigation system on the same page.** On sidebar pages, the sidebar + slim topbar is the official shell. On legacy pages, the top nav remains the shell.
 - **No sticky headers inside scrollable content** (only the main nav is sticky).
 - **No inline `<style>` blocks** — use shared CSS files. If you must add inline styles temporarily, plan a follow-up to move them.
 
@@ -126,13 +126,15 @@ Use the CSS variables defined in `static/css/design-system.css` and `static/css/
 When making design decisions, compare your work to these existing pages:
 
 **Good examples** (follow their patterns):
+- Dashboard home (`templates/core/index.html`) — current sidebar-shell reference
+- Patient list (`templates/core/patients_list.html`) — current sidebar-shell table/page reference
 - Appointments page (`vanilla.html`) — clean card layout, good dark mode
 - Simple expenses — minimal, clear, functional
 - Login page — centered card, clean form
 
 **Needs improvement** (see `KNOWN_ISSUES.md`):
 - Admin settings — overwhelming, needs splitting
-- Dashboard/home — currently just a patient list, needs redesign
+- Sidebar rollout is incomplete — appointments, expenses/reports, and admin still need reskin alignment
 - Dark mode has gaps on some pages
 
 ---

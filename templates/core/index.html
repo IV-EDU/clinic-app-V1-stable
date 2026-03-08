@@ -1,135 +1,141 @@
 {% extends '_base.html' %}
+{% set use_sidebar = true %}
 {% block content %}
-<div class="card dashboard-search-card">
-  <form method="get" class="search-row">
-    <input type="hidden" name="sort" value="{{ sort or 'new' }}">
-    <div class="search-input">
-      <input name="q" placeholder="{{ t('search_placeholder') }}" value="{{ q or '' }}">
-    </div>
-    <div class="search-actions">
-      <button class="btn primary" type="submit">{{ t('search') }}</button>
-      <a class="btn secondary" href="{{ url_for('index', sort=sort or 'new') }}">{{ t('clear') }}</a>
-      <a class="btn secondary" href="{{ url_for('index', q=q or '', sort='old' if (sort or 'new') == 'new' else 'new') }}">
-        {{ t('sort_oldest_first') if (sort or 'new') == 'new' else t('sort_newest_first') }}
-      </a>
-    </div>
-  </form>
-</div>
+<div class="dashboard-page">
 
-<div class="card dashboard-topline">
-  <div class="topline-left">
-    <div class="stat-pill">
-      <div class="pill-label">{{ t('patients') }}</div>
-      <div class="pill-value">{{ total_patients }}</div>
+  <!-- Page header -->
+  <div class="dash-header">
+    <div class="dash-header-left">
+      <h1 class="dash-title">{{ t('dashboard_overview') }}</h1>
+      <p class="dash-subtitle">{{ t('dashboard_subtitle') }}</p>
     </div>
-    {% if current_user.is_authenticated and current_user.has_permission('patients:edit') %}
-      <a class="btn primary" href="{{ url_for('patients.new_patient') }}">{{ t('add_patient') }}</a>
-    {% endif %}
-  </div>
-  <div class="stat-pill align-end">
-    <div class="pill-label">{{ t('total_received') }}</div>
-    <div class="pill-value">{{ today_total }}</div>
-  </div>
-</div>
-
-<div class="card appointments-card">
-  <div class="card-header-row">
-    <h3 class="section-title">{{ t('appointments_today') }}</h3>
-    <a class="btn secondary" href="{{ url_for('appointments.table') }}">{{ t('view') }}</a>
-  </div>
-  <div class="appointments-stats">
-    <div class="dash-stat large">
-      <div class="stat-value">{{ appointments_count }}</div>
-      <div class="stat-label">{{ t('appointments_today') }}</div>
-    </div>
-    <div class="dash-grid">
-      <div class="dash-stat">
-        <div class="stat-label">{{ t('appointment_status_scheduled') }}</div>
-        <div class="stat-value small">{{ upcoming_count }}</div>
-      </div>
-      <div class="dash-stat">
-        <div class="stat-label">{{ t('appointment_status_done') }}</div>
-        <div class="stat-value small">{{ completed_count }}</div>
+    <div class="dash-header-right">
+      <div class="dash-appt-badges">
+        <div class="dash-badge badge-scheduled">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span class="badge-label">{{ t('appointment_status_scheduled') }}</span>
+          <span class="badge-count">{{ upcoming_count }}</span>
+        </div>
+        <div class="dash-badge badge-done">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span class="badge-label">{{ t('appointment_status_done') }}</span>
+          <span class="badge-count">{{ completed_count }}</span>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<div class="card patient-list-card">
-  {% set home_return_to = request.full_path if request.query_string else request.path %}
-  {% if patients %}
-  <div class="overflow-x-auto">
-    <table class="patient-table">
-      <thead>
-        <tr>
-          <th scope="col" class="file-col">{{ t('file_no') }}</th>
-          {% if show_file_numbers %}
-          <th scope="col" class="page-col">{{ t('page_numbers') }}</th>
-          {% endif %}
-          <th scope="col">{{ t('name') }}</th>
-          <th scope="col">{{ t('phone') }}</th>
-          <th scope="col" class="balance-col">{{ t('balance') }}</th>
-          <th scope="col" class="actions-col">{{ t('actions') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-      {% for p in patients %}
-        <tr>
-          <td class="file-col">{{ p.short_id or '—' }}</td>
-          {% if show_file_numbers %}
-          <td class="page-col wrap-text">
-            {{ p.primary_page_number or '—' }}
-            {% if q and p.matched_extra_page and (p.primary_page_number or '') != p.matched_extra_page %}
-              <div class="matched-hint">{{ t('matched') }}: {{ p.matched_extra_page }}</div>
-            {% endif %}
-          </td>
-          {% endif %}
-          <td class="wrap-text">{{ p.full_name }}</td>
-          <td class="wrap-text">
-            {{ p.phone or '—' }}
-            {% if q and p.matched_extra_phone and (p.phone or '') != p.matched_extra_phone %}
-              <div class="matched-hint">{{ t('matched') }}: {{ p.matched_extra_phone }}</div>
-            {% endif %}
-          </td>
-          <td class="balance-col">
-            <div class="bal-box {{ 'bal-0' if p.balance_cents==0 else 'bal-pos' }}">{{ '{:.2f}'.format(p.balance_cents/100) }}</div>
-          </td>
-          <td class="actions">
-            <a class="btn secondary" href="{{ url_for('patients.patient_detail', pid=p.id, return_to=home_return_to) }}">{{ t('open') }}</a>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div class="pagination-row">
-    <div class="pagination-info">
-      {{ t('page') }} {{ page }}{% if total_pages %} / {{ total_pages }}{% endif %}
+  <!-- Stat cards row -->
+  <div class="dash-stats-row">
+    <div class="dash-stat-card">
+      <div class="dsc-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="dsc-body">
+        <div class="dsc-label">{{ t('patients') }}</div>
+        <div class="dsc-value">{{ total_patients }}</div>
+      </div>
     </div>
-    <div class="pagination-controls">
-      {% if has_prev %}
-        <a class="btn secondary" href="{{ url_for('index', page=page-1, q=q, sort=sort or 'new') }}">{{ t('prev') }}</a>
+    <div class="dash-stat-card">
+      <div class="dsc-icon accent">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <div class="dsc-body">
+        <div class="dsc-label">{{ t('todays_collections') }}</div>
+        <div class="dsc-value money">{{ today_total }}</div>
+      </div>
+    </div>
+    <div class="dash-stat-card">
+      <div class="dsc-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <div class="dsc-body">
+        <div class="dsc-label">{{ t('appointments_today') }}</div>
+        <div class="dsc-value">{{ appointments_count }}</div>
+        <div class="dsc-sub {{ 'warn' if upcoming_count > 0 else 'neutral' }}">
+          {{ upcoming_count }} {{ t('appointment_status_scheduled') }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content grid: appointments + sidebar actions -->
+  <div class="dash-main-grid">
+
+    <!-- Today's appointments card -->
+    <div class="card dash-appt-card">
+      <div class="dash-card-header">
+        <h2 class="dash-card-title">{{ t('todays_appointments_title') }}</h2>
+        <a class="btn secondary btn-sm" href="{{ url_for('appointments.vanilla') }}">{{ t('view_all') }}</a>
+      </div>
+      {% if appointments_preview %}
+        <ul class="dash-appt-list">
+          {% for appt in appointments_preview %}
+          <li class="dash-appt-item">
+            <div class="dai-time" dir="ltr">{{ appt.starts_at[11:16] if appt.starts_at|length > 10 else '—' }}</div>
+            <div class="dai-info">
+              <div class="dai-title">{{ appt.title or '—' }}</div>
+              {% if appt.doctor_label %}<div class="dai-doctor">{{ appt.doctor_label }}</div>{% endif %}
+            </div>
+            <div class="dai-status status-{{ appt.status or 'scheduled' }}">{{ t('appointment_status_' + (appt.status or 'scheduled')) }}</div>
+          </li>
+          {% endfor %}
+        </ul>
       {% else %}
-        <button class="btn secondary" disabled>{{ t('prev') }}</button>
+        <p class="dash-empty-msg">{{ t('no_appointments_today') }}</p>
       {% endif %}
+    </div>
 
-      {% for pnum in range(1, total_pages + 1) %}
-        {% if pnum == page %}
-          <span class="btn primary">{{ pnum }}</span>
+    <!-- Right column: quick actions + recent patients -->
+    <div class="dash-right-col">
+
+      <!-- Quick actions card -->
+      <div class="card dash-quick-card">
+        <h2 class="dash-card-title">{{ t('quick_actions') }}</h2>
+        <div class="dash-quick-actions">
+          {% if current_user.is_authenticated and current_user.has_permission('patients:edit') %}
+          <a class="dash-action-btn" href="{{ url_for('patients.new_patient') }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            {{ t('add_patient') }}
+          </a>
+          {% endif %}
+          <a class="dash-action-btn" href="{{ url_for('appointments.vanilla') }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            {{ t('appointments') }}
+          </a>
+          <a class="dash-action-btn" href="{{ url_for('reports.collections') }}">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            {{ t('collections') }}
+          </a>
+        </div>
+      </div>
+
+      <!-- Recent patients card -->
+      <div class="card dash-recent-card">
+        <div class="dash-card-header">
+          <h2 class="dash-card-title">{{ t('recent_patients') }}</h2>
+          <a class="btn secondary btn-sm" href="{{ url_for('core.patients_list') }}">{{ t('view_all_patients') }}</a>
+        </div>
+        {% if recent_patients %}
+          <ul class="dash-recent-list">
+            {% for p in recent_patients %}
+            <li class="dash-recent-item">
+              <div class="patient-avatar small">{{ (p.full_name or '?')[:2]|upper }}</div>
+              <div class="dri-info">
+                <div class="dri-name">{{ p.full_name }}</div>
+                <div class="dri-file">{{ p.short_id or '—' }}</div>
+              </div>
+              <a class="btn primary btn-sm" href="{{ url_for('patients.patient_detail', pid=p.id, return_to=request.full_path) }}">{{ t('open') }}</a>
+            </li>
+            {% endfor %}
+          </ul>
         {% else %}
-          <a class="btn secondary" href="{{ url_for('index', page=pnum, q=q, sort=sort or 'new') }}">{{ pnum }}</a>
+          <p class="dash-empty-msg">{{ t('no_patients') }}</p>
         {% endif %}
-      {% endfor %}
+      </div>
 
-      {% if has_next %}
-        <a class="btn primary" href="{{ url_for('index', page=page+1, q=q, sort=sort or 'new') }}">{{ t('next') }}</a>
-      {% else %}
-        <button class="btn secondary" disabled>{{ t('next') }}</button>
-      {% endif %}
-    </div>
-  </div>
-  {% else %}
-    <div class="no-patients">{{ t('no_patients') }}</div>
-  {% endif %}
-</div>
+    </div>{# end dash-right-col #}
+  </div>{# end dash-main-grid #}
+
+</div>{# end .dashboard-page #}
 {% endblock %}

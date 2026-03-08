@@ -4,7 +4,7 @@
 > Read `AGENTS.md` for behavior rules. Read `KNOWN_ISSUES.md` for what's broken.
 > Read `MEMORY.md` for what was done recently.
 >
-> **Last Updated:** 2026-03-03
+> **Last Updated:** 2026-03-08
 
 ---
 
@@ -16,6 +16,50 @@
 - Build on what exists: current CSS variables, admin, PDF services.
 - One phase at a time. Complete and test before moving to next.
 - Page-by-page UI rollout - never break the whole app at once.
+- The **sidebar shell is the default direction** for the main app from now on.
+- "Uses the sidebar" and "fully matches the new UI language" are related, but not identical. Both must be tracked.
+
+---
+
+## UI End State Target
+
+The goal is **not** only to make a few pages look modern.
+The goal is for the clinic app to end V1 with a **consistent main application shell** and a **coherent visual language** across the main working surfaces.
+
+### By the end of the UI rollout, the main app should share:
+
+- the sidebar + slim topbar shell for normal in-app pages
+- consistent card spacing, headers, buttons, and table treatment
+- consistent dark mode behavior
+- consistent Arabic/RTL behavior
+- one calm, medical visual direction based on the existing design system
+
+### Coverage rule
+
+We are tracking 2 levels of completion:
+
+- **Shell adoption**: page uses the sidebar shell
+- **UI alignment**: page visually matches the new dashboard/patient-list direction closely enough to feel like the same app
+
+### Main surfaces that should be aligned by the end of this phase:
+
+- Dashboard / home
+- Patient list
+- Patient file flow (detail, edit, new, delete/confirm surfaces where appropriate)
+- Appointments
+- Main payments flow tied to patients
+- Expenses (simple and legacy entry surfaces as needed)
+- Reports
+- Admin main surfaces
+
+### Special surfaces that may remain intentionally separate or partially aligned:
+
+- Login/auth screens
+- Print/PDF/receipt print surfaces
+- Diagnosis / tooth-chart / image-heavy specialty pages
+- Tiny confirm dialogs or utility forms that do not justify full reskin work yet
+
+These special surfaces should still look clean and consistent, but they do **not** all need the full sidebar-shell treatment immediately.
 
 ---
 
@@ -67,7 +111,20 @@ Theme colors and uploaded logo in PDF services. Arabic reshaping for PDF output.
 > `{% set use_sidebar = true %}`. Old pages look identical. New pages get the modern layout.
 > This means zero breakage and we can roll out one page at a time.
 
-### Step 0 - Safe sidebar wrapper in _base.html <-- NEXT
+### Current Reality Check (Mar 8 2026)
+
+The live code confirms:
+
+- Sidebar shell is implemented in the base layout
+- Dashboard is opted in
+- Patient list is opted in
+- Appointments is **not yet** opted in
+- Patient detail/file pages are **not yet** opted in
+- Most other major surfaces still extend `_base.html` without sidebar activation
+
+This means the rollout direction is correct, but the roadmap must treat sidebar adoption across the rest of the app as still unfinished.
+
+### Step 0 - Safe sidebar wrapper in _base.html DONE
 **Risk:** Low (hidden by default) | **Est:** 1 session
 
 Add to `_base.html`:
@@ -83,7 +140,7 @@ Add to `_base.html`:
 
 **Files:** `templates/_base.html`, `templates/_nav.html`, `static/css/app.css`
 
-### Step 1 - Dashboard homepage
+### Step 1 - Dashboard homepage DONE
 **Risk:** Low | **Est:** 1 session
 
 First page to opt into sidebar. Replace the plain patient list at `/` with:
@@ -96,7 +153,7 @@ Move the full patient list to `/patients` (already exists as a route).
 
 **Files:** `templates/core/index.html` or new `templates/core/dashboard.html`, `clinic_app/blueprints/core/core.py`, `clinic_app/services/i18n.py`
 
-### Step 2 - Patient list page
+### Step 2 - Patient list page DONE
 **Risk:** Low | **Est:** 1 session
 
 Opt `/patients` into sidebar. Apply mockup card layout:
@@ -105,16 +162,68 @@ Opt `/patients` into sidebar. Apply mockup card layout:
 - Patient table with all existing columns
 - Styled pagination
 
-**Files:** `templates/patients/list.html`, `templates/core/index.html`, `clinic_app/services/i18n.py`
+**Files:** `templates/core/patients_list.html`, `clinic_app/blueprints/core/core.py`, `clinic_app/services/i18n.py`
 
-### Step 3 - Appointments page
-Opt into sidebar. Keep all existing features, just wrap in new layout.
+### Step 3 - Appointments page <-- NEXT
+**Risk:** Low-Medium | **Est:** 1 session
 
-### Step 4 - Expenses, Reports
-Opt into sidebar one at a time.
+Opt `/appointments` into sidebar. Keep all existing features, just wrap in new layout.
 
-### Step 5 - Admin Settings
-Last to convert. Sidebar may eventually replace some internal tab navigation.
+- Add `{% set use_sidebar = true %}` to `templates/appointments/vanilla.html`
+- Fix any sidebar-specific spacing or overflow conflicts in `static/css/app.css`
+- Do **not** change route paths, embedded JS behavior, API contracts, or appointment business logic in this step
+
+**Files:** `templates/appointments/vanilla.html`, `static/css/app.css`
+
+### Step 4 - Patient file flow
+**Risk:** Medium | **Est:** 1-2 sessions
+
+Bring the patient file surfaces into the new shell one focused surface at a time.
+
+Priority order:
+- `templates/patients/detail.html`
+- `templates/patients/edit.html`
+- `templates/patients/new.html`
+- patient confirm/delete surfaces only if needed for consistency
+
+Rules:
+- Keep patient actions, modal flows, payment fragments, and permissions working exactly as they do now
+- Do not mix this step with payment logic or diagnosis changes
+- Treat the patient detail page as a major surface, not a minor follow-up
+
+### Step 5 - Payments, Expenses, Reports
+**Risk:** Medium | **Est:** multiple small sessions
+
+Continue sidebar adoption and UI alignment across the remaining everyday work surfaces.
+
+Sub-order:
+- per-patient payment entry/edit surfaces where they are part of daily workflow
+- simple expenses
+- legacy expenses main surfaces
+- reports landing and major report pages
+
+Do this one area at a time, not as one large batch.
+
+### Step 6 - Admin Settings
+**Risk:** Medium-High | **Est:** multiple sessions
+
+Admin stays last because it is broad, dense, and easier to destabilize.
+
+- Sidebar should become the outer shell for the admin area
+- Internal admin navigation may later be simplified or partially replaced
+- Do not attempt a full admin redesign in one step
+
+### Step 7 - Coverage review and polish
+**Risk:** Low-Medium | **Est:** 1-2 sessions
+
+Before declaring the rollout complete, perform a final coverage check.
+
+Confirm:
+- all main surfaces use the intended shell
+- dark mode is consistent
+- RTL is consistent
+- spacing/cards/buttons/tables feel like one app
+- any intentionally excluded specialty pages are documented as exceptions
 
 ---
 
@@ -144,6 +253,8 @@ Last to convert. Sidebar may eventually replace some internal tab navigation.
 6. **Arabic translations** must be added for every new display string.
 7. **Dark mode** must work for every new component.
 8. **Page-by-page rollout** - never break the whole app. Use `{% set use_sidebar = true %}` to opt in.
+9. **Do not assume shell adoption equals full redesign.** Check visual consistency separately.
+10. **Treat patient detail and patient-facing payment flow as core surfaces.** They are not optional leftovers.
 
 ---
 
@@ -154,10 +265,14 @@ Last to convert. Sidebar may eventually replace some internal tab navigation.
 | 0-6 (V1 foundation) | DONE | Theme, branding, Arabic, PDFs |
 | UI 1-3 (Design system, modals, search) | DONE | |
 | Bugfix: Admin data/audit | DONE | Mar 3 2026 |
-| Sidebar Step 0 (base wrapper) | Not started | NEXT |
-| Sidebar Step 1 (Dashboard) | Not started | After Step 0 |
-| Sidebar Step 2 (Patient list) | Not started | After Step 1 |
-| Sidebar Steps 3-5 | Not started | Future |
+| Sidebar Step 0 (base wrapper) | DONE | Sidebar shell, topbar, collapse, mobile drawer |
+| Sidebar Step 1 (Dashboard) | DONE | `/` redesigned as dashboard |
+| Sidebar Step 2 (Patient list) | DONE | `/patients/list` moved to sidebar layout |
+| Sidebar Step 3 (Appointments) | Not started | NEXT |
+| Sidebar Step 4 (Patient file flow) | Not started | Patient detail/edit/new should join the new shell |
+| Sidebar Step 5 (Payments, Expenses, Reports) | Not started | Main daily workflow surfaces after patient flow |
+| Sidebar Step 6 (Admin Settings) | Not started | Last major rollout area |
+| Sidebar Step 7 (Coverage review) | Not started | Confirm whole-app alignment target is met |
 
 ---
 

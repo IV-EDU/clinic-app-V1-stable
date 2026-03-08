@@ -14,6 +14,7 @@ The human is **not a programmer**. Your job is to make small, safe, well-explain
 3. Read `KNOWN_ISSUES.md` — honest list of what's broken or ugly.
 4. Read `LAST_PLAN.md` — current roadmap and priorities.
 5. If doing **UI/design work**, also read `DESIGN_BRIEF.md` — clinic-specific design rules.
+6. If the user is asking in broad or non-technical language, read `PROMPTING_GUIDE.md` and use it to turn the request into one small, safe task.
 
 At the **end of every session**, update `MEMORY.md` with what you did, what changed, and what's next.
 
@@ -34,6 +35,7 @@ If the user says "no plan needed", still give a 1–2 bullet mini-plan and ask f
 When the user's request is vague (e.g. "fix stuff", "make it better"):
 - Check `KNOWN_ISSUES.md` for the most relevant problems.
 - Check `LAST_PLAN.md` for the next planned work.
+- Check `PROMPTING_GUIDE.md` for the preferred prompt structure and convert the vague request into a single scoped proposal.
 - Propose a specific, small action based on those files.
 
 ---

@@ -15,7 +15,7 @@
     </div>
     {{ macros.labeled_textarea('notes', t('notes'), placeholder=t('optional')) }}
     <div style="flex-basis:100%;display:flex;gap:8px;justify-content:center">
-      <a class="btn secondary" href="{{ url_for('index') }}">{{ t('cancel') }}</a><button>{{ t('save') }}</button>
+      <a class="btn secondary" href="{{ url_for('core.patients_list') }}">{{ t('cancel') }}</a><button>{{ t('save') }}</button>
     </div>
   </form>
 </div>

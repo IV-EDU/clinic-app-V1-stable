@@ -34,7 +34,7 @@
         <a class="btn secondary home-btn" href="{{ url_for('index') }}">{{ t('home') }}</a>
 
         <div class="nav-search-container" style="position: relative; margin-inline-start: 8px; flex-grow: 1; max-width: 320px; min-width: 200px;">
-          <form action="{{ url_for('index') }}" method="GET" class="nav-search-form" style="display:flex; align-items:center; width: 100%;">
+          <form action="{{ url_for('core.patients_list') }}" method="GET" class="nav-search-form" style="display:flex; align-items:center; width: 100%;">
             <button type="submit" class="nav-search-btn">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
@@ -81,26 +81,37 @@
       {% endif %}
     </div>
     <div class="end" style="justify-content:flex-end">
-      <div class="lang-toggle" style="display:flex;gap:4px;align-items:center">
+      <!-- Language toggle pills -->
+      <div class="lang-toggle">
         <form method="post" action="{{ url_for('core.set_lang') }}" style="display:inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="lang" value="en">
           <input type="hidden" name="next" value="{{ next_path }}">
-          <button type="submit" class="secondary {{ 'active' if lang == 'en' else '' }}">{{ t('lang_en') }}</button>
+          <button type="submit" class="lang-pill {{ 'lang-pill-active' if lang == 'en' else '' }}">EN</button>
         </form>
         <form method="post" action="{{ url_for('core.set_lang') }}" style="display:inline">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="hidden" name="lang" value="ar">
           <input type="hidden" name="next" value="{{ next_path }}">
-          <button type="submit" class="secondary {{ 'active' if lang == 'ar' else '' }}">{{ t('lang_ar') }}</button>
+          <button type="submit" class="lang-pill {{ 'lang-pill-active' if lang == 'ar' else '' }}">AR</button>
         </form>
       </div>
+      <!-- Dark mode toggle -->
+      <button class="topbar-theme-btn" onclick="toggleTheme()" title="{{ t('toggle_theme') }}" aria-label="{{ t('toggle_theme') }}">
+        <svg class="theme-icon-light" width="18" height="18" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+        <svg class="theme-icon-dark" width="18" height="18" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
+      </button>
       {% if current_user and not hide_app_nav %}
         {% set role_name = current_user.primary_role_name %}
-        <div class="user-meta">{{ current_user.username }}{% if role_name %} ({{ role_name }}){% endif %}
+        <div class="topbar-user-chip">
+          <div class="topbar-user-avatar">{{ (current_user.username or '?')[:2]|upper }}</div>
+          <div class="topbar-user-info">
+            <span class="topbar-user-name">{{ current_user.username }}</span>
+            {% if role_name %}<span class="topbar-user-role">{{ role_name }}</span>{% endif %}
+          </div>
           <form method="post" action="{{ url_for('auth.logout') }}" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="secondary">{{ t('logout') }}</button>
+            <button type="submit" class="topbar-logout-btn">{{ t('logout') }}</button>
           </form>
         </div>
       {% elif (not current_user) and (not hide_app_nav) %}
@@ -111,6 +122,90 @@
 </div>
 
 <style>
+  /* ================================================================
+     INLINE CSS — these rules are always fresh (never browser-cached)
+     ================================================================ */
+
+  /* Dark-mode icon toggle: show moon in light mode, sun in dark mode.
+     Use inline-block (not inline-flex) - SVGs must not be flex containers
+     or browsers ignore the width/height attributes and render ~0px. */
+  .theme-icon-light { display: inline-block !important; width: 18px !important; height: 18px !important; vertical-align: middle; flex-shrink: 0; }
+  .theme-icon-dark  { display: none !important; }
+  html[data-theme="dark"] .theme-icon-dark  { display: inline-block !important; width: 18px !important; height: 18px !important; vertical-align: middle; flex-shrink: 0; }
+  html[data-theme="dark"] .theme-icon-light { display: none !important; }
+
+  /* Dark mode theme button — make it visible against the dark topbar */
+  html[data-theme="dark"] .has-sidebar .topbar-theme-btn {
+    background: var(--color-surface-raised, #2a2d35);
+    border-color: var(--color-border-strong, #3d4251);
+    color: var(--color-text-secondary, #94a3b8);
+  }
+
+  /* Dark mode search bar —
+     was using --color-surface-sunken which is DARKER than the topbar.
+     Switch to --color-surface-raised so it's actually visible. */
+  html[data-theme="dark"] .nav-search-form {
+    background: var(--color-surface-raised, #2a2d35) !important;
+    border-color: var(--color-border-strong, #3d4251) !important;
+    box-shadow: none !important;
+  }
+  html[data-theme="dark"] .nav-search-form:focus-within {
+    border-color: var(--primary-color, #e67e22) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #e67e22) 20%, transparent) !important;
+    background: var(--color-surface-raised, #2a2d35) !important;
+  }
+  html[data-theme="dark"] .nav-search-input {
+    color: var(--color-text, #f1f5f9) !important;
+  }
+  html[data-theme="dark"] .nav-search-input::placeholder {
+    color: var(--color-text-faint, #64748b) !important;
+  }
+  html[data-theme="dark"] .nav-search-btn {
+    color: var(--color-text-secondary, #94a3b8) !important;
+  }
+
+  /* User chip — always LTR internally so avatar is always on the left,
+     regardless of page direction (RTL Arabic would flip it otherwise) */
+  .topbar-user-chip {
+    direction: ltr !important;
+  }
+
+  /* =================================================================
+     SIDEBAR TOPBAR — RTL mirroring for Arabic.
+     In LTR:  [search ...]  ......  [EN|AR | dark | user | logout]
+     In RTL:  [logout | user | dark | EN|AR]  ......  [...search]
+
+     Steps:
+     1. Keep .bar as row (suppress the global body.rtl row-reverse)
+        so order values determine visual left/right placement.
+     2. app.css RTL rules already set .start=order:2, .end=order:0
+        so .end lands on LEFT, .start lands on RIGHT.
+     3. Arabic sidebar topbar target layout (left → right):
+        [Logout | Admin | 🌙 | EN/AR]  ·············  [search]
+
+        APPROACH: suppress body.rtl row-reverse on .bar; use explicit `order`
+        to place .end (account group) on the LEFT and .start (search) on
+        the RIGHT. .center is position:absolute so stays centred always.
+
+        .end HTML order:   [lang-toggle][theme-btn][user-chip]
+        .start HTML order: [kebab][back][home][search]
+
+        order on .end=0 → leftmost group
+        order on .start=1 → rightmost group
+     ================================================================= */
+  /* Force normal row on .bar, then place groups with order */
+  html[dir="rtl"] .has-sidebar .header .bar   { flex-direction: row !important; }
+  /* .end → LEFT (order 0), items in explicit sequence */
+  html[dir="rtl"] .has-sidebar .header .end   { order: 0 !important; flex-direction: row !important; justify-content: flex-start !important; }
+  html[dir="rtl"] .has-sidebar .header .end .topbar-user-chip { order: 0 !important; }
+  html[dir="rtl"] .has-sidebar .header .end .topbar-theme-btn { order: 1 !important; }
+  html[dir="rtl"] .has-sidebar .header .end .lang-toggle       { order: 2 !important; }
+  /* .start → RIGHT (order 1), search pushed to right edge */
+  html[dir="rtl"] .has-sidebar .header .start { order: 1 !important; flex-direction: row !important; justify-content: flex-end !important; }
+  /* Inside the chip: row-reverse so logout (last in HTML) appears leftmost */
+  html[dir="rtl"] .has-sidebar .topbar-user-chip { flex-direction: row-reverse !important; }
+
+  /* ================================================================ */
   /* Base refinements */
   .header .bar {
     display: flex;
@@ -143,16 +238,18 @@
   /* --- Premium Search Bar UI --- */
   .nav-search-form {
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 8px; /* Use a slight rounded corner, not a pill */
-    padding: 0px 8px;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.02); /* Very subtle inner shadow */
-    transition: all var(--transition-normal);
+    border: 1.5px solid var(--color-border);
+    border-radius: 28px; /* pill */
+    padding: 2px 14px 2px 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04);
+    transition: border-color .15s, box-shadow .15s, background .15s;
+    min-height: 40px;
   }
   .nav-search-form:focus-within {
-    border-color: var(--color-primary, #3b82f6);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-    background: #ffffff;
+    border-color: var(--primary-color, #e67e22);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #e67e22) 18%, transparent);
+    background: var(--color-surface, #fff);
+    outline: none;
   }
 
   .nav-search-btn {
@@ -170,11 +267,13 @@
   .nav-search-input {
     border: none;
     background: transparent;
-    padding: 0.4rem 0.5rem 0.4rem 0px;
+    padding: 0.5rem 0.5rem 0.5rem 0;
     width: 100%;
-    outline: none;
+    outline: none !important;
     color: var(--color-text);
-    font-size: 0.9rem; /* Slightly smaller typography */
+    font-size: 0.9rem;
+    line-height: 1.5;
+    border-radius: 0; /* form handles the radius */
   }
   .nav-search-input::placeholder {
     color: var(--color-text-faint);
@@ -216,7 +315,12 @@
   html[data-theme="dark"] .nav-search-form {
     background: var(--color-surface-sunken);
     border-color: var(--color-border);
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: none;
+  }
+  html[data-theme="dark"] .nav-search-form:focus-within {
+    border-color: var(--primary-color, #e67e22);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #e67e22) 20%, transparent);
+    background: var(--color-surface);
   }
   html[data-theme="dark"] .nav-search-dropdown {
     background: var(--color-surface-raised);
@@ -248,8 +352,8 @@
   }
 
   /* Responsive Strategy */
-  @media (max-width: 1200px) {
-    .brand-tagline, .user-meta { display: none; }
+    @media (max-width: 1200px) {
+    .brand-tagline, .topbar-user-info { display: none; }
     .brand-name { max-width: 180px !important; font-size: 20px !important; }
   }
 
@@ -275,7 +379,7 @@
     .home-btn { order: 4; }
 
     .lang-toggle { order: 5; margin-inline-start: auto; }
-    .user-meta { display: none !important; }
+    .topbar-user-chip { display: none !important; }
     .header .end > a.secondary { order: 6; margin-inline-start: auto; }
 
     .nav-search-container {
@@ -389,7 +493,7 @@
 
       // View all results fallback
       const viewAll = document.createElement('a');
-      viewAll.href = `/?q=${encodeURIComponent(query)}`;
+      viewAll.href = `/patients/list?q=${encodeURIComponent(query)}`;
       viewAll.className = 'view-all';
       viewAll.innerHTML = `{{ t("view_all_results_for") }} &quot;<b dir="auto">${query}</b>&quot;`;
       viewAll.addEventListener('click', (e) => {

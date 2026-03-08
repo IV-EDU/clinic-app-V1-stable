@@ -17,6 +17,10 @@ It includes:
 - **Live Patient Search**: Real-time patient suggestions as you type (Name, File#, Phone).
 - **Arabic-First Search**: Smart normalization for Arabic characters (أ/ا, ة/ه, etc.).
 
+### AI-Assisted Work
+- Use `PROMPTING_GUIDE.md` when asking AI to change the app. It contains copy-paste prompt templates for safe UI tasks, bug fixes, and scoped feature work.
+- The app is currently mid-rollout on a sidebar-based UI shell. Some pages are already opted in, while others still use the older top-nav-only layout.
+
 This folder "Clinic-App-Local" is the main project folder.
 
 --------------------------------------------------
@@ -209,6 +213,7 @@ Install Chromium browser for Playwright (first run only):
   - How to behave and reply.
   - Safety rules (what not to touch).
   - When to consult `LAST_PLAN.md`, `plan_Agents.md`, `docs/INDEX.md`, and this README.
+- If the user is vague or non-technical, also read `PROMPTING_GUIDE.md` and convert the request into one small scoped task before editing.
 - Do NOT modify or delete (without explicit user approval):
   - `.git/`
   - `.venv/` or `.venv-wsl/`

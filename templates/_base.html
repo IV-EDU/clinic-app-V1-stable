@@ -22,7 +22,7 @@
   }
   </script>
   <title>{{ t('app_title') }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v=11">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/print-receipts.css') }}">
@@ -37,11 +37,71 @@
   {% endblock %}
 
 </head>
-<body class="{{ 'rtl' if lang == 'ar' else '' }}">
+{% set use_sidebar = use_sidebar|default(false) %}
+<body class="{{ 'rtl' if lang == 'ar' else '' }}{{ ' has-sidebar' if use_sidebar else '' }}">
   {% include '_nav.html' %}
-  <div class="wrap">
-    {% include '_flash.html' %}
-    {% block content %}{% endblock %}
+  {% if use_sidebar %}
+  <aside class="sidebar" id="app-sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        {% if theme_logo_url %}
+          <img src="{{ theme_logo_url }}" class="sidebar-logo-img" alt="{{ clinic_name or t('app_title') }}">
+        {% else %}
+          <div class="sidebar-logo-placeholder">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C9 2 7 4 7 7c0 1.5.5 3 1 4L6 22h12l-2-11c.5-1 1-2.5 1-4 0-3-2-5-5-5z"/></svg>
+          </div>
+        {% endif %}
+        <span class="sidebar-brand-name">{{ clinic_name or t('app_title') }}</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="sidebar-item{{ ' active' if request.endpoint == 'index' else '' }}" href="{{ url_for('index') }}" title="{{ t('home') }}">
+        <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span class="sidebar-label">{{ t('home') }}</span>
+      </a>
+      {% if current_user and user_has_permission(current_user, 'patients:view') %}
+      <a class="sidebar-item{{ ' active' if request.endpoint == 'core.patients_list' else '' }}" href="{{ url_for('core.patients_list') }}" title="{{ t('patients') }}">
+        <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span class="sidebar-label">{{ t('patients') }}</span>
+      </a>
+      {% endif %}
+      {% if current_user and user_has_permission(current_user, 'appointments:view') %}
+      <a class="sidebar-item{{ ' active' if request.endpoint and 'appointments' in request.endpoint else '' }}" href="{{ url_for('appointments.vanilla') }}" title="{{ t('appointments') }}">
+        <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span class="sidebar-label">{{ t('appointments') }}</span>
+      </a>
+      {% endif %}
+      {% if current_user and user_has_permission(current_user, 'reports:view') %}
+      <a class="sidebar-item{{ ' active' if request.endpoint and 'reports' in request.endpoint else '' }}" href="{{ url_for('reports.collections') }}" title="{{ t('collections') }}">
+        <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span class="sidebar-label">{{ t('collections') }}</span>
+      </a>
+      {% endif %}
+      {% if current_user and user_has_permission(current_user, 'expenses:view') %}
+      <a class="sidebar-item{{ ' active' if request.endpoint and 'expenses' in request.endpoint else '' }}" href="{{ url_for('simple_expenses.index') }}" title="{{ t('expenses') }}">
+        <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <span class="sidebar-label">{{ t('expenses') }}</span>
+      </a>
+      {% endif %}
+      {% if current_user and user_has_permission(current_user, 'admin.user.manage') %}
+      <a class="sidebar-item{{ ' active' if request.endpoint and 'admin' in request.endpoint else '' }}" href="{{ url_for('admin_settings.index') }}" title="{{ t('admin_settings') }}">
+        <svg class="sidebar-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="sidebar-label">{{ t('admin_settings') }}</span>
+      </a>
+      {% endif %}
+    </nav>
+  </aside>
+  <!-- Collapse toggle sits OUTSIDE <aside> so sidebar overflow:hidden won't clip it -->
+  <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" onclick="toggleSidebar()" title="Toggle sidebar">
+    <svg class="sidebar-collapse-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebarMobile()"></div>
+  {% endif %}
+  <div{% if use_sidebar %} class="sidebar-main" id="sidebar-main"{% endif %}>
+    <div class="wrap">
+      {% include '_flash.html' %}
+      {% block content %}{% endblock %}
+    </div>
   </div>
   <script>
   function toggleKebab(evt, btn){
@@ -148,6 +208,43 @@
       <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/>
     </svg>
   </button>
+  {% if use_sidebar %}
+  <script>
+  (function(){
+    var sidebar = document.getElementById('app-sidebar');
+    var overlay = document.getElementById('sidebar-overlay');
+    var STORED = 'sidebar_collapsed';
+    /* Fix topbar at 56px for sidebar pages — don't measure from DOM (header is fixed) */
+    document.documentElement.style.setProperty('--nav-h', '56px');
+    if(localStorage.getItem(STORED) === 'true'){
+      sidebar && sidebar.classList.add('collapsed');
+      document.body.classList.add('sidebar-collapsed');
+    }
+    window.toggleSidebar = function(){
+      if(!sidebar) return;
+      var collapsed = sidebar.classList.toggle('collapsed');
+      document.body.classList.toggle('sidebar-collapsed', collapsed);
+      localStorage.setItem(STORED, collapsed ? 'true' : 'false');
+    };
+    window.closeSidebarMobile = function(){
+      sidebar && sidebar.classList.remove('mobile-open');
+      overlay && overlay.classList.remove('visible');
+    };
+    var navStart = document.querySelector('.header .start');
+    if(navStart){
+      var hamburger = document.createElement('button');
+      hamburger.className = 'sidebar-hamburger';
+      hamburger.setAttribute('aria-label', 'Open menu');
+      hamburger.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
+      hamburger.onclick = function(){
+        var open = sidebar && sidebar.classList.toggle('mobile-open');
+        overlay && overlay.classList.toggle('visible', !!open);
+      };
+      navStart.insertBefore(hamburger, navStart.firstChild);
+    }
+  })();
+  </script>
+  {% endif %}
   {% block extra_js %}{% endblock %}
 
   <!-- Toast Container -->

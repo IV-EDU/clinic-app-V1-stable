@@ -37,6 +37,102 @@ PAYMENT_FORM = "payments/form.html"
 @bp.route("/", endpoint="index")
 @require_permission("patients:view")
 def index():
+    """Dashboard: stats, today's appointments, and 5 recent patients."""
+    conn = db()
+    cur = conn.cursor()
+
+    # ── counts ────────────────────────────────────────────────────────────
+    total_patients = cur.execute("SELECT COUNT(*) FROM patients").fetchone()[0] or 0
+    today_total = money(today_collected(conn))
+
+    # ── appointment stats & preview (today) ───────────────────────────────
+    appointments_count = 0
+    upcoming_count = 0
+    completed_count = 0
+    appt_preview = []
+
+    has_appt_table = cur.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='appointments'"
+    ).fetchone()
+    if has_appt_table:
+        today = date.today().isoformat()
+        now = datetime.now()
+        current_time = now.strftime("%H:%M")
+        stats_row = cur.execute(
+            """
+            SELECT COUNT(*) as total,
+                   SUM(CASE WHEN status = 'scheduled' AND starts_at > ? THEN 1 ELSE 0 END) as upcoming,
+                   SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as completed
+            FROM appointments
+            WHERE substr(starts_at,1,10)=?
+            """,
+            (today + ' ' + current_time, today),
+        ).fetchone()
+
+        appointments_count = stats_row[0] or 0
+        upcoming_count = stats_row[1] or 0
+        completed_count = stats_row[2] or 0
+
+        preview_rows = cur.execute(
+            """
+            SELECT title, doctor_label, starts_at, status
+            FROM appointments
+            WHERE substr(starts_at,1,10)=?
+            ORDER BY starts_at ASC
+            LIMIT 5
+            """,
+            (today,),
+        ).fetchall()
+        appt_preview = [dict(r) for r in preview_rows]
+
+    # ── recent 5 patients ─────────────────────────────────────────────────
+    recent_rows = cur.execute(
+        """
+        SELECT p.id, p.short_id, p.full_name, p.phone, p.primary_page_number
+        FROM patients p
+        LEFT JOIN (
+            SELECT patient_id, MAX(paid_at) AS last_paid_at
+            FROM payments
+            GROUP BY patient_id
+        ) pay ON pay.patient_id = p.id
+        ORDER BY
+            CASE WHEN pay.last_paid_at IS NULL THEN 1 ELSE 0 END ASC,
+            pay.last_paid_at DESC,
+            p.created_at DESC,
+            p.id DESC
+        LIMIT 5
+        """
+    ).fetchall()
+    recent_patients = []
+    for r in recent_rows:
+        rem = overall_remaining(conn, r["id"])
+        recent_patients.append({
+            "id": r["id"],
+            "short_id": r["short_id"],
+            "full_name": r["full_name"],
+            "phone": r["phone"],
+            "balance_cents": rem,
+            "primary_page_number": r["primary_page_number"],
+        })
+
+    conn.close()
+    return render_page(
+        "core/index.html",
+        total_patients=total_patients,
+        today_total=today_total,
+        appointments_preview=appt_preview,
+        appointments_count=appointments_count,
+        upcoming_count=upcoming_count,
+        completed_count=completed_count,
+        recent_patients=recent_patients,
+        show_back=False,
+    )
+
+
+@bp.route("/patients/list", endpoint="patients_list")
+@require_permission("patients:view")
+def patients_list():
+    """Full patient list with search, sort, and pagination."""
     q = (request.args.get("q") or "").strip()
     sort_param_present = "sort" in request.args
     raw_sort = (request.args.get("sort") or "").strip().lower()
@@ -47,6 +143,9 @@ def index():
         if sort not in {"new", "old"}:
             sort = "new"
     session["home_sort_preference"] = sort
+    balance = (request.args.get("balance") or "all").strip().lower()
+    if balance not in {"all", "owed", "paid"}:
+        balance = "all"
     try:
         page = int(request.args.get("page", "1") or "1")
     except ValueError:
@@ -58,6 +157,8 @@ def index():
     home_query_items = [("page", str(page)), ("sort", sort)]
     if q:
         home_query_items.insert(0, ("q", q))
+    if balance != "all":
+        home_query_items.append(("balance", balance))
     session["patients_home_return_url"] = f"{request.path}?{urlencode(home_query_items)}"
 
     conn = db()
@@ -208,6 +309,37 @@ def index():
             """
             where_params = (like, like, like)
 
+    # Balance filter — correlated sub-select against the payments ledger.
+    # Reuses the same formula as overall_remaining() so the results are consistent.
+    _BALANCE_SUBQ = """(
+        SELECT COALESCE(SUM(
+            CASE WHEN (
+                (COALESCE(par.total_amount_cents,0) - COALESCE(par.discount_cents,0))
+                - (COALESCE(par.amount_cents,0) + COALESCE(ch.child_paid_cents,0))
+            ) < 0 THEN 0 ELSE (
+                (COALESCE(par.total_amount_cents,0) - COALESCE(par.discount_cents,0))
+                - (COALESCE(par.amount_cents,0) + COALESCE(ch.child_paid_cents,0))
+            ) END
+        ), 0) FROM payments par
+        LEFT JOIN (
+            SELECT parent_payment_id, patient_id,
+                   COALESCE(SUM(amount_cents), 0) AS child_paid_cents
+            FROM payments WHERE COALESCE(parent_payment_id, '') <> ''
+            GROUP BY parent_payment_id, patient_id
+        ) ch ON ch.parent_payment_id = par.id AND ch.patient_id = par.patient_id
+        WHERE par.patient_id = p.id AND COALESCE(par.parent_payment_id, '') = '')"""
+    if balance == "owed":
+        balance_cond = f"{_BALANCE_SUBQ} > 0"
+    elif balance == "paid":
+        balance_cond = f"{_BALANCE_SUBQ} = 0"
+    else:
+        balance_cond = ""
+    if balance_cond:
+        if where_sql.strip():
+            where_sql = where_sql.rstrip() + f"\n               AND {balance_cond}\n            "
+        else:
+            where_sql = f"WHERE {balance_cond}"
+
     if sort == "old":
         order_sql = """
         ORDER BY
@@ -338,6 +470,14 @@ def index():
             }
         )
     total_patients = filtered_total
+    # Always-fresh counts for the stat bar (ignore q/balance filter)
+    overall_total = cur.execute("SELECT COUNT(*) FROM patients").fetchone()[0] or 0
+    with_balance_count = (
+        cur.execute(
+            f"SELECT COUNT(*) FROM patients p WHERE {_BALANCE_SUBQ} > 0"
+        ).fetchone()[0]
+        or 0
+    )
     today_total = money(today_collected(conn))
 
     # Enhanced appointment statistics
@@ -390,7 +530,7 @@ def index():
 
     conn.close()
     return render_page(
-        "core/index.html",
+        "core/patients_list.html",
         patients=patients,
         q=q,
         total_patients=total_patients,
@@ -406,6 +546,9 @@ def index():
         per_page=per_page,
         filtered_total=filtered_total,
         sort=sort,
+        balance=balance,
+        overall_total=overall_total,
+        with_balance_count=with_balance_count,
         show_back=False,
     )
 

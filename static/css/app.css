@@ -2085,12 +2085,20 @@ html[data-theme="dark"].has-sidebar {
   padding: 20px 14px 14px;
   border-bottom: 1px solid var(--border, #e5e7eb);
   flex-shrink: 0;
+  transition: padding .22s ease;
+}
+.sidebar.collapsed .sidebar-header {
+  padding: 20px 10px 14px;
 }
 .sidebar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
   overflow: hidden;
+  transition: gap .22s ease;
+}
+.sidebar.collapsed .sidebar-brand {
+  gap: 0;
 }
 .sidebar-logo-img {
   width: 44px;

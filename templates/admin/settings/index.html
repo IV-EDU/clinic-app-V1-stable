@@ -29,9 +29,24 @@
   padding: 2rem;
 }
 
-/* Let cards inside data tab scroll instead of clipping */
-#data-tab .card {
-  overflow: visible;
+/* Grid item constraints – apply to the actual direct grid children of admin-form */
+.data-subpane,
+#data-import-summary,
+#data-import-duplicates {
+  min-width: 0;
+}
+
+/* Force column headers to stay on one line so they impose a minimum column
+   width. Without this, headers like "FILE NUMBER" wrap to 2 lines, making
+   columns narrow enough to fit — so overflow-x: auto never fires. */
+.data-scroll-area th {
+  white-space: nowrap;
+}
+
+/* Allow the table to use its full natural content width */
+.data-scroll-area table {
+  width: auto;
+  min-width: 100%;
 }
 
 .admin-settings-header {
@@ -1386,8 +1401,8 @@
           <div id="data-import-summary" style="margin-top:1rem;display:none;">
             <h3 class="card-title" style="font-size:1rem;margin-bottom:0.5rem;">{{ tf('data_import_summary', 'Preview of rows') }}</h3>
             <p class="u-text-muted" id="data-import-summary-text"></p>
-            <div class="data-scroll-area">
-              <table class="admin-table">
+            <div class="data-scroll-area" style="overflow-x:auto;width:100%;">
+              <table class="admin-table" style="width:auto;min-width:100%;">
                 <thead>
                   <tr>
                     <th scope="col">{{ tf('file_number', 'File number') }}</th>
@@ -1435,8 +1450,8 @@
                   ) }}
                 </label>
               </div>
-              <div class="data-scroll-area">
-                <table class="admin-table">
+              <div class="data-scroll-area" style="overflow-x:auto;width:100%;">
+                <table class="admin-table" style="width:auto;min-width:100%;">
                   <thead>
                     <tr>
                       <th scope="col">{{ tf('name', 'Name') }}</th>

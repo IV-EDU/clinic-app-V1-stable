@@ -700,9 +700,11 @@ table tbody tr:nth-child(even){background:#fafafa}
 table tbody tr:nth-child(even):hover{background:#f3f4f6}
 table th:focus-visible, table td:focus-visible{outline:2px solid var(--primary-color,#2563eb);outline-offset:2px}
 
-/* Responsive table handling */
-.overflow-x-auto{overflow-x:auto;width:100%}
-
+/* Data tab - wide table scroll wrapper */
+.data-scroll-area {
+  overflow-x: auto;
+  width: 100%;
+}
 /* Table actions alignment */
 table td.actions{white-space:nowrap;text-align:right}
 table td.actions .btn{margin-left:4px}

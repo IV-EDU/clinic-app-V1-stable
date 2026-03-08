@@ -22,7 +22,7 @@
 - Arabic/RTL with Cairo font, `T()` i18n system (2000+ translations)
 - Dark mode toggle (design-system.css + data-theme attribute)
 - Theme settings (admin), clinic logo/branding
-- Admin Data tab: analyze preview with P000XXX file numbers, responsive layout
+- Admin Data tab: analyze preview with horizontal scrolling table, proper wrapping
 - Admin Audit tab: proper Before/After modal, dark mode technical details
 - **Collapsible sidebar** on ALL major pages — Dashboard, Patients, Appointments, Payments, Expenses, Reports, Admin Settings
 - **Dashboard** (`/`) with stat cards + today's appointments + quick actions
@@ -91,6 +91,20 @@ Every new chat agent should read files in this order before proposing work:
 ---
 
 ## Recent Sessions
+
+### Session: Analyze Tab Horizontal Scroll Fix (Mar 8 2026)
+**What was done:**
+- Fixed Admin > Data > Analyze tab — tables were not wrapping/scrollable correctly with the sidebar active (narrower viewport).
+- **Root causes found (3):** (1) Global `table { width: 100% }` forced the 9-column table to compress into the container rather than overflow. (2) `th` cells were wrapping multi-line (e.g. "FILE\nNUMBER"), shrinking columns enough that overflow never triggered. (3) `.data-subpane` (direct grid child of `.admin-form`) lacked `min-width: 0`.
+- **Fix applied:** Inline styles `overflow-x:auto; width:100%` on `.data-scroll-area` divs, `width:auto; min-width:100%` on the two `admin-table` elements; plus page-scoped CSS `white-space: nowrap` on `th` and `min-width: 0` on `.data-subpane` in the admin settings `<style>` block.
+- Added base `.data-scroll-area` rule to `app.css` (cache bumped to v=13).
+
+**Key decisions:**
+- Inline styles used on specific HTML elements for maximum reliability (class-based CSS was being overridden by load-order/cascade issues).
+- `white-space: nowrap` on `th` is the critical trigger — without it, column headers wrap and the table fits in the container, so the scroll never fires.
+
+**What's next:**
+- V1 Sidebar Rollout is COMPLETE. Next task is from `LAST_PLAN.md` Future Phases: Reception Workflow (High), Expense Consolidation (Medium), or Patient Detail Redesign (Medium).
 
 ### Session: Sidebar Steps 5, 6, 7 + Bug Fixes (Mar 8 2026)
 **What was done:**

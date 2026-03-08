@@ -92,6 +92,34 @@ Every new chat agent should read files in this order before proposing work:
 
 ## Recent Sessions
 
+### Session: Reception Desk Workflow Planning (Mar 8 2026)
+**What was done:**
+- Deeply reviewed the live patient/treatment/payment structure before planning the receptionist workflow.
+- Confirmed that treatments are parent payment rows and later payments are child rows linked by `parent_payment_id`, so receptionist intake must not post directly to live payment data.
+- Agreed on a new temporary planning doc: [docs/RECEPTION_DESK_SPEC.md] to preserve the design across future chats.
+- Wrote the first working spec for the planned `Reception Desk + Manager Review` system.
+- Extended the spec with 3 entry modes: `Reception Desk`, `Patient File`, and `Treatment Card`.
+- Added a separate implementation roadmap doc: [docs/RECEPTION_DESK_PHASES.md].
+
+**Key decisions:**
+- Receptionist remains responsible for main entry work, but all entries go to pending review first.
+- Receptionist form should use: page number, name, phone, visit type, treatment, doctor, note, and optional payment fields.
+- `Remaining` must always be system-calculated and read-only; receptionist never types it.
+- `Total` and `Discount` stay optional; `Paid today` can be submitted by itself when money was received.
+- Manager actions are `Approve`, `Edit`, `Choose different patient`, `Hold`, and `Reject`.
+- `Edit` updates only the pending draft and returns to review; approval stays separate.
+- Multiple patient suggestions must be handled inline in the review screen, not by sending the manager to new tabs.
+- Daily review and duplicate cleanup / merge workflow must remain separate systems.
+- If entry starts from `Patient File`, patient identity is locked and receptionist should not retype name/phone.
+- If entry starts from `Treatment Card`, both patient and treatment are locked.
+- Manager review should treat `Treatment Card` as strongest context, `Patient File` as strong context, and `Reception Desk` as weaker/manual context.
+- New workflow must be permission-based, not role-name-based.
+- Receptionist draft controls should later use `+ Treatment Entry` / `+ Payment Entry` with helper text like `Sent for manager review`.
+
+**What's next:**
+- Continue refining the Reception Desk spec before any implementation.
+- Later create a separate Merge Center plan after the reception workflow is clearer.
+
 ### Session: Analyze Tab Horizontal Scroll Fix (Mar 8 2026)
 **What was done:**
 - Fixed Admin > Data > Analyze tab — tables were not wrapping/scrollable correctly with the sidebar active (narrower viewport).

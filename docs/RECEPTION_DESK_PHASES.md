@@ -1,0 +1,391 @@
+# Reception Desk Phases
+
+> Temporary implementation roadmap for the Reception Desk + Manager Review system.
+> Keep this separate from `docs/RECEPTION_DESK_SPEC.md`, which defines the workflow itself.
+> Delete or fold this into permanent docs after the feature is fully implemented.
+
+## Purpose
+
+This file explains how to build the Reception Desk system safely, in phases, without mixing:
+
+- workflow design
+- backend logic
+- UI implementation
+- duplicate cleanup / merge work
+
+## Core Build Rules
+
+- Build in thin slices.
+- Do not mix backend and UI rules together.
+- Do not post anything live until the approval flow is working.
+- Keep daily review separate from duplicate cleanup and merge work.
+- Use permissions, not role names.
+- Keep receptionist draft actions separate from manager live actions.
+
+## Phase 0: Discovery and Freeze
+
+### Goal
+
+Freeze the design and confirm integration points before coding.
+
+### Deliverables
+
+- `docs/RECEPTION_DESK_SPEC.md`
+- this phases file
+- exact UI insertion points confirmed
+- exact permission plan confirmed
+
+### Scope
+
+- Reception Desk workflow planning
+- patient file entry path planning
+- treatment card entry path planning
+- manager review planning
+
+### Do Not Do Yet
+
+- database/storage work
+- routes
+- templates
+- live posting
+
+### Status
+
+- In planning
+
+## Phase 1: Pending Entry Backbone
+
+### Goal
+
+Create the safe staging layer for pending receptionist entries.
+
+### Build
+
+- pending entry storage
+- status storage
+- entry source storage
+- review metadata storage
+- permission definitions for the new workflow
+
+### Pending Entry Data
+
+At minimum, store:
+
+- source: `reception_desk`, `patient_file`, `treatment_card`
+- locked patient id optional
+- locked treatment id optional
+- visit date
+- submitted timestamp
+- page number
+- name
+- phone
+- visit type
+- treatment text
+- doctor
+- money received yes/no
+- paid today
+- total optional
+- discount optional
+- note
+- status
+- reviewer info
+- review timestamps
+
+### Likely Files
+
+- [clinic_app/models_rbac.py](c:\Users\ivxti\OneDrive\Desktop\GitHub\Clinic-App-Local\clinic_app\models_rbac.py)
+- new service module under `clinic_app/services/`
+- new workflow routes or blueprint shell under `clinic_app/blueprints/`
+- [clinic_app/blueprints/__init__.py](c:\Users\ivxti\OneDrive\Desktop\GitHub\Clinic-App-Local\clinic_app\blueprints\__init__.py)
+
+### Risk
+
+- Medium
+
+### Why First
+
+Everything depends on this. No UI or live posting should come first.
+
+## Phase 2: Permission Wiring
+
+### Goal
+
+Separate receptionist entry controls from manager live controls.
+
+### Build
+
+Add new permissions such as:
+
+- `reception_entries:create`
+- `reception_entries:review`
+- `reception_entries:approve`
+
+Optional later:
+
+- `reception_entries:restore`
+- `reception_entries:delete`
+
+### Rules
+
+- receptionist draft actions depend on reception-entry permissions
+- live patient/payment actions stay under existing permissions
+- do not tie workflow visibility to role names
+
+### Likely Files
+
+- [clinic_app/models_rbac.py](c:\Users\ivxti\OneDrive\Desktop\GitHub\Clinic-App-Local\clinic_app\models_rbac.py)
+- admin user/role management wiring later if needed
+
+### Risk
+
+- Medium
+
+## Phase 3: Reception Desk UI
+
+### Goal
+
+Allow receptionists to create pending entries only.
+
+### Build
+
+- main Reception Desk page
+- form sections:
+  - Patient
+  - Visit
+  - Payment
+  - Notes
+- soft warnings
+- no live posting
+
+### Entry Modes
+
+#### A. Reception Desk
+
+- unlocked patient context
+- matching required
+
+#### B. Patient File Entry
+
+- patient locked
+- patient identity shown read-only
+- no retyping name or phone
+
+#### C. Treatment Card Entry
+
+- patient locked
+- treatment locked
+- both shown read-only
+
+### UI Goals
+
+- simple
+- Arabic-friendly
+- one-column
+- minimal choices
+- clear helper text
+
+### Likely Files
+
+- new templates for Reception Desk
+- [templates/patients/detail.html](c:\Users\ivxti\OneDrive\Desktop\GitHub\Clinic-App-Local\templates\patients\detail.html)
+- [templates/payments/_list.html](c:\Users\ivxti\OneDrive\Desktop\GitHub\Clinic-App-Local\templates\payments\_list.html)
+- [templates/core/patients_list.html](c:\Users\ivxti\OneDrive\Desktop\GitHub\Clinic-App-Local\templates\core\patients_list.html)
+- [templates/appointments/vanilla.html](c:\Users\ivxti\OneDrive\Desktop\GitHub\Clinic-App-Local\templates\appointments\vanilla.html)
+- `i18n.py`
+
+### Risk
+
+- Low to Medium
+
+## Phase 4: Manager Review Queue
+
+### Goal
+
+Allow managers to review pending entries without touching live data yet.
+
+### Build
+
+- queue page
+- statuses
+- single-item review screen
+- inline candidate patient cards
+- inline patient details
+- actions:
+  - Approve
+  - Edit
+  - Choose different patient
+  - Hold
+  - Reject
+
+### Rules
+
+- `Edit` updates only pending draft
+- no live posting yet in this phase
+- alternate patient suggestions should be inline, not new-tab first
+- source context matters:
+  - treatment card strongest
+  - patient file strong
+  - reception desk weaker
+
+### Likely Files
+
+- new review templates
+- new workflow routes
+- matching helpers in services
+
+### Risk
+
+- Medium
+
+## Phase 5: Approval Posting Logic
+
+### Goal
+
+Allow manager approval to create/update live records safely.
+
+### Approval Outcomes
+
+- Record visit only
+- Attach payment to existing treatment
+- Create new treatment
+
+### Safety Rules
+
+- no auto-posting from system suggestion
+- existing treatment totals must not be silently overwritten
+- manager final confirmation required before live posting
+- hold/reject/edit must not affect live data
+
+### Likely Files
+
+- new approval service
+- integration with patients/payments services
+- possibly new tests around posting behavior
+
+### Risk
+
+- High
+
+### Why Late
+
+This is the most dangerous part of the project.
+
+## Phase 6: Matching and Warning Polish
+
+### Goal
+
+Reduce manager review time without reducing safety.
+
+### Build
+
+- confidence labels
+- reason labels:
+  - matched by phone
+  - matched by page
+  - matched by Arabic name
+  - matched by combined clues
+- queue grouping:
+  - Ready
+  - Check
+  - Hold
+- more polished warning chips
+
+### Risk
+
+- Low to Medium
+
+## Phase 7: Context Entry Enhancements
+
+### Goal
+
+Make the workflow faster from places staff already use.
+
+### Build
+
+- `+ Treatment Entry` for receptionist in patient file
+- `+ Payment Entry` for receptionist on treatment cards
+- helper text under entry buttons:
+  - `Sent for manager review`
+- keep manager live actions separate
+
+### Rules
+
+- receptionist should not see the live manager add-payment/add-treatment controls
+- manager should not see receptionist draft controls in a confusing way
+- control visibility should be permission-based
+
+### Risk
+
+- Medium
+
+## Phase 8: Validation and Hardening
+
+### Goal
+
+Reduce data damage and confirm safe behavior before rollout.
+
+### Build
+
+- test edge cases
+- refine warnings
+- verify light/dark + Arabic/RTL
+- verify permissions
+- verify manager review never posts wrong data by default
+
+### Must-Test Cases
+
+- pending entry from Reception Desk
+- pending entry from patient file
+- pending entry from treatment card
+- manager edit does not change live data
+- hold/reject do not change live data
+- approve to existing treatment
+- approve to new treatment
+- ambiguous patient does not auto-route
+- permission separation of receptionist vs manager controls
+
+### Risk
+
+- Medium
+
+## Phase 9: Rollout and Follow-up
+
+### Goal
+
+Release the feature carefully and observe real use.
+
+### Rollout Idea
+
+- enable for a limited user group first
+- observe receptionist behavior
+- observe manager review pain points
+- adjust copy, warnings, and layout before broader use
+
+### Not Included
+
+- Merge Center
+- duplicate cleanup overhaul
+- admin integration of Merge Center
+- full appointments redesign
+
+## Recommended Implementation Order
+
+1. Phase 1: Pending Entry Backbone
+2. Phase 2: Permission Wiring
+3. Phase 3: Reception Desk UI
+4. Phase 4: Manager Review Queue
+5. Phase 5: Approval Posting Logic
+6. Phase 6: Matching and Warning Polish
+7. Phase 7: Context Entry Enhancements
+8. Phase 8: Validation and Hardening
+9. Phase 9: Rollout and Follow-up
+
+## Important Deferred Work
+
+These should stay out of the first implementation cycle:
+
+- Merge Center
+- duplicate cleanup workflow
+- admin placement of Merge Center
+- full role/permission UX redesign in admin
+- treatment label standardization

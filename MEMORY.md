@@ -9,7 +9,7 @@
 ## Current State (updated March 8, 2026)
 
 **App status:** Running, stable. Flask + SQLite dental clinic on Windows.
-**Branch:** `feature/phase4-admin-split`
+**Branch:** `main`
 **Repo:** `IV-EDU/clinic-app-V1-stable` (default branch: `main`)
 **Data:** 1,021 patients, 912 payments. Production use.
 **Login:** `admin` / `admin` (NEVER change this)

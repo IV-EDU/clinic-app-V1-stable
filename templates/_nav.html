@@ -195,13 +195,13 @@
      ================================================================= */
   /* Force normal row on .bar, then place groups with order */
   html[dir="rtl"] .has-sidebar .header .bar   { flex-direction: row !important; }
-  /* .end → LEFT (order 0), items in explicit sequence */
-  html[dir="rtl"] .has-sidebar .header .end   { order: 0 !important; flex-direction: row !important; justify-content: flex-start !important; }
+  /* .end → RIGHT side of screen in RTL (order 1) */
+  html[dir="rtl"] .has-sidebar .header .end   { order: 1 !important; flex-direction: row !important; justify-content: flex-start !important; }
   html[dir="rtl"] .has-sidebar .header .end .topbar-user-chip { order: 0 !important; }
   html[dir="rtl"] .has-sidebar .header .end .topbar-theme-btn { order: 1 !important; }
   html[dir="rtl"] .has-sidebar .header .end .lang-toggle       { order: 2 !important; }
-  /* .start → RIGHT (order 1), search pushed to right edge */
-  html[dir="rtl"] .has-sidebar .header .start { order: 1 !important; flex-direction: row !important; justify-content: flex-end !important; }
+  /* .start → LEFT side of screen in RTL (order 0) */
+  html[dir="rtl"] .has-sidebar .header .start { order: 0 !important; flex-direction: row !important; justify-content: flex-end !important; }
   /* Inside the chip: row-reverse so logout (last in HTML) appears leftmost */
   html[dir="rtl"] .has-sidebar .topbar-user-chip { flex-direction: row-reverse !important; }
 

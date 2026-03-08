@@ -2249,8 +2249,8 @@ html[dir="rtl"] .has-sidebar.sidebar-collapsed .sidebar-collapse-icon { transfor
 /* 6) Main content pushed right of sidebar + below slim topbar */
 .sidebar-main {
   margin-left: 240px;
-  padding-top: var(--nav-h, 56px);
-  transition: margin-left .22s ease;
+  padding-top: calc(var(--nav-h, 56px) + 24px); /* Extra padding prevents topbar overlap */
+  transition: margin-left .22s ease, margin-right .22s ease;
   min-height: 100vh;
   background: var(--color-bg, #f4f5f7);
 }
@@ -2258,7 +2258,7 @@ html[dir="rtl"] .has-sidebar.sidebar-collapsed .sidebar-collapse-icon { transfor
 
 .sidebar-main .wrap {
   max-width: 1200px;
-  margin: 0;
+  margin: 0 auto; /* Centers content properly when collapsed */
   padding: 0 24px;
 }
 

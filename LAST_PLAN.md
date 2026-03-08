@@ -269,8 +269,8 @@ Confirm:
 | Sidebar Step 1 (Dashboard) | DONE | `/` redesigned as dashboard |
 | Sidebar Step 2 (Patient list) | DONE | `/patients/list` moved to sidebar layout |
 | Sidebar Step 3 (Appointments) | DONE | Mar 8 2026 - Opted into sidebar |
-| Sidebar Step 4 (Patient file flow) | Not started | NEXT |
-| Sidebar Step 5 (Payments, Expenses, Reports) | Not started | Main daily workflow surfaces after patient flow |
+| Sidebar Step 4 (Patient file flow) | DONE | Mar 8 2026 - detail/edit/new wrapped in shell |
+| Sidebar Step 5 (Payments, Expenses, Reports) | Not started | NEXT |
 | Sidebar Step 6 (Admin Settings) | Not started | Last major rollout area |
 | Sidebar Step 7 (Coverage review) | Not started | Confirm whole-app alignment target is met |
 

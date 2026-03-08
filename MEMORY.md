@@ -94,6 +94,20 @@ Every new chat agent should read files in this order before proposing work:
 
 ## Recent Sessions
 
+### Session: Sidebar Step 4 (Patient File Flow) (Mar 8 2026)
+**What was done:**
+- Integrated the core Patient File flow (`templates/patients/detail.html`, `edit.html`, `new.html`) into the sidebar shell using the `{% set use_sidebar = true %}` switch.
+- Verified visual stability: The embedded `payments/_list.html` component scales down gracefully inside the `.sidebar-main` container.
+- Confirmed modals (Edit Patient, merge previews, print receipts) are unaffected by the sidebar presence.
+- Evaluated RTL support: Navigation and layout successfully mirror when Arabic is selected.
+- 110 tests passed without issue.
+
+**Key decisions:**
+- Patient actions (Merge, Delete) and their respective confirmation pages were deliberately omitted from this scope as per `LAST_PLAN.md` instructions restricting scope to primary flow files to minimize regression risks on unmapped edges.
+
+**What's next:**
+- Execute **Sidebar Step 5**: Payments, Expenses, and Reports. This will cover the standalone payments flow, simple expenses, legacy expenses root, and the reports main hub.
+
 ### Session: Sidebar Step 3 (Appointments) + Server Fixes (Mar 8 2026)
 **What was done:**
 - Opted the Appointments page (`/appointments`) into the sidebar shell via `{% set use_sidebar = true %}` in `templates/appointments/vanilla.html`.

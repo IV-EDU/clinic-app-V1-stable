@@ -94,25 +94,23 @@ Every new chat agent should read files in this order before proposing work:
 
 ## Recent Sessions
 
-### Session: Documentation Sync + Prompting System (Mar 8 2026)
+### Session: Sidebar Step 3 (Appointments) + Server Fixes (Mar 8 2026)
 **What was done:**
-- Performed a deep architecture scan of the repo to identify the true high-value files, risky areas, and doc mismatches
-- Confirmed the live code already contains the sidebar shell, dashboard, and patient list rollout
-- Synced the roadmap/design guidance to the real code state so future agents stop starting from stale assumptions
-- Added a project-local prompting guide for the user with copy-paste templates and safety guardrails
-- Clarified that the next UI task is still Appointments sidebar opt-in, UI-only unless a separate bug demands backend work
+- Opted the Appointments page (`/appointments`) into the sidebar shell via `{% set use_sidebar = true %}` in `templates/appointments/vanilla.html`.
+- Implemented a server-startup safeguard: Created `.agents/workflows/start-server.md` and updated `AGENTS.md` specifying `python wsgi.py` as the preferred server start method to bypass Powershell script strictness, and explicitly instructing agents to cleanly terminate the port (`send_command_input` with `Terminate: true`).
+- Verified the Sidebar layout via browser agent; Arabic/RTL mirrors correctly and components fit alongside the sidebar.
+- 107 tests run, all passing (no regressions in data or API structure).
+- Documented progress in `LAST_PLAN.md`, `CHANGELOG.md`, and `MEMORY.md`.
 
 **Key decisions:**
-- The best way to reduce AI mistakes is to fix project instructions first, not to attempt bigger autonomous edits
-- Flask remains the correct V1 path; the immediate problem is workflow discipline and documentation consistency, not framework choice
-- The agent spec in `agents/clinic-lead-developer.md` is well-designed and should be used for new sessions
-- Sidebar adoption and visual polish are two separate concerns — Step 3 should only add the shell, not redesign the page
-- The reference screenshot (orange/white dental dashboard) is only inspiration — the app should use its own blue/teal palette defined in DESIGN_BRIEF.md
+- UI changes for appointments remain purely layout-wrapper opt-ins. All dense internal CSS and JS was preserved intact, keeping risk near zero.
+- The workflow documentation approach (`.agents/workflows/`) is now the established way to prevent AI execution loops on system-specific tooling.
 
 **What's next:**
-- Execute Sidebar Step 3 on `templates/appointments/vanilla.html` as a scoped UI-only task
-- Use the `agents/clinic-lead-developer.md` agent spec in the new chat
-- Use `PROMPTING_GUIDE.md` for structuring the request
+- Execute **Sidebar Step 4**: Patient file flow (starting with `templates/patients/detail.html`).
+- Ensure the detail page (which includes embedded payments and receipts) is cleanly enveloped by the sidebar and its internal navigation components don't clash.
+
+### Session: Documentation Sync + Prompting System (Mar 8 2026)
 
 ### Session: Patient List Step 2 + RTL CSS Fixes (Mar 3 2026)
 **What was done:**

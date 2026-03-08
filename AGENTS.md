@@ -195,8 +195,9 @@ For UI-only tasks: change only templates, CSS/JS, and `i18n.py`. Do NOT change r
 
 ## 13) Running & Testing
 
-- `Start-Clinic.bat` — run app (port 8080). Login: `admin` / `admin`.
-- `scripts/Run-Tests.bat` — pytest. `scripts/Run-Validation.bat` — full validation.
+- `python wsgi.py` — run app (port 8080). (Prefer this over `Start-Clinic.bat` if Powershell is strict). Login: `admin` / `admin`.
+- `.\scripts\Run-Tests.bat` — run pytest. `.\scripts\Run-Validation.bat` — full validation (always prefix `.bat` executions with `.\` in Powershell).
+- **CRITICAL:** When running the server via a background command for testing, ALWAYS cleanly close it using the `send_command_input` tool with `Terminate: true` when done.
 - **Run tests after backend changes.** Report results honestly.
 - Do not delete or disable tests unless the user explicitly asks.
 

@@ -51,7 +51,16 @@
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C9 2 7 4 7 7c0 1.5.5 3 1 4L6 22h12l-2-11c.5-1 1-2.5 1-4 0-3-2-5-5-5z"/></svg>
           </div>
         {% endif %}
-        <span class="sidebar-brand-name">{{ clinic_name or t('app_title') }}</span>
+        <div class="sidebar-brand-text">
+          <div class="sidebar-brand-name" style="{% if clinic_brand_color %}color: {{ clinic_brand_color }};{% endif %}">
+            {{ clinic_name or t('app_title') }}
+          </div>
+          {% if clinic_tagline_enabled and clinic_tagline %}
+          <div class="sidebar-brand-tagline" style="{% if clinic_brand_color %}color: {{ clinic_brand_color }};{% endif %}">
+            {{ clinic_tagline }}
+          </div>
+          {% endif %}
+        </div>
       </div>
     </div>
     <nav class="sidebar-nav">

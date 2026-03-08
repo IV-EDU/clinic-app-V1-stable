@@ -42,6 +42,14 @@
   {% include '_nav.html' %}
   {% if use_sidebar %}
   <aside class="sidebar" id="app-sidebar">
+    <script>
+      (function(){
+        if(localStorage.getItem('sidebar_collapsed') === 'true'){
+          document.getElementById('app-sidebar').classList.add('collapsed');
+          document.body.classList.add('sidebar-collapsed');
+        }
+      })();
+    </script>
     <div class="sidebar-header">
       <div class="sidebar-brand">
         {% if theme_logo_url %}
@@ -225,10 +233,7 @@
     var STORED = 'sidebar_collapsed';
     /* Fix topbar at 56px for sidebar pages — don't measure from DOM (header is fixed) */
     document.documentElement.style.setProperty('--nav-h', '56px');
-    if(localStorage.getItem(STORED) === 'true'){
-      sidebar && sidebar.classList.add('collapsed');
-      document.body.classList.add('sidebar-collapsed');
-    }
+
     window.toggleSidebar = function(){
       if(!sidebar) return;
       var collapsed = sidebar.classList.toggle('collapsed');

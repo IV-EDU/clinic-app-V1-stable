@@ -91,6 +91,9 @@ This should affect review speed and how aggressively the system shows alternate 
 - `Page number` optional
 - `Name` required
 - `Phone` optional
+- `New patient?` optional toggle (receptionist intent only)
+  - If `Yes`, receptionist is saying “I believe this patient is new / not in the system”.
+  - Manager may still override and attach to an existing patient if strong duplicate matches exist.
 
 ### Section 2: Visit
 
@@ -169,14 +172,23 @@ Use hard blocks only for obvious bad input:
   - match suggestions
   - warning flags
   - entry source (`Reception Desk`, `Patient File`, or `Treatment Card`)
+- Receptionist can edit by using **Recall** any time before approval (see review rules). There is no “save draft” workflow.
+- History must exist for both receptionists and managers (grouped by date) as a safety/audit surface.
 
 ## Manager Queue Statuses
 
-- `New`
-- `Edited`
-- `Held`
-- `Approved`
-- `Rejected`
+Stored statuses (do not expand this set in the first release):
+
+- `new`
+- `edited`
+- `held`
+- `approved`
+- `rejected`
+
+Derived UI labels (not stored as statuses):
+
+- **In review** (when a manager lock exists)
+- **Needs changes / Returned** (when a manager returns an item; return reason is optional)
 
 Optional sorting/status helpers later:
 
@@ -189,7 +201,14 @@ Optional sorting/status helpers later:
 - `Edit`
 - `Choose different patient`
 - `Hold`
+- `Return` (send back to reception for changes; reason optional)
 - `Reject`
+
+Locking / safety:
+
+- Manager may lock an item while reviewing it.
+- Receptionist may **Recall** any time before approval; recall clears the manager lock and returns the item to receptionist editing.
+- If an item is held and receptionist recalls it to edit, it becomes `edited` (held cleared).
 
 ## Manager Review Screen
 

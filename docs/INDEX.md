@@ -402,6 +402,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 - **Documentation**
   - Agent rules: `AGENTS.md`
+  - Agent handoff (fast ramp): `docs/AGENT_HANDOFF.md`
   - Planning guide: `plan_Agents.md`
   - V1 roadmap: `LAST_PLAN.md`
   - UI redesign plan: `UI_REDESIGN_PLAN.md`

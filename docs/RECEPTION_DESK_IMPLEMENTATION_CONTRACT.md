@@ -91,6 +91,17 @@ Rules:
 
 Optional queue labels like `Needs patient review` stay derived UI labels for later, not core stored statuses in the first slice.
 
+### Returned / Needs changes (UI label, not a stored status)
+
+“Returned” is a receptionist-facing concept, but it must not expand the stored status set.
+
+When a manager returns an item to reception:
+- store `last_action = returned`
+- store `return_reason` (optional)
+- keep `status` as `edited` (recommended) or `new` (allowed), but do not add a new status.
+
+The receptionist UI should show a clear **Needs changes** chip when `last_action = returned` (and optionally display the `return_reason` if present).
+
 ## Frozen Permission Plan
 
 The workflow must be permission-based, not role-name-based.
@@ -138,6 +149,13 @@ The pending entry backbone must store at least:
 - `note` nullable
 - `warning_flags`
 - `match_summary`
+- `last_action`
+- `return_reason` nullable (optional)
+- `hold_reason` nullable (optional)
+- `locked_by_user_id` nullable (manager lock for review)
+- `locked_at` nullable
+- `recalled_at` nullable
+- `patient_intent` (e.g., `new_patient` vs `unknown/existing`)
 - `reviewed_by_user_id` nullable
 - `reviewed_at` nullable
 - `rejection_reason` nullable
@@ -188,16 +206,27 @@ Manager action rules:
 
 - `Edit` updates pending draft only
 - `Hold` keeps item outside live data
+- `Return` sends back to reception for changes (return reason optional)
 - `Reject` requires a reason
 - `Approve` remains separate from edit
+
+### Recall-to-edit model (Option B, locked)
+
+- Managers may lock an item for review (`locked_by_user_id`, `locked_at`).
+- Receptionists may **Recall** any time before approval:
+  - Recall clears the manager lock.
+  - Recall makes the item editable by reception again.
+  - If the item was held, recall clears the held state and the item becomes `edited`.
 
 ## Frozen First-Release UI Boundaries
 
 Receptionist sees:
 
-- Reception Desk page
+- Reception Desk area (single location at `/reception`)
 - draft entry actions from patient file and treatment card later in the cycle
 - helper text that the draft was sent for manager review
+- History grouped by date (their own by default)
+- A “New submission” slide-over/modal (no draft-save feature)
 
 Receptionist does not see:
 
@@ -208,10 +237,11 @@ Receptionist does not see:
 
 Manager sees:
 
-- review queue
+- review queue (accessible inside the same `/reception` area)
 - review detail screen
 - inline candidate patient comparisons
 - approval decision path
+- History grouped by date (defaults to All)
 
 ## Frozen First-Release Exclusions
 
@@ -224,6 +254,13 @@ Out of the first implementation cycle:
 - treatment label standardization
 - automatic approval
 - background posting without final manager confirmation
+
+Deferred in the first implementation slice:
+- correction requests that edit existing live payments/treatments (do inserts first; add edits later after stability)
+
+Safety rule (when approval posting is enabled later):
+- Approval must show an explicit final confirmation before writing live data.
+- When attaching a payment to a treatment, recompute and persist the parent treatment `remaining_cents` correctly (do not leave stale remaining values).
 
 ## Safe Build Sequence
 

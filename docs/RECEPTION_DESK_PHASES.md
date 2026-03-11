@@ -150,7 +150,12 @@ Allow receptionists to create pending entries only.
 
 ### Build
 
-- main Reception Desk page
+- main Reception Desk area at `/reception` (single place)
+- internal views inside the same area (permission-gated):
+  - Desk (reception entry + “my history” by default)
+  - Manager Queue (for managers/admins)
+  - History (shared safety/audit view, grouped by date)
+- “New submission” opens as a slide-over/modal (avoid a large multi-page feel)
 - form sections:
   - Patient
   - Visit
@@ -217,12 +222,16 @@ Allow managers to review pending entries without touching live data yet.
   - Edit
   - Choose different patient
   - Hold
+  - Return (reason optional)
   - Reject
 
 ### Rules
 
 - `Edit` updates only pending draft
 - no live posting yet in this phase
+- stored statuses remain frozen (do not add `returned` as a stored status)
+  - “Returned / Needs changes” is a derived UI label (e.g., `last_action=returned` + optional `return_reason`)
+- Option B safety: managers may lock items for review; receptionist edits require **Recall** (recall clears the lock)
 - alternate patient suggestions should be inline, not new-tab first
 - source context matters:
   - treatment card strongest
@@ -257,6 +266,8 @@ Allow manager approval to create/update live records safely.
 - existing treatment totals must not be silently overwritten
 - manager final confirmation required before live posting
 - hold/reject/edit must not affect live data
+- on posting (especially attaching payment), recompute and persist parent treatment `remaining_cents` correctly
+- V1 recommendation: start with insert-only posting (create new treatment / attach payment); defer “edit existing payment/treatment” corrections until after stability
 
 ### Likely Files
 

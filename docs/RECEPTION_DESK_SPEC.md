@@ -33,6 +33,7 @@ Reception Desk should become the main daily entry page.
 
 Receptionist should also have contextual draft entry points later:
 
+- `Edit Patient`
 - `+ Treatment Entry`
 - `+ Payment Entry`
 
@@ -41,6 +42,12 @@ These are draft-entry actions only and should include helper text such as:
 - `Sent for manager review`
 
 They must stay separate from manager live actions like `+ Add Treatment` and `+ Add Payment`.
+
+Patient-file editing for reception should follow the same rule:
+
+- receptionist may draft patient-profile changes
+- receptionist must not live-edit the patient file directly
+- manager approval is still required before the real patient file changes
 
 ## Entry Modes
 
@@ -281,7 +288,25 @@ If the entry started from patient file or treatment card and there is no conflic
 
 V1 supports same-record corrections.
 
-Same-record means the correction stays on the same live payment or treatment.
+Same-record means the correction stays on the same live patient, payment, or treatment.
+
+### Existing patient correction
+
+Can change:
+
+- full name
+- primary phone
+- additional phones
+- primary page number
+- additional page numbers
+- notes
+
+Cannot:
+
+- merge patients
+- move history to another patient
+- change the correction into a duplicate-cleanup workflow
+- change generated file number identity in V1
 
 ### Existing payment correction
 
@@ -318,11 +343,14 @@ Cannot:
 
 Manager review for corrections must show before-vs-after comparison using current live values beside proposed values.
 
+For patient corrections, that means showing current patient profile values beside proposed values before approval.
+
 ## Approval Outcomes
 
 When a manager approves, the system should do one of these:
 
 - Record visit only
+- Edit existing patient
 - Attach payment to existing treatment
 - Create new treatment
 - Edit existing payment

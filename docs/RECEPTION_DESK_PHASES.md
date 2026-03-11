@@ -72,6 +72,7 @@ Create the safe staging layer for pending receptionist entries.
 - entry source storage
 - review metadata storage
 - draft type storage
+- existing patient correction context
 - existing payment correction context
 - existing treatment correction context
 - workflow event history for the History tab
@@ -81,16 +82,19 @@ Create the safe staging layer for pending receptionist entries.
 
 At minimum, store:
 
-- draft type: `new_visit_only`, `new_treatment`, `new_payment`, `edit_payment`, `edit_treatment`
+- draft type: `new_visit_only`, `new_treatment`, `new_payment`, `edit_patient`, `edit_payment`, `edit_treatment`
 - source: `reception_desk`, `patient_file`, `treatment_card`
 - locked patient id optional
 - locked treatment id optional
 - locked payment id optional
+- target patient id optional
 - visit date
 - submitted timestamp
 - page number
 - name
 - phone
+- additional phones
+- additional page numbers
 - visit type
 - treatment text
 - doctor
@@ -173,6 +177,7 @@ Allow receptionists to create pending entries only.
   - Payment
   - Notes
 - soft warnings
+- patient-profile correction submissions
 - same-record correction submissions
 - no delete submissions
 - no live posting
@@ -189,6 +194,8 @@ Allow receptionists to create pending entries only.
 - patient locked
 - patient identity shown read-only
 - no retyping name or phone
+- supports patient-profile correction drafts
+- supports treatment/payment correction drafts for the same patient
 
 #### C. Treatment Card Entry
 
@@ -247,7 +254,7 @@ Allow managers to review pending entries without touching live data yet.
 - before-vs-after comparison cards are required for corrections
 - opening a draft does not lock it
 - no delete approval path in V1
-- Same-record means the correction stays on the same live payment or treatment.
+- Same-record means the correction stays on the same live patient, payment, or treatment.
 - alternate patient suggestions should be inline, not new-tab first
 - source context matters:
   - treatment card strongest
@@ -273,6 +280,7 @@ Allow manager approval to create/update live records safely.
 ### Approval Outcomes
 
 - Record visit only
+- Edit existing patient
 - Create new treatment
 - Add new payment to existing treatment
 - Edit existing payment
@@ -291,6 +299,7 @@ Allow manager approval to create/update live records safely.
 - delete payment
 - delete treatment
 - delete/add replacement chain
+- merge patients
 - move payment across treatment chains
 - move treatment across patients
 
@@ -340,6 +349,7 @@ Make the workflow faster from places staff already use.
 
 ### Build
 
+- `Edit Patient` for receptionist in patient file
 - `+ Treatment Entry` for receptionist in patient file
 - `+ Payment Entry` for receptionist on treatment cards
 - helper text under entry buttons:
@@ -379,6 +389,7 @@ Reduce data damage and confirm safe behavior before rollout.
 - hold/reject do not change live data
 - approve to existing treatment
 - approve to new treatment
+- existing patient correction approval
 - existing payment correction approval
 - existing treatment correction approval
 - invalid money math blocks approval

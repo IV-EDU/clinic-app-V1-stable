@@ -81,10 +81,13 @@ Reception does daily entry work as drafts; manager/admin reviews; the system pos
 - **Stored statuses (frozen):** `new`, `edited`, `held`, `approved`, `rejected`
   - “Returned / Needs changes” is a UI label (derived from `last_action='returned'` + optional `return_reason`)
 - **V1 supports same-record corrections:**
+  - existing patient correction
   - existing payment correction
   - existing treatment correction
-  - Same-record means the correction stays on the same live payment or treatment.
-  - no moving payments to other treatments and no moving treatments to other patients
+  - Same-record means the correction stays on the same live patient, payment, or treatment.
+  - no moving payments to other treatments
+  - no moving treatments to other patients
+  - no turning a patient correction into a merge or identity reassignment
   - manager review must show before-vs-after comparison for corrections
   - Invalid money math blocks approval.
 - **New patient flow:**

@@ -53,12 +53,14 @@ Reception does daily entry work as drafts; **Manager/Admin** reviews; system pos
   - “Returned / Needs changes” is a **UI label** derived from `last_action='returned'` + optional `return_reason` (typically with `status='edited'`).
 - Opening a draft does not lock it.
 - V1 supports same-record corrections:
+  - corrections to an existing patient
   - new visit-only entries
   - new treatments
   - new payments
   - corrections to an existing payment
   - corrections to an existing treatment
-- Same-record means the correction stays on the same live payment or treatment.
+- Existing patient corrections must stay on the same live patient.
+- Same-record means the correction stays on the same live patient, payment, or treatment.
 - Manager review for corrections must show current live values beside proposed values.
 - Invalid money math blocks approval.
 - **New patient intent:**
@@ -103,6 +105,7 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 | Reception history is workflow-focused, not full audit | Keep V1 history simple and practical | 2026-03-11 |
 | No auto-lock on draft open | Opening a draft should not change its state | 2026-03-11 |
 | V1 supports same-record corrections for payments/treatments | Allow corrections without moving records across chains | 2026-03-11 |
+| V1 supports same-record patient corrections | Let reception draft patient-file fixes without live editing | 2026-03-11 |
 | V1 excludes reception delete drafts | Prevent high-risk delete approvals in the first rollout | 2026-03-11 |
 | No split delete/add correction chains in V1 | One mistake must be reviewed as one correction request | 2026-03-11 |
 
@@ -121,6 +124,127 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - History is simple workflow history, not full audit.
 - V1 supports create + same-record correction drafts only.
 - Reception delete drafts are out of V1; true deletions stay manager-only outside the workflow.
+
+### Session: Reception Figma English LTR
+**Date:** 2026-03-11
+**What was done:**
+- Created a local high-fidelity HTML mockup for the Reception workflow core screens at `.tmp/reception_figma.html`.
+- Captured the mockup into a new Figma file with four desktop screens: Desk / Default, Desk / New Submission Open, Manager Queue / Default, and History / Grouped by Date.
+- Kept this first pass fully English and fully LTR to match the approved design direction before a separate Arabic/RTL pass.
+
+**Key decisions:**
+- English/LTR is the first design deliverable; Arabic/RTL will be a separate follow-up file.
+- The Figma file keeps the existing calm clinic shell, card-based layout, and draft-only messaging.
+- Generated Figma file: `https://www.figma.com/design/SxsRTBtfCB05BbZQX0gcWe`
+
+### Session: Receptionist home redesign
+**Date:** 2026-03-11
+**What was done:**
+- Reworked the design direction after feedback that the first Figma file felt too heavy and too different from the real app UI.
+- Created a second local mockup focused only on the receptionist home screen at `.tmp/receptionist_home_figma.html`.
+- Captured a simpler English/LTR receptionist-first screen with the current shell style, `All` filter, today’s drafts, and older unsubmitted drafts.
+
+**Key decisions:**
+- Receptionist screen should be designed separately from manager review screens.
+- The receptionist home should stay close to the current program shell and avoid a dense queue/dashboard feel.
+- Corrected Figma file: `https://www.figma.com/design/lGe0GWOsqQKMuJTvllK5tg`
+
+### Session: Receptionist home redesign v2
+**Date:** 2026-03-11
+**What was done:**
+- Opened the real app locally, logged in, and inspected the actual dashboard and patient list shell before redesigning again.
+- Rebuilt the receptionist mockup to follow the real app structure more closely: same header rhythm, simpler sidebar feel, flatter cards, and a quieter filter bar.
+- Removed the fake unsubmitted/save mode from the receptionist flow and changed the working list to drafts that are still not approved.
+
+**Key decisions:**
+- Default receptionist filter should be `Today`.
+- `All` should mean every draft that is still not approved.
+- Preferred updated Figma file: `https://www.figma.com/design/MZfXnFtVsSp3J0kxRHPkG5`
+
+### Session: Receptionist home polish v3
+**Date:** 2026-03-11
+**What was done:**
+- Refined the receptionist screen again to remove the unnecessary sort button and make the working list feel more obvious and calmer.
+- Clarified in the design that reception reopens drafts and edits/resubmits from inside the same modal, with no separate save mode.
+- Added a lighter polish pass focused on usability rather than more UI complexity, then captured a new Figma file.
+
+**Key decisions:**
+- No `Newest First` control is needed because the list should already show most recent drafts first by default.
+- The receptionist lands on open drafts first, then edits/resubmits from the modal.
+- Latest refined Figma file: `https://www.figma.com/design/6MebqaJoT66CCJHuwqwtRc`
+
+### Session: Receptionist home refinement v4
+**Date:** 2026-03-11
+**What was done:**
+- Refined the receptionist mockup again to remove duplicated counts in the top summary cards and normalize every row into one fixed three-column layout.
+- Removed technical source chips from beside patient names and replaced them with plain human subtext only when useful.
+- Removed the `Resubmitted` state from the receptionist view so edited-and-submitted drafts return to `Waiting Review`, then captured a fresh Figma file.
+
+**Key decisions:**
+- Receptionist-visible row states stay limited to `Waiting Review` and `Returned`.
+- `All` still means all drafts that are not yet approved, while `Today` remains the default filter.
+- Preferred V4 Figma file: `https://www.figma.com/design/AsYYLlSENheSVGuRwsHWBX`
+
+### Session: Receptionist home refinement v5
+**Date:** 2026-03-11
+**What was done:**
+- Applied the final receptionist list cleanup by moving the status chip into its own slot between the explanation text and the action button.
+- Removed the helper text under `Open Draft` / `Edit Draft` so the action area stays cleaner.
+- Captured the final adjusted receptionist mockup into a new Figma file.
+
+**Key decisions:**
+- Status chip should sit between the middle explanation block and the action button.
+- No helper copy is needed under the action button in the real UI.
+- Preferred V5 Figma file: `https://www.figma.com/design/4Wup0Kc55zj6eSAGFx3XWh`
+
+### Session: Figma references cleanup
+**Date:** 2026-03-11
+**What was done:**
+- Added `docs/FIGMA_REFERENCES.md` as the single repo doc for approved Figma links.
+- Linked that file from `docs/INDEX.md`.
+- Removed obsolete local exploration mockup `.tmp/reception_figma.html` and trimmed the reference doc so only the current receptionist design remains documented.
+
+**Key decisions:**
+- `docs/FIGMA_REFERENCES.md` should list current approved design references only, not every discarded iteration.
+- Current approved receptionist design remains V5: `https://www.figma.com/design/4Wup0Kc55zj6eSAGFx3XWh`
+
+### Session: Receptionist modal design
+**Date:** 2026-03-11
+**What was done:**
+- Built the receptionist modal mockup at `.tmp/receptionist_modal_figma.html` using the approved receptionist home shell and current program field coverage.
+- Captured the modal mockup into a new Figma file with treatment new, payment new, payment waiting, treatment returned, and locked-context reference states.
+- Updated `docs/FIGMA_REFERENCES.md` and `docs/CHANGELOG.md` so future chats can find the approved modal design immediately.
+
+**Key decisions:**
+- The receptionist modal uses one shared shell with two modes: Treatment and Payment.
+- Treatment mode keeps treatment text, consultation checkbox, visit type, doctor, total, discount, paid today, remaining, date, method, and note.
+- Payment mode keeps amount, date, method, doctor, and note.
+- Waiting drafts reopen in the same modal; returned drafts show the manager reason near the top.
+- Current approved receptionist modal Figma file: `https://www.figma.com/design/27o4Oit52wnAcxIx9ZQtRs`
+
+### Session: Patient-file draft correction scope
+**Date:** 2026-03-11
+**What was done:**
+- Updated the Reception Desk handoff/spec/contract/phases docs so reception can also draft patient-file corrections, not only treatment/payment corrections.
+- Locked `edit_patient` as a same-record correction type and limited it to practical patient profile fields already used at the front desk.
+
+**Key decisions:**
+- Reception may draft patient-profile changes from the patient file.
+- `edit_patient` stays on the same live patient and does not become merge/identity-reassignment workflow.
+- V1 patient correction fields are: full name, primary phone, additional phones, primary page number, additional page numbers, and notes.
+- Generated file number identity changes stay out of V1 for safety.
+
+### Session: Receptionist modal polish v2
+**Date:** 2026-03-11
+**What was done:**
+- Refined the receptionist modal mockup so it feels calmer and closer to an implementation-ready clinic UI.
+- Tightened the modal depth, section hierarchy, background treatment, and copy while preserving the same workflow and field coverage.
+- Captured the refined version to a new preferred Figma file and updated the design reference doc.
+
+**Key decisions:**
+- Current preferred receptionist modal file is now V2: `https://www.figma.com/design/9Dh1wj2NQ2mXMgi9DPqpBo`
+- The polished V2 modal keeps the same treatment/payment coverage, waiting/returned behavior, and locked-context references as V1.
+- The local source of truth remains `.tmp/receptionist_modal_figma.html`.
 
 ### Session: [Brief Title]
 **Date:** YYYY-MM-DD

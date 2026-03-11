@@ -37,6 +37,7 @@ The first release must allow:
 - manager queue review
 - manager draft editing
 - hold / reject handling
+- existing patient correction drafts
 - existing payment correction drafts
 - existing treatment correction drafts
 
@@ -141,6 +142,7 @@ The pending entry backbone must store at least:
 - `locked_patient_id` nullable
 - `locked_treatment_id` nullable
 - `locked_payment_id` nullable
+- `target_patient_id` nullable
 - `page_number` nullable
 - `patient_name`
 - `phone` nullable
@@ -196,12 +198,22 @@ Soft warnings:
 
 V1 supports same-record corrections.
 
-Same-record means the correction stays on the same live payment or treatment.
+Same-record means the correction stays on the same live patient, payment, or treatment.
 
+- `edit_patient` updates only the same live patient
 - `edit_payment` updates only the same live payment
 - `edit_treatment` updates only the same live treatment
 - no reassignment between patient/treatment chains in V1
 - before-vs-after comparison is mandatory for correction review
+
+Allowed `edit_patient` fields:
+
+- full name
+- primary phone
+- additional phones
+- primary page number
+- additional page numbers
+- notes
 
 Allowed `edit_payment` fields:
 
@@ -223,6 +235,8 @@ Allowed `edit_treatment` fields:
 
 Not allowed through correction drafts:
 
+- duplicate merge behavior
+- changing generated file number identity in V1
 - delete/add replacement chains
 - moving a payment to another treatment
 - moving a payment to another patient

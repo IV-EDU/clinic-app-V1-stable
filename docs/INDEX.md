@@ -6,6 +6,13 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 ---
 
+## 0) Design References
+
+- Figma reference links and approved design iterations:
+  - `docs/FIGMA_REFERENCES.md`
+
+---
+
 ## 1) Core Application
 
 - **Entry points**

@@ -75,17 +75,26 @@ Reception does daily entry work as drafts; manager/admin reviews; the system pos
   - Internal views inside the same area (permission-gated): Desk / Manager Queue / History
   - New submission opens as a slide-over/modal (avoid “tons of pages” feel)
   - No “Save draft” feature
+- **History is simple workflow history, not full audit.**
+  - History tab is a simple daily workflow list with action notes, not a full audit timeline.
+- **Opening a draft does not lock it.**
 - **Stored statuses (frozen):** `new`, `edited`, `held`, `approved`, `rejected`
   - “Returned / Needs changes” is a UI label (derived from `last_action='returned'` + optional `return_reason`)
-- **Option B editing model (recall-to-edit):**
-  - Managers may lock an item while reviewing.
-  - Reception may Recall any time before approval; recall clears the lock and returns the item to reception editing.
-  - If held and recalled → becomes `edited` (held cleared).
+- **V1 supports same-record corrections:**
+  - existing payment correction
+  - existing treatment correction
+  - Same-record means the correction stays on the same live payment or treatment.
+  - no moving payments to other treatments and no moving treatments to other patients
+  - manager review must show before-vs-after comparison for corrections
+  - Invalid money math blocks approval.
 - **New patient flow:**
   - Reception can mark “New patient” as intent.
   - Manager can override and attach to an existing patient if strong duplicate matches exist.
   - Otherwise manager approval can create the new patient, then post the treatment/payment.
-- **V1 scope:** payments/treatments inserts first (new treatment + attach payment). Corrections (editing existing live rows) deferred.
+  - New patient file is created only on manager approval.
+- **Reception delete drafts are out of V1.**
+  - True deletions stay manager-only outside the reception workflow for now.
+  - No split delete/add correction chains in V1.
 - **Posting safety:** approval always requires an explicit final confirmation; when attaching payment, recompute and persist parent `remaining_cents`.
 
 ### Real integration anchors
@@ -98,4 +107,3 @@ Reception does daily entry work as drafts; manager/admin reviews; the system pos
 - `docs/RECEPTION_DESK_SPEC.md`
 - `docs/RECEPTION_DESK_IMPLEMENTATION_CONTRACT.md`
 - `docs/RECEPTION_DESK_PHASES.md`
-

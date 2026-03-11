@@ -45,19 +45,30 @@ Reception does daily entry work as drafts; **Manager/Admin** reviews; system pos
 - **Single Reception area:** `/reception` with internal permission-gated views:
   - Desk
   - Manager Queue
-  - History (grouped by date; safety/audit surface for both)
+  - History (grouped by date; simple workflow history for both)
 - New submission opens as **slide-over/modal** (avoid “tons of pages” feel). No “save draft” feature.
+- History is simple workflow history, not full audit.
+- History should show action notes such as Returned, Held, Approved, Rejected.
 - Stored statuses are frozen: `new`, `edited`, `held`, `approved`, `rejected`.
   - “Returned / Needs changes” is a **UI label** derived from `last_action='returned'` + optional `return_reason` (typically with `status='edited'`).
-- **Option B editing model (Recall-to-edit):**
-  - Managers can lock an item while reviewing.
-  - Reception can **Recall** any time before approval; recall clears the lock.
-  - If an item is held and reception recalls/edits it, it becomes `edited` (held cleared).
+- Opening a draft does not lock it.
+- V1 supports same-record corrections:
+  - new visit-only entries
+  - new treatments
+  - new payments
+  - corrections to an existing payment
+  - corrections to an existing treatment
+- Same-record means the correction stays on the same live payment or treatment.
+- Manager review for corrections must show current live values beside proposed values.
+- Invalid money math blocks approval.
 - **New patient intent:**
   - Reception may mark “New patient”.
   - Manager may override to an existing patient if strong duplicates exist; otherwise approval can create the patient then post treatment/payment.
+  - New patient file is created only on manager approval.
 - Posting safety: approval requires explicit final confirmation; when attaching payment to a treatment, recompute and persist parent `remaining_cents`.
-- V1 scope direction: inserts first (new treatment + attach payment). Editing existing live rows (corrections) later after stability.
+- Reception delete drafts are out of V1.
+- True deletions remain manager-only outside the workflow in V1.
+- No split delete/add correction chains in V1.
 
 ### Planning docs (source of truth)
 
@@ -88,11 +99,28 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 | Keep existing theme system | Admin-controlled colors, no hard-coded scheme | 2026-03-03 |
 | Prompt-template workflow for AI tasks | Reduce vague prompts/regressions | 2026-03-08 |
 | Reception Desk review workflow | Reception drafts; manager/admin approves; post on approval only | 2026-03-11 |
-| Reception area UX | Single `/reception` area; modal-first; recall-to-edit | 2026-03-11 |
+| Reception area UX | Single `/reception` area; modal-first; simple workflow history | 2026-03-11 |
+| Reception history is workflow-focused, not full audit | Keep V1 history simple and practical | 2026-03-11 |
+| No auto-lock on draft open | Opening a draft should not change its state | 2026-03-11 |
+| V1 supports same-record corrections for payments/treatments | Allow corrections without moving records across chains | 2026-03-11 |
+| V1 excludes reception delete drafts | Prevent high-risk delete approvals in the first rollout | 2026-03-11 |
+| No split delete/add correction chains in V1 | One mistake must be reviewed as one correction request | 2026-03-11 |
 
 ---
 
 ## Template for New Entries
+
+### Session: Reception doc sync
+**Date:** 2026-03-11
+**What was done:**
+- Updated Reception Desk handoff/planning docs so new agent chats inherit the same locked V1 workflow rules.
+- Locked simple workflow History, no auto-lock on open, same-record correction boundaries, manager-only true deletions, and no split delete/add correction chains.
+- Synced the spec, implementation contract, phases doc, and agent handoff around the same draft types, statuses, and V1 exclusions.
+
+**Key decisions:**
+- History is simple workflow history, not full audit.
+- V1 supports create + same-record correction drafts only.
+- Reception delete drafts are out of V1; true deletions stay manager-only outside the workflow.
 
 ### Session: [Brief Title]
 **Date:** YYYY-MM-DD
@@ -101,4 +129,3 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 
 **Key decisions:**
 - [any new decisions and their reasoning]
-

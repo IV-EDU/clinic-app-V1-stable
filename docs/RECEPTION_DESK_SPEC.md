@@ -172,8 +172,10 @@ Use hard blocks only for obvious bad input:
   - match suggestions
   - warning flags
   - entry source (`Reception Desk`, `Patient File`, or `Treatment Card`)
-- Receptionist can edit by using **Recall** any time before approval (see review rules). There is no “save draft” workflow.
-- History must exist for both receptionists and managers (grouped by date) as a safety/audit surface.
+- There is no “save draft” workflow.
+- History must exist for both receptionists and managers (grouped by date) as a simple workflow history surface.
+- History is simple workflow history, not full audit.
+- History should show short action notes like Returned, Held, Approved, Rejected.
 
 ## Manager Queue Statuses
 
@@ -187,7 +189,6 @@ Stored statuses (do not expand this set in the first release):
 
 Derived UI labels (not stored as statuses):
 
-- **In review** (when a manager lock exists)
 - **Needs changes / Returned** (when a manager returns an item; return reason is optional)
 
 Optional sorting/status helpers later:
@@ -204,11 +205,11 @@ Optional sorting/status helpers later:
 - `Return` (send back to reception for changes; reason optional)
 - `Reject`
 
-Locking / safety:
+Review-open behavior:
 
-- Manager may lock an item while reviewing it.
-- Receptionist may **Recall** any time before approval; recall clears the manager lock and returns the item to receptionist editing.
-- If an item is held and receptionist recalls it to edit, it becomes `edited` (held cleared).
+- Opening a draft does not lock it.
+- No auto-lock timeout is needed in V1.
+- The draft stays pending until someone edits, holds, returns, rejects, or approves it.
 
 ## Manager Review Screen
 
@@ -276,6 +277,47 @@ If the entry started from patient file or treatment card and there is no conflic
 - after editing, item status becomes `Edited`
 - manager returns to review and then decides whether to approve, hold, or reject
 
+## Correction Boundaries
+
+V1 supports same-record corrections.
+
+Same-record means the correction stays on the same live payment or treatment.
+
+### Existing payment correction
+
+Can change:
+
+- amount
+- date
+- method
+- doctor
+- note
+
+Cannot:
+
+- move payment to another treatment
+- move payment to another patient
+- become a delete/add chain
+
+### Existing treatment correction
+
+Can change:
+
+- treatment text
+- doctor
+- note
+- total
+- discount
+- visit type
+- treatment date
+
+Cannot:
+
+- move treatment to another patient
+- become a delete/add chain
+
+Manager review for corrections must show before-vs-after comparison using current live values beside proposed values.
+
 ## Approval Outcomes
 
 When a manager approves, the system should do one of these:
@@ -283,6 +325,8 @@ When a manager approves, the system should do one of these:
 - Record visit only
 - Attach payment to existing treatment
 - Create new treatment
+- Edit existing payment
+- Edit existing treatment
 
 This decision should be visible at approval time.
 
@@ -291,11 +335,25 @@ This decision should be visible at approval time.
 - The system may suggest a patient, but it must never auto-post live data.
 - Manager must always confirm before anything goes live.
 - If approving into an existing treatment:
-  - receptionist entry must not silently overwrite live treatment totals
-  - live treatment remains the source of truth
+  - receptionist entry must not silently overwrite the wrong live record
+  - invalid money math must block approval
+  - system must not silently force remaining to zero to hide the issue
 - If approving as a new treatment:
   - receptionist values become the draft basis
   - manager approval is still required before posting live
+
+## Deletion Policy For V1
+
+- Reception cannot submit delete drafts in V1.
+- True deletions are handled manually by manager/admin outside this workflow.
+- Treatment deletion with attached payments is out of V1.
+- A future version may add a special delete-request workflow, but not now.
+
+## No Split Correction Chains
+
+- Do not fix one mistake using separate delete and add drafts.
+- One mistake must be reviewed as one correction request.
+- This avoids approval-order mistakes.
 
 ## Held and Rejected
 
@@ -355,9 +413,9 @@ If Edit
 - Full patient list permission redesign
 - Full implementation phase map (see `docs/RECEPTION_DESK_PHASES.md`)
 
-## Current Open Questions
+## Remaining Open Questions
 
 - Exact final approval screen content
 - Exact warning thresholds for weak vs strong patient matches
-- Exact routing UI for choosing existing treatment vs new treatment at approval time
+- Exact routing UI when manager chooses between new treatment, existing treatment payment, or same-record correction
 - Whether receptionist should see live match suggestions before saving, or only passive warnings

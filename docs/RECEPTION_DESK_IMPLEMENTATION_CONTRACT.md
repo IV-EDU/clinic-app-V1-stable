@@ -37,6 +37,8 @@ The first release must allow:
 - manager queue review
 - manager draft editing
 - hold / reject handling
+- existing payment correction drafts
+- existing treatment correction drafts
 
 The first release must not allow:
 
@@ -45,6 +47,8 @@ The first release must not allow:
 - merge workflow
 - duplicate cleanup workflow
 - receptionist use of live `Add Treatment` / `Add Payment` actions
+- reception delete drafts
+- split delete/add correction chains
 
 ## Frozen Entry Points
 
@@ -128,6 +132,7 @@ Permission intent:
 
 The pending entry backbone must store at least:
 
+- `draft_type`
 - `source`
 - `status`
 - `visit_date`
@@ -135,6 +140,7 @@ The pending entry backbone must store at least:
 - `submitted_by_user_id`
 - `locked_patient_id` nullable
 - `locked_treatment_id` nullable
+- `locked_payment_id` nullable
 - `page_number` nullable
 - `patient_name`
 - `phone` nullable
@@ -152,13 +158,12 @@ The pending entry backbone must store at least:
 - `last_action`
 - `return_reason` nullable (optional)
 - `hold_reason` nullable (optional)
-- `locked_by_user_id` nullable (manager lock for review)
-- `locked_at` nullable
-- `recalled_at` nullable
 - `patient_intent` (e.g., `new_patient` vs `unknown/existing`)
 - `reviewed_by_user_id` nullable
 - `reviewed_at` nullable
 - `rejection_reason` nullable
+- `target_payment_id` nullable
+- `target_treatment_id` nullable
 
 Important rules:
 
@@ -166,6 +171,8 @@ Important rules:
 - `remaining_amount` is not receptionist input
 - if `total_amount` is blank, `remaining_amount` stays unknown
 - `patient_name` is required only when patient is not locked by source context
+- `locked_*` fields describe context the draft started from
+- `target_*` fields describe the live record the manager approves against
 
 ## Frozen Validation Rules
 
@@ -184,6 +191,42 @@ Soft warnings:
 - multiple patient matches
 - total missing
 - remaining unknown
+
+## Frozen Correction Boundaries
+
+V1 supports same-record corrections.
+
+Same-record means the correction stays on the same live payment or treatment.
+
+- `edit_payment` updates only the same live payment
+- `edit_treatment` updates only the same live treatment
+- no reassignment between patient/treatment chains in V1
+- before-vs-after comparison is mandatory for correction review
+
+Allowed `edit_payment` fields:
+
+- amount
+- date
+- method
+- doctor
+- note
+
+Allowed `edit_treatment` fields:
+
+- treatment text
+- doctor
+- note
+- total
+- discount
+- visit type
+- treatment date
+
+Not allowed through correction drafts:
+
+- delete/add replacement chains
+- moving a payment to another treatment
+- moving a payment to another patient
+- moving a treatment to another patient
 
 ## Frozen Review Rules
 
@@ -210,13 +253,11 @@ Manager action rules:
 - `Reject` requires a reason
 - `Approve` remains separate from edit
 
-### Recall-to-edit model (Option B, locked)
+## Frozen Review-Open Behavior
 
-- Managers may lock an item for review (`locked_by_user_id`, `locked_at`).
-- Receptionists may **Recall** any time before approval:
-  - Recall clears the manager lock.
-  - Recall makes the item editable by reception again.
-  - If the item was held, recall clears the held state and the item becomes `edited`.
+- Opening a draft does not lock it.
+- No auto-lock timeout is needed in V1.
+- Pending state remains unchanged until hold/return/reject/approve/edit happens.
 
 ## Frozen First-Release UI Boundaries
 
@@ -254,13 +295,20 @@ Out of the first implementation cycle:
 - treatment label standardization
 - automatic approval
 - background posting without final manager confirmation
+- reception delete drafts
+- split delete/add correction chains
 
-Deferred in the first implementation slice:
-- correction requests that edit existing live payments/treatments (do inserts first; add edits later after stability)
+## Frozen Deletion Policy
+
+- Reception delete drafts are out of V1.
+- True deletions remain manager-only outside the workflow in V1.
+- treatment deletion with attached child payments is out of scope
 
 Safety rule (when approval posting is enabled later):
 - Approval must show an explicit final confirmation before writing live data.
 - When attaching a payment to a treatment, recompute and persist the parent treatment `remaining_cents` correctly (do not leave stale remaining values).
+- Approval must be blocked if a treatment correction would create invalid money state.
+- The system must not silently force `remaining_cents` to zero to hide the issue.
 
 ## Safe Build Sequence
 

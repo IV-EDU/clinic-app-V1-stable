@@ -22,6 +22,10 @@ This file explains how to build the Reception Desk system safely, in phases, wit
 - Keep daily review separate from duplicate cleanup and merge work.
 - Use permissions, not role names.
 - Keep receptionist draft actions separate from manager live actions.
+- History is simple workflow history, not full audit.
+- V1 supports same-record corrections.
+- Reception delete drafts are out of V1.
+- No split delete/add correction chains in V1.
 
 ## Phase 0: Discovery and Freeze
 
@@ -67,15 +71,21 @@ Create the safe staging layer for pending receptionist entries.
 - status storage
 - entry source storage
 - review metadata storage
+- draft type storage
+- existing payment correction context
+- existing treatment correction context
+- workflow event history for the History tab
 - permission definitions for the new workflow
 
 ### Pending Entry Data
 
 At minimum, store:
 
+- draft type: `new_visit_only`, `new_treatment`, `new_payment`, `edit_payment`, `edit_treatment`
 - source: `reception_desk`, `patient_file`, `treatment_card`
 - locked patient id optional
 - locked treatment id optional
+- locked payment id optional
 - visit date
 - submitted timestamp
 - page number
@@ -92,6 +102,7 @@ At minimum, store:
 - status
 - reviewer info
 - review timestamps
+- history/event trail
 
 ### Likely Files
 
@@ -162,6 +173,8 @@ Allow receptionists to create pending entries only.
   - Payment
   - Notes
 - soft warnings
+- same-record correction submissions
+- no delete submissions
 - no live posting
 
 ### Entry Modes
@@ -231,7 +244,10 @@ Allow managers to review pending entries without touching live data yet.
 - no live posting yet in this phase
 - stored statuses remain frozen (do not add `returned` as a stored status)
   - “Returned / Needs changes” is a derived UI label (e.g., `last_action=returned` + optional `return_reason`)
-- Option B safety: managers may lock items for review; receptionist edits require **Recall** (recall clears the lock)
+- before-vs-after comparison cards are required for corrections
+- opening a draft does not lock it
+- no delete approval path in V1
+- Same-record means the correction stays on the same live payment or treatment.
 - alternate patient suggestions should be inline, not new-tab first
 - source context matters:
   - treatment card strongest
@@ -257,17 +273,26 @@ Allow manager approval to create/update live records safely.
 ### Approval Outcomes
 
 - Record visit only
-- Attach payment to existing treatment
 - Create new treatment
+- Add new payment to existing treatment
+- Edit existing payment
+- Edit existing treatment
 
 ### Safety Rules
 
 - no auto-posting from system suggestion
-- existing treatment totals must not be silently overwritten
 - manager final confirmation required before live posting
 - hold/reject/edit must not affect live data
 - on posting (especially attaching payment), recompute and persist parent treatment `remaining_cents` correctly
-- V1 recommendation: start with insert-only posting (create new treatment / attach payment); defer “edit existing payment/treatment” corrections until after stability
+- Invalid money math blocks approval.
+
+### Explicit V1 Exclusions
+
+- delete payment
+- delete treatment
+- delete/add replacement chain
+- move payment across treatment chains
+- move treatment across patients
 
 ### Likely Files
 
@@ -354,8 +379,14 @@ Reduce data damage and confirm safe behavior before rollout.
 - hold/reject do not change live data
 - approve to existing treatment
 - approve to new treatment
+- existing payment correction approval
+- existing treatment correction approval
+- invalid money math blocks approval
+- delete draft path is unavailable to reception
+- split delete/add correction chains cannot be created
 - ambiguous patient does not auto-route
 - permission separation of receptionist vs manager controls
+- new patient file is created only on manager approval
 
 ### Risk
 

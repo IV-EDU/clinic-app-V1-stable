@@ -99,6 +99,9 @@ Reception does daily entry work as drafts; manager/admin reviews; the system pos
   - True deletions stay manager-only outside the reception workflow for now.
   - No split delete/add correction chains in V1.
 - **Posting safety:** approval always requires an explicit final confirmation; when attaching payment, recompute and persist parent `remaining_cents`.
+- **Reception pre-save matching:** reception sees passive warnings only; live candidate choice stays manager-side.
+- **Match thresholds are now frozen:** strong matches may be preselected, weak matches require explicit manager choice, and conflicting identity signals block approval.
+- **Approval routing is now frozen:** `new_payment` attaches to an existing treatment only and must not silently become `new_treatment`.
 
 ### Real integration anchors
 
@@ -110,3 +113,8 @@ Reception does daily entry work as drafts; manager/admin reviews; the system pos
 - `docs/RECEPTION_DESK_SPEC.md`
 - `docs/RECEPTION_DESK_IMPLEMENTATION_CONTRACT.md`
 - `docs/RECEPTION_DESK_PHASES.md`
+
+### Build readiness note
+
+- Reception planning is now treated as ready for Phase 1 backend work.
+- Do not reopen match/routing behavior casually during implementation; treat it as a deliberate product decision if changed.

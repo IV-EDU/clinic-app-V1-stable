@@ -370,6 +370,71 @@ This decision should be visible at approval time.
   - receptionist values become the draft basis
   - manager approval is still required before posting live
 
+## Final Decision Freeze For V1
+
+### 1. What reception sees before save
+
+- Reception sees passive warnings only.
+- Reception does not choose from live patient candidates before saving.
+- Manager review remains the place where live matching and final routing are resolved.
+
+### 2. Weak vs strong patient matches
+
+Strong match:
+
+- locked patient context with no conflict
+- one unique exact page-number match
+- one unique exact normalized phone match plus non-conflicting patient name
+- two non-conflicting identifiers that point to the same patient
+
+Weak match:
+
+- name-only similarity
+- partial phone match
+- conflicting identifiers
+- multiple plausible candidates
+
+Rules:
+
+- strong match may be preselected for the manager
+- weak match requires explicit manager patient choice
+- conflicting identity signals block approval until resolved
+
+### 3. Manager routing at approval time
+
+The manager must see a visible approval route, but the route set stays small:
+
+- `new_visit_only` -> record visit only
+- `new_treatment` -> create new treatment for the chosen or locked patient
+- `new_payment` -> attach payment to an existing treatment only
+- `edit_patient` -> edit the same patient only
+- `edit_payment` -> edit the same payment only
+- `edit_treatment` -> edit the same treatment only
+
+Safety rules:
+
+- `new_payment` must not silently become `new_treatment`
+- if no valid target treatment exists, payment approval is blocked
+- if source is `treatment_card`, the locked treatment is the default target
+- if source is `patient_file` or `reception_desk`, manager must choose the target treatment before approving `new_payment`
+
+### 4. Final approval screen content
+
+The final approval screen is a confirmation screen, not a second edit form.
+
+It should show:
+
+- draft type and entry source
+- receptionist name and submitted time
+- chosen patient
+- chosen treatment or payment when relevant
+- before-vs-after comparison for correction drafts
+- money summary: total, discount, paid today, remaining after approval
+- warnings and how the manager resolved them
+- one explicit final approve-and-post action
+
+If values are wrong, the manager should use `Edit` first, not change values inside the final confirmation step.
+
 ## Deletion Policy For V1
 
 - Reception cannot submit delete drafts in V1.
@@ -441,9 +506,7 @@ If Edit
 - Full patient list permission redesign
 - Full implementation phase map (see `docs/RECEPTION_DESK_PHASES.md`)
 
-## Remaining Open Questions
+## Result
 
-- Exact final approval screen content
-- Exact warning thresholds for weak vs strong patient matches
-- Exact routing UI when manager chooses between new treatment, existing treatment payment, or same-record correction
-- Whether receptionist should see live match suggestions before saving, or only passive warnings
+The V1 receptionist workflow is now treated as build-ready for Phase 1 backend work.
+Any later changes to matching, approval routing, or receptionist pre-save behavior should be handled as explicit V2 decisions, not silent drift during implementation.

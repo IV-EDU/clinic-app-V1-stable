@@ -267,6 +267,79 @@ Manager action rules:
 - `Reject` requires a reason
 - `Approve` remains separate from edit
 
+## Frozen Match And Approval Decisions
+
+### Reception save behavior
+
+- Reception sees passive warnings only before save.
+- Reception does not get an interactive live-patient chooser in V1.
+- Candidate review and final routing stay manager-side.
+
+### Match strength rules
+
+Treat these as implementation rules, not vague guidance.
+
+Strong match:
+
+- locked patient context from `patient_file` or `treatment_card` with no conflict
+- one unique exact page-number match
+- one unique exact normalized phone match plus non-conflicting patient name
+- two non-conflicting identifiers that point to the same patient
+
+Weak match:
+
+- name-only similarity
+- partial phone match
+- one exact phone or page-number match that still conflicts with another entered identifier
+- multiple plausible patients
+
+Conflict:
+
+- locked source patient conflicts with entered identity
+- phone and page number point to different patients
+- chosen treatment belongs to a different patient than the chosen patient
+
+Approval rules from match strength:
+
+- strong match may be preselected for manager review, but never auto-approved
+- weak match requires explicit manager patient choice before approval
+- conflict blocks approval until the manager resolves the target patient/treatment
+
+### Final approval screen
+
+The final approval screen is a confirmation screen, not a second edit form.
+
+It must show:
+
+- draft type and entry source
+- receptionist name and submitted time
+- selected target patient
+- selected target treatment or payment when applicable
+- before-vs-after comparison for all correction drafts
+- money summary: total, discount, paid today, derived remaining, and any invalid math warning
+- warning chips and whether each warning was resolved by manager choice
+- one explicit final action button for live posting
+
+The final approval screen must not allow free editing of draft fields. If values are wrong, manager uses `Edit` first, then comes back to approve.
+
+### Routing rules at approval time
+
+Route choice must stay small and deterministic:
+
+- `edit_patient` -> update the same live patient only
+- `edit_payment` -> update the same live payment only
+- `edit_treatment` -> update the same live treatment only
+- `new_visit_only` -> add a visit-only entry to the chosen/locked patient only
+- `new_treatment` -> create a new treatment on the chosen/locked patient; if `paid_today` exists, create the initial attached payment in the same approval flow
+- `new_payment` -> attach to an existing treatment only
+
+Additional payment-routing safety:
+
+- if source is `treatment_card`, approval targets the locked treatment only unless manager explicitly changes it during review
+- if source is `patient_file` or `reception_desk`, manager must choose the target treatment before approving a `new_payment`
+- a `new_payment` draft must not silently become a `new_treatment` at approval time
+- if no valid target treatment exists, payment approval is blocked and manager must `Edit`, `Hold`, or `Reject`
+
 ## Frozen Review-Open Behavior
 
 - Opening a draft does not lock it.
@@ -353,3 +426,6 @@ Phase 1 can begin only if all of these remain accepted:
 - the first-release permission set is locked
 - the first-release exclusions are locked
 - live posting remains deferred until after queue review is working
+- match-strength rules are locked
+- final approval screen rules are locked
+- routing rules for `new_payment` vs `new_treatment` vs corrections are locked

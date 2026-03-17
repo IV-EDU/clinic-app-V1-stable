@@ -108,6 +108,7 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 | V1 supports same-record patient corrections | Let reception draft patient-file fixes without live editing | 2026-03-11 |
 | V1 excludes reception delete drafts | Prevent high-risk delete approvals in the first rollout | 2026-03-11 |
 | No split delete/add correction chains in V1 | One mistake must be reviewed as one correction request | 2026-03-11 |
+| Reception V1 matching and approval rules are frozen | Make Phase 1 implementation safe and stop workflow drift during build | 2026-03-17 |
 
 ---
 
@@ -245,6 +246,19 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - Current preferred receptionist modal file is now V2: `https://www.figma.com/design/9Dh1wj2NQ2mXMgi9DPqpBo`
 - The polished V2 modal keeps the same treatment/payment coverage, waiting/returned behavior, and locked-context references as V1.
 - The local source of truth remains `.tmp/receptionist_modal_figma.html`.
+
+### Session: Reception decision freeze
+**Date:** 2026-03-17
+**What was done:**
+- Closed the last open Reception V1 planning gaps in the spec/contract instead of starting code with fuzzy rules.
+- Locked passive-warning-only receptionist save behavior, explicit match-strength rules, deterministic approval routing, and a confirmation-only final approval screen.
+- Updated the fast handoff doc so future agents treat Reception as Phase 1 backend-ready rather than re-planning it again.
+
+**Key decisions:**
+- Reception does not choose live patient matches before save in V1; managers resolve live candidates during review.
+- Weak matches require explicit manager choice; conflicting identity signals block approval.
+- `new_payment` stays payment-only and must not silently become `new_treatment` at approval time.
+- Final approval is a confirmation step, not a second edit form.
 
 ### Session: [Brief Title]
 **Date:** YYYY-MM-DD

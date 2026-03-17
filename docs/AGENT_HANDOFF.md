@@ -114,7 +114,12 @@ Reception does daily entry work as drafts; manager/admin reviews; the system pos
 - `docs/RECEPTION_DESK_IMPLEMENTATION_CONTRACT.md`
 - `docs/RECEPTION_DESK_PHASES.md`
 
-### Build readiness note
+### Current implementation note
 
-- Reception planning is now treated as ready for Phase 1 backend work.
-- Do not reopen match/routing behavior casually during implementation; treat it as a deliberate product decision if changed.
+- Reception Phase 1 is partially live now:
+  - Desk page exists
+  - Manager queue exists
+  - Hold / Return / Reject review actions exist
+  - Narrow approval exists for Desk-origin `new_treatment` drafts only
+- Approval currently creates a new live patient + treatment row only.
+- Do not casually widen approval to corrections, payment-only drafts, or duplicate-resolution flows without updating the Reception planning docs first.

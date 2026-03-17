@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from clinic_app.services.doctor_colors import ANY_DOCTOR_ID, get_active_doctor_options
 from clinic_app.services.i18n import T
 from clinic_app.services.reception_entries import (
+    approve_new_treatment_entry,
     create_entry,
     get_entry,
     hold_entry,
@@ -46,6 +47,10 @@ def _has_manager_visibility() -> bool:
 
 def _can_review() -> bool:
     return _has_manager_visibility()
+
+
+def _can_approve() -> bool:
+    return current_user.is_authenticated and current_user.has_permission("reception_entries:approve")
 
 
 def _doctor_options() -> list[dict[str, str]]:
@@ -204,9 +209,10 @@ def _detail_context(
         "entry": entry,
         "entry_events": events,
         "can_review_reception": _can_review(),
+        "can_approve_reception": _can_approve(),
         "can_create_reception": _can_create(),
         "action_errors": action_errors or [],
-        "action_form": action_form or {"hold_note": "", "return_reason": "", "reject_reason": ""},
+        "action_form": action_form or {"hold_note": "", "return_reason": "", "reject_reason": "", "confirm_approve": ""},
     }
 
 
@@ -361,4 +367,32 @@ def reject_reception_entry(entry_id: str):
         )
     reject_entry(entry_id, actor_user_id=current_user.id, reason=reason)
     flash(T("reception_draft_rejected"), "ok")
+    return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id))
+
+
+@bp.route("/reception/entries/<entry_id>/approve", methods=["POST"])
+@login_required
+def approve_reception_entry(entry_id: str):
+    if not _can_approve():
+        abort(403)
+    entry = _find_entry_or_404(entry_id)
+    confirm_approve = (request.form.get("confirm_approve") or "").strip().lower()
+    if confirm_approve not in {"1", "true", "yes", "on"}:
+        return _render_detail(
+            entry,
+            action_errors=[T("reception_approve_confirmation_required")],
+            action_form={"hold_note": "", "return_reason": "", "reject_reason": "", "confirm_approve": ""},
+            status_code=400,
+        )
+    try:
+        approve_new_treatment_entry(entry_id, actor_user_id=current_user.id)
+    except ValueError as exc:
+        refreshed_entry = _find_entry_or_404(entry_id)
+        return _render_detail(
+            refreshed_entry,
+            action_errors=[str(exc)],
+            action_form={"hold_note": "", "return_reason": "", "reject_reason": "", "confirm_approve": "1"},
+            status_code=400,
+        )
+    flash(T("reception_draft_approved"), "ok")
     return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id))

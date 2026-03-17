@@ -12,12 +12,12 @@
 **Branch:** `main`
 **Data:** Production use (do not break).
 **Login:** `admin` / `admin` (NEVER change this)
-**Tests:** Last known Reception/RBAC regression subset: 36 passing (verified March 17, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
+**Tests:** Last known Reception/RBAC regression subset: 40 passing (verified March 17, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
 
 ### Fast ramp (don’t re-discover the repo)
 
 - Read `docs/AGENT_HANDOFF.md` for the app map + the locked Reception Desk decisions.
-- Reception now has a live Desk page, manager queue, draft detail page, and hold/return/reject actions, but still no approval posting into live records.
+- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, and a narrow approval path for Desk-origin `new_treatment` drafts.
 - Older historical session notes were archived into `MEMORY_ARCHIVE.md`.
 
 ---
@@ -309,3 +309,15 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - Manager review in this slice remains fully draft-only; approval posting is still deferred.
 - Review-only users now land on the manager queue by default instead of a placeholder page.
 - Returned drafts come back to the receptionist desk as `status='edited'` with `last_action='returned'` and visible manager reason.
+
+### Session: Reception first approval posting slice
+**Date:** 2026-03-17
+**What was done:**
+- Added the first live posting path for Reception approvals: Desk-origin `new_treatment` drafts can now create a new patient file and one live treatment row from the manager detail page.
+- Added final-confirmation approval UI, stored created live target IDs back onto the draft, and recorded an `approved` workflow event.
+- Added tests covering approve permission, confirmation requirement, successful patient+treatment posting, and blocked approval when total amount is missing.
+
+**Key decisions:**
+- Approval is still intentionally narrow: only Desk-origin `new_treatment` drafts are supported.
+- This slice creates a new patient and treatment only; it does not resolve duplicates or attach to existing live patients yet.
+- Payment-only drafts, correction drafts, and manager-side duplicate resolution remain deferred.

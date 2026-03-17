@@ -29,6 +29,9 @@
 .reception-action-form{display:grid;gap:12px}
 .reception-action-form textarea{min-height:96px}
 .reception-action-form .btn{width:100%}
+.reception-checkline{display:flex;align-items:flex-start;gap:10px}
+.reception-live-links{display:grid;gap:10px}
+.reception-link-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:10px;border:1px solid var(--ring, rgba(148,163,184,.35));background:transparent;color:var(--text-primary, inherit);text-decoration:none;font-weight:600;width:max-content}
 @media (max-width: 980px){
   .reception-detail-grid{grid-template-columns:1fr}
 }
@@ -103,6 +106,12 @@
           </ul>
         </div>
         {% endif %}
+        {% if entry.target_patient_id %}
+        <div class="reception-live-links reception-spaced">
+          <strong>{{ t('reception_live_record_title') }}</strong>
+          <a class="reception-link-btn" href="{{ url_for('patients.patient_detail', pid=entry.target_patient_id) }}">{{ t('reception_open_live_patient') }}</a>
+        </div>
+        {% endif %}
       </article>
 
       <article class="card reception-detail-card">
@@ -142,6 +151,17 @@
       {% endif %}
 
       <div class="reception-detail-stack">
+        {% if can_approve_reception and entry.status != 'approved' and entry.status != 'rejected' %}
+        <form class="reception-action-form" method="post" action="{{ url_for('reception.approve_reception_entry', entry_id=entry.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="reception-checkline" for="confirm_approve">
+            <input id="confirm_approve" type="checkbox" name="confirm_approve" value="1" {{ 'checked' if action_form.confirm_approve else '' }}>
+            <span>{{ t('reception_approve_confirmation_label') }}</span>
+          </label>
+          <button class="btn success" type="submit">{{ t('reception_action_approve') }}</button>
+        </form>
+        {% endif %}
+
         <form class="reception-action-form" method="post" action="{{ url_for('reception.hold_reception_entry', entry_id=entry.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <label class="form-label" for="hold_note">{{ t('reception_hold_note') }}</label>

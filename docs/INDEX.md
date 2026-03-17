@@ -293,6 +293,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - `/reception` → `reception.index`
   - `/reception/entries` → `reception.create_reception_entry`
   - `/reception/entries/<entry_id>` → `reception.reception_entry_detail`
+  - `/reception/entries/<entry_id>/approve` → `reception.approve_reception_entry`
   - `/reception/entries/<entry_id>/hold` → `reception.hold_reception_entry`
   - `/reception/entries/<entry_id>/return` → `reception.return_reception_entry`
   - `/reception/entries/<entry_id>/reject` → `reception.reject_reception_entry`

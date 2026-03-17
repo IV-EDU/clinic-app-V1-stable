@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
+from clinic_app.services.audit import write_event
 from clinic_app.services.database import db as raw_db
+from clinic_app.services.patients import migrate_patients_drop_unique_short_id, next_short_id
 from clinic_app.services.payments import cents_guard, parse_money_to_cents
 
 
@@ -88,6 +90,30 @@ def _fetch_entry(conn, entry_id: str):
         "SELECT * FROM reception_entries WHERE id=?",
         (entry_id,),
     ).fetchone()
+
+
+def _table_exists(conn, table_name: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+        (table_name,),
+    ).fetchone()
+    return row is not None
+
+
+def _column_exists(conn, table_name: str, column_name: str) -> bool:
+    rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return any(str(row["name"] or "") == column_name for row in rows)
+
+
+def _normalize_phone_digits(value: str | None) -> str:
+    return "".join(ch for ch in str(value or "") if ch.isdigit())
+
+
+def _visit_type_flags(raw_value: str | None) -> tuple[int, int]:
+    value = (raw_value or "none").strip().lower()
+    if value not in {"none", "exam", "followup"}:
+        value = "none"
+    return (1 if value == "exam" else 0, 1 if value == "followup" else 0)
 
 
 def _insert_event(
@@ -475,6 +501,200 @@ def reject_entry(entry_id: str, *, actor_user_id: str, reason: str) -> dict[str,
         conn.commit()
     finally:
         conn.close()
+    return get_entry(entry_id)
+
+
+def _create_live_patient_from_entry(conn, entry: dict[str, Any]) -> str:
+    patient_id = str(uuid4())
+    short_id = next_short_id(conn)
+    patient_name = _text(entry.get("patient_name"))
+    phone = _nullable_text(entry.get("phone"))
+    note_parts: list[str] = []
+    payload = entry.get("payload_json") or {}
+    if isinstance(payload, dict):
+        note_text = _nullable_text(payload.get("note"))
+        if note_text:
+            note_parts.append(note_text)
+    notes = "\n".join(part for part in note_parts if part) or None
+    primary_page = _nullable_text(entry.get("page_number"))
+
+    if _column_exists(conn, "patients", "primary_page_number"):
+        conn.execute(
+            """
+            INSERT INTO patients(id, short_id, full_name, phone, notes, primary_page_number)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (patient_id, short_id, patient_name, phone, notes, primary_page),
+        )
+    else:
+        conn.execute(
+            """
+            INSERT INTO patients(id, short_id, full_name, phone, notes)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (patient_id, short_id, patient_name, phone, notes),
+        )
+
+    if phone and _table_exists(conn, "patient_phones"):
+        conn.execute(
+            """
+            INSERT INTO patient_phones(id, patient_id, phone, phone_normalized, label, is_primary)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(uuid4()),
+                patient_id,
+                phone,
+                _normalize_phone_digits(phone),
+                None,
+                1,
+            ),
+        )
+
+    if primary_page and _table_exists(conn, "patient_pages"):
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO patient_pages(id, patient_id, page_number, notebook_name)
+            VALUES (?, ?, ?, ?)
+            """,
+            (str(uuid4()), patient_id, primary_page, None),
+        )
+
+    return patient_id
+
+
+def _create_live_treatment_from_entry(conn, entry: dict[str, Any], *, patient_id: str) -> str:
+    treatment_id = str(uuid4())
+    total_cents = entry.get("total_amount_cents")
+    if total_cents is None:
+        raise ValueError("Total amount is required before approval.")
+
+    discount_cents = int(entry.get("discount_amount_cents") or 0)
+    paid_today_cents = int(entry.get("paid_today_cents") or 0)
+    due_cents = max(int(total_cents) - discount_cents, 0)
+    if paid_today_cents > due_cents:
+        raise ValueError("Paid today cannot be greater than the amount due.")
+
+    exam_flag, followup_flag = _visit_type_flags(entry.get("visit_type"))
+    payload = entry.get("payload_json") or {}
+    notes = ""
+    if isinstance(payload, dict):
+        notes = _text(payload.get("note"))
+
+    conn.execute(
+        """
+        INSERT INTO payments(
+            id, patient_id, parent_payment_id, paid_at, amount_cents, method, note, treatment,
+            doctor_id, doctor_label,
+            remaining_cents, total_amount_cents, examination_flag, followup_flag, discount_cents
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            treatment_id,
+            patient_id,
+            None,
+            _text(entry.get("visit_date")) or datetime.now(timezone.utc).date().isoformat(),
+            paid_today_cents,
+            "cash",
+            notes,
+            _text(entry.get("treatment_text")),
+            _text(entry.get("doctor_id")),
+            _text(entry.get("doctor_label")),
+            max(due_cents - paid_today_cents, 0),
+            int(total_cents),
+            exam_flag,
+            followup_flag,
+            discount_cents,
+        ),
+    )
+    return treatment_id
+
+
+def approve_new_treatment_entry(entry_id: str, *, actor_user_id: str) -> dict[str, Any]:
+    now = _utc_now_iso()
+    conn = raw_db()
+    created_patient_id: str | None = None
+    created_treatment_id: str | None = None
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        entry = _require_active_entry(_fetch_entry(conn, entry_id), action="approve")
+
+        if entry.get("draft_type") != "new_treatment" or entry.get("source") != "reception_desk":
+            raise ValueError("Only desk-origin treatment drafts can be approved in this slice.")
+        if entry.get("locked_patient_id") or entry.get("locked_treatment_id") or entry.get("locked_payment_id"):
+            raise ValueError("Locked-context drafts are not supported by this approval step.")
+        if entry.get("target_patient_id") or entry.get("target_treatment_id") or entry.get("target_payment_id"):
+            raise ValueError("This draft already has live targets and cannot be approved again.")
+        if entry.get("patient_intent") not in {None, "", "unknown", "new_patient"}:
+            raise ValueError("Only new-patient desk drafts can be approved in this slice.")
+        if entry.get("status") not in {"new", "edited", "held"}:
+            raise ValueError("Only pending drafts can be approved.")
+
+        created_patient_id = _create_live_patient_from_entry(conn, entry)
+        created_treatment_id = _create_live_treatment_from_entry(conn, entry, patient_id=created_patient_id)
+
+        conn.execute(
+            """
+            UPDATE reception_entries
+            SET status=?,
+                reviewed_by_user_id=?,
+                updated_at=?,
+                reviewed_at=?,
+                last_action=?,
+                hold_reason=NULL,
+                return_reason=NULL,
+                rejection_reason=NULL,
+                target_patient_id=?,
+                target_treatment_id=?,
+                target_payment_id=?
+            WHERE id=?
+            """,
+            (
+                "approved",
+                actor_user_id,
+                now,
+                now,
+                "approved",
+                created_patient_id,
+                created_treatment_id,
+                created_treatment_id,
+                entry_id,
+            ),
+        )
+        _insert_event(
+            conn,
+            entry_id=entry_id,
+            action="approved",
+            actor_user_id=actor_user_id,
+            from_status=entry["status"],
+            to_status="approved",
+            note=None,
+            meta_json={
+                "target_patient_id": created_patient_id,
+                "target_treatment_id": created_treatment_id,
+            },
+            created_at=now,
+        )
+        conn.commit()
+        migrate_patients_drop_unique_short_id(conn)
+    finally:
+        conn.close()
+
+    if created_treatment_id and created_patient_id:
+        try:
+            write_event(
+                actor_user_id,
+                "payment_create",
+                entity="payment",
+                entity_id=created_treatment_id,
+                meta={
+                    "patient_id": created_patient_id,
+                    "source": "reception_approval",
+                    "reception_entry_id": entry_id,
+                },
+            )
+        except Exception:
+            pass
     return get_entry(entry_id)
 
 

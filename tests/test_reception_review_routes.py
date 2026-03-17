@@ -82,6 +82,22 @@ def _create_draft(*, patient_name: str, actor_user_id: str) -> dict:
     )
 
 
+def _count_patients() -> int:
+    conn = raw_db()
+    try:
+        return conn.execute("SELECT COUNT(*) AS c FROM patients").fetchone()["c"]
+    finally:
+        conn.close()
+
+
+def _count_payments() -> int:
+    conn = raw_db()
+    try:
+        return conn.execute("SELECT COUNT(*) AS c FROM payments").fetchone()["c"]
+    finally:
+        conn.close()
+
+
 def test_create_only_user_cannot_open_manager_queue(client):
     create_role_id = _create_role("Reception Desk Only", ["reception_entries:create"])
     _create_user("desk-only-user", "password123", [create_role_id])
@@ -234,3 +250,180 @@ def test_reject_requires_reason_and_valid_reject_closes_draft(client, admin_user
     assert updated["last_action"] == "rejected"
     assert updated["rejection_reason"] == "Duplicate request"
     assert list_entry_events(entry["id"])[0]["action"] == "rejected"
+
+
+def test_review_only_user_cannot_approve_draft(client, admin_user):
+    review_role_id = _create_role("Reception Review No Approve", ["reception_entries:review"])
+    _create_user("review-no-approve", "password123", [review_role_id])
+    _login(client, "review-no-approve", "password123")
+
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Approve Blocked",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "total_amount": "200",
+            "paid_today": "50",
+            "money_received_today": True,
+            "visit_date": "2026-03-17",
+            "treatment_text": "Filling",
+        },
+        actor_user_id="admin-test",
+    )
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 403
+
+
+def test_approve_requires_final_confirmation(client, admin_user):
+    approve_role_id = _create_role("Reception Approver", ["reception_entries:approve"])
+    _create_user("approver-user", "password123", [approve_role_id])
+    _login(client, "approver-user", "password123")
+
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Needs Confirm",
+            "phone": "01011111111",
+            "page_number": "55",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-17",
+            "treatment_text": "Cleaning",
+            "total_amount": "200",
+        },
+        actor_user_id="admin-test",
+    )
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    assert "Final approval confirmation is required." in resp.data.decode("utf-8")
+    unchanged = get_entry(entry["id"])
+    assert unchanged["status"] == "new"
+
+
+def test_approve_posts_new_patient_and_treatment(client, admin_user):
+    approve_role_id = _create_role("Reception Approver Full", ["reception_entries:approve"])
+    _create_user("approver-full", "password123", [approve_role_id])
+    _login(client, "approver-full", "password123")
+
+    before_patients = _count_patients()
+    before_payments = _count_payments()
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Approved Patient",
+            "phone": "01022222222",
+            "page_number": "88",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-17",
+            "visit_type": "exam",
+            "treatment_text": "Root Canal",
+            "total_amount": "300",
+            "discount_amount": "50",
+            "paid_today": "100",
+            "money_received_today": True,
+            "payload_json": {"note": "Approval note"},
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    assert _count_patients() == before_patients + 1
+    assert _count_payments() == before_payments + 1
+
+    approved = get_entry(entry["id"])
+    assert approved["status"] == "approved"
+    assert approved["last_action"] == "approved"
+    assert approved["target_patient_id"]
+    assert approved["target_treatment_id"]
+    assert approved["target_payment_id"] == approved["target_treatment_id"]
+    assert list_entry_events(entry["id"])[0]["action"] == "approved"
+
+    conn = raw_db()
+    try:
+        patient = conn.execute(
+            "SELECT full_name, phone, primary_page_number FROM patients WHERE id=?",
+            (approved["target_patient_id"],),
+        ).fetchone()
+        payment = conn.execute(
+            """
+            SELECT patient_id, treatment, amount_cents, total_amount_cents, discount_cents, remaining_cents, doctor_label
+            FROM payments WHERE id=?
+            """,
+            (approved["target_treatment_id"],),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert patient["full_name"] == "Approved Patient"
+    assert patient["phone"] == "01022222222"
+    assert patient["primary_page_number"] == "88"
+    assert payment["patient_id"] == approved["target_patient_id"]
+    assert payment["treatment"] == "Root Canal"
+    assert int(payment["amount_cents"] or 0) == 10000
+    assert int(payment["total_amount_cents"] or 0) == 30000
+    assert int(payment["discount_cents"] or 0) == 5000
+    assert int(payment["remaining_cents"] or 0) == 15000
+    assert payment["doctor_label"] == "Any Doctor"
+
+
+def test_approve_blocks_draft_without_total_amount(client, admin_user):
+    approve_role_id = _create_role("Reception Approver Missing Total", ["reception_entries:approve"])
+    _create_user("approver-no-total", "password123", [approve_role_id])
+    _login(client, "approver-no-total", "password123")
+
+    before_patients = _count_patients()
+    before_payments = _count_payments()
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "No Total Patient",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-17",
+            "treatment_text": "No Total Treatment",
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    assert "Total amount is required before approval." in resp.data.decode("utf-8")
+    assert _count_patients() == before_patients
+    assert _count_payments() == before_payments
+    unchanged = get_entry(entry["id"])
+    assert unchanged["status"] == "new"

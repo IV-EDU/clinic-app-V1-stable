@@ -1,0 +1,197 @@
+{% extends '_base.html' %}
+{% set use_sidebar = true %}
+
+{% block extra_css %}
+<style>
+.reception-page{display:grid;gap:20px}
+.reception-header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+.reception-title{margin:0;font-size:clamp(1.6rem,2vw,2.1rem)}
+.reception-subtitle{margin:6px 0 0;color:var(--muted, #6b7280)}
+.reception-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.reception-summary-card{padding:18px}
+.reception-summary-label{font-size:.92rem;color:var(--muted, #6b7280)}
+.reception-summary-value{margin-top:8px;font-size:1.8rem;font-weight:700}
+.reception-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:20px;align-items:start}
+.reception-card{padding:20px}
+.reception-card h2{margin:0 0 14px}
+.reception-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.reception-form-grid .full{grid-column:1 / -1}
+.reception-errors{margin:0 0 14px;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb, var(--danger, #b91c1c) 28%, transparent);background:color-mix(in srgb, var(--danger, #b91c1c) 8%, transparent);color:var(--danger, #b91c1c)}
+.reception-errors ul{margin:0;padding-inline-start:18px}
+.reception-checkbox{display:flex;align-items:center;gap:10px;min-height:42px;padding-top:30px}
+.reception-drafts{display:grid;gap:12px}
+.reception-draft-item{padding:14px;border:1px solid var(--ring, rgba(148,163,184,.35));border-radius:14px;background:var(--card, #fff)}
+.reception-draft-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.reception-draft-title{margin:0;font-weight:700}
+.reception-draft-meta{margin-top:4px;color:var(--muted, #6b7280);font-size:.92rem}
+.reception-chip{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:.8rem;font-weight:700;background:color-mix(in srgb, var(--accent-color, #b98939) 12%, transparent);color:var(--accent-color, #b98939)}
+.reception-chip.returned{background:color-mix(in srgb, var(--danger, #b91c1c) 12%, transparent);color:var(--danger, #b91c1c)}
+.reception-chip.rejected{background:color-mix(in srgb, var(--danger, #b91c1c) 12%, transparent);color:var(--danger, #b91c1c)}
+.reception-chip.approved{background:color-mix(in srgb, var(--success, #15803d) 12%, transparent);color:var(--success, #15803d)}
+.reception-chip.held{background:color-mix(in srgb, var(--warning, #b45309) 12%, transparent);color:var(--warning, #b45309)}
+.reception-note{margin-top:10px;color:var(--muted, #6b7280)}
+.reception-warning-list{margin:10px 0 0;padding-inline-start:18px;color:var(--warning, #b45309)}
+.reception-empty{margin:0;color:var(--muted, #6b7280)}
+.reception-manager-placeholder{border-style:dashed}
+@media (max-width: 980px){
+  .reception-grid{grid-template-columns:1fr}
+  .reception-form-grid{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reception-page">
+  <section class="reception-header">
+    <div>
+      <h1 class="reception-title">{{ t('reception_desk_title') }}</h1>
+      <p class="reception-subtitle">{{ t('reception_desk_subtitle') }}</p>
+    </div>
+  </section>
+
+  {% if can_create_reception %}
+  <section class="reception-summary">
+    <article class="card reception-summary-card">
+      <div class="reception-summary-label">{{ t('reception_open_drafts') }}</div>
+      <div class="reception-summary-value">{{ reception_summary.open_drafts }}</div>
+    </article>
+    <article class="card reception-summary-card">
+      <div class="reception-summary-label">{{ t('reception_returned_label') }}</div>
+      <div class="reception-summary-value">{{ reception_summary.returned }}</div>
+    </article>
+    <article class="card reception-summary-card">
+      <div class="reception-summary-label">{{ t('reception_waiting_review') }}</div>
+      <div class="reception-summary-value">{{ reception_summary.waiting_review }}</div>
+    </article>
+  </section>
+  {% endif %}
+
+  <section class="reception-grid">
+    {% if can_create_reception %}
+    <article class="card reception-card">
+      <h2>{{ t('reception_new_submission') }}</h2>
+      {% if reception_errors %}
+      <div class="reception-errors">
+        <ul>
+          {% for error in reception_errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      <form method="post" action="{{ url_for('reception.create_reception_entry') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="reception-form-grid">
+          <div>
+            <label class="form-label">{{ t('patient_name') }}</label>
+            <input class="form-control" type="text" name="patient_name" value="{{ reception_form.patient_name }}">
+          </div>
+          <div>
+            <label class="form-label">{{ t('phone') }}</label>
+            <input class="form-control" type="text" name="phone" value="{{ reception_form.phone }}">
+          </div>
+          <div>
+            <label class="form-label">{{ t('page_number') }}</label>
+            <input class="form-control" type="text" name="page_number" value="{{ reception_form.page_number }}">
+          </div>
+          <div>
+            <label class="form-label">{{ t('date') }}</label>
+            <input class="form-control" type="date" name="visit_date" value="{{ reception_form.visit_date }}">
+          </div>
+          <div>
+            <label class="form-label">{{ t('visit_type') }}</label>
+            <select class="form-control" name="visit_type">
+              <option value="exam" {{ 'selected' if reception_form.visit_type == 'exam' else '' }}>{{ t('vt_exam') }}</option>
+              <option value="followup" {{ 'selected' if reception_form.visit_type == 'followup' else '' }}>{{ t('vt_follow') }}</option>
+              <option value="none" {{ 'selected' if reception_form.visit_type == 'none' else '' }}>{{ t('vt_none') }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">{{ t('doctor') }}</label>
+            <select class="form-control" name="doctor_id">
+              {% for doctor in doctor_options %}
+              <option value="{{ doctor.doctor_id }}" {{ 'selected' if reception_form.doctor_id == doctor.doctor_id else '' }}>{{ doctor.doctor_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="full">
+            <label class="form-label">{{ t('treatment_name') }}</label>
+            <input class="form-control" type="text" name="treatment_text" value="{{ reception_form.treatment_text }}">
+          </div>
+          <div class="reception-checkbox">
+            <input id="money_received_today" type="checkbox" name="money_received_today" value="1" {{ 'checked' if reception_form.money_received_today else '' }}>
+            <label for="money_received_today">{{ t('reception_money_received_today') }}</label>
+          </div>
+          <div></div>
+          <div>
+            <label class="form-label">{{ t('amount') }}</label>
+            <input class="form-control" type="text" name="paid_today" value="{{ reception_form.paid_today }}">
+          </div>
+          <div>
+            <label class="form-label">{{ t('total_amount') }}</label>
+            <input class="form-control" type="text" name="total_amount" value="{{ reception_form.total_amount }}">
+          </div>
+          <div>
+            <label class="form-label">{{ t('discount') }}</label>
+            <input class="form-control" type="text" name="discount_amount" value="{{ reception_form.discount_amount }}">
+          </div>
+          <div class="full">
+            <label class="form-label">{{ t('notes') }}</label>
+            <textarea class="form-control" name="note" rows="3">{{ reception_form.note }}</textarea>
+          </div>
+          <div class="full">
+            <button class="btn primary" type="submit">{{ t('reception_submit_draft') }}</button>
+          </div>
+        </div>
+      </form>
+    </article>
+    {% endif %}
+
+    <div class="reception-drafts">
+      {% if can_create_reception %}
+      <article class="card reception-card">
+        <h2>{{ t('reception_my_recent_drafts') }}</h2>
+        {% if reception_entries %}
+        <div class="reception-drafts">
+          {% for entry in reception_entries %}
+          {% set chip_class = 'returned' if entry.last_action == 'returned' else ('approved' if entry.status == 'approved' else ('rejected' if entry.status == 'rejected' else ('held' if entry.status == 'held' else ''))) %}
+          <div class="reception-draft-item">
+            <div class="reception-draft-top">
+              <div>
+                <p class="reception-draft-title">{{ entry.patient_name or t('reception_unknown_patient') }}</p>
+                <div class="reception-draft-meta">
+                  {{ entry.treatment_text or t('reception_no_treatment_text') }}
+                  {% if entry.visit_date %} • {{ entry.visit_date }}{% endif %}
+                </div>
+              </div>
+              <span class="reception-chip {{ chip_class }}">{{ entry.status_label }}</span>
+            </div>
+            {% if entry.note %}
+            <div class="reception-note">{{ entry.note }}</div>
+            {% endif %}
+            {% if entry.warnings_json %}
+            <ul class="reception-warning-list">
+              {% for warning in entry.warnings_json %}
+              <li>{{ warning }}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="reception-empty">{{ t('reception_no_drafts_yet') }}</p>
+        {% endif %}
+      </article>
+      {% endif %}
+
+      {% if can_review_reception %}
+      <article class="card reception-card reception-manager-placeholder">
+        <h2>{{ t('reception_manager_placeholder_title') }}</h2>
+        <p class="reception-empty">{{ t('reception_manager_placeholder_body') }}</p>
+      </article>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

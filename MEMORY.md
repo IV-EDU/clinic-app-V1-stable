@@ -278,6 +278,24 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - Reception permissions are seeded at startup without touching custom roles or removing any existing permissions.
 - Matching logic is still deferred; current draft records store warnings/placeholders only.
 
+### Session: Reception Desk first surface
+**Date:** 2026-03-17
+**What was done:**
+- Added the first real Reception blueprint and `/reception` page using the sidebar shell and server-rendered form flow.
+- Added one working Desk submission path for `new_treatment` drafts from Reception Desk into `reception_entries`.
+- Added a personal recent-drafts list, receptionist summary counts, and a manager placeholder block for users with review/approve permissions.
+- Added route tests for access control, successful submit, invalid submit, and current-user draft visibility.
+
+**Current state:**
+- Receptionists can now create draft treatment entries from `/reception`.
+- There is still no manager queue, no patient-file launcher, and no live approval/posting.
+- Existing live patient/payment entry permissions remain unchanged on purpose.
+
+**Key decisions:**
+- The first user-facing slice supports Desk-origin `new_treatment` drafts only.
+- Draft notes are stored inside `payload_json` for now instead of a dedicated column.
+- Review-only users can access the page shell and see a placeholder, but not the create form.
+
 ### Session: [Brief Title]
 **Date:** YYYY-MM-DD
 **What was done:**

@@ -276,7 +276,25 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 ---
 
-## 11) Admin / Settings / Doctor Colors / Theme
+## 11) Reception
+
+- **Blueprint**
+  - `clinic_app/blueprints/reception/routes.py`
+
+- **Templates**
+  - Reception Desk: `templates/reception/index.html`
+
+- **Services**
+  - Reception permission/bootstrap: `clinic_app/services/reception_bootstrap.py`
+  - Reception draft storage/service: `clinic_app/services/reception_entries.py`
+
+- **Key routes**
+  - `/reception` → `reception.index`
+  - `/reception/entries` → `reception.create_reception_entry`
+
+---
+
+## 12) Admin / Settings / Doctor Colors / Theme
 
 - **Blueprint**
   - `clinic_app/blueprints/admin_settings.py`
@@ -299,7 +317,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 ---
 
-## 12) Shared Services (Misc)
+## 13) Shared Services (Misc)
 
 - **Database & migrations**
   - DB helper: `clinic_app/services/database.py`
@@ -326,7 +344,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 ---
 
-## 13) Tests & Dev Tools
+## 14) Tests & Dev Tools
 
 - **Test suite** (`tests/`)
   - Config: `tests/conftest.py`
@@ -356,7 +374,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 ---
 
-## 14) Data & Storage
+## 15) Data & Storage
 
 - **Active data root**
   - All runtime data (DB, backups, exports, images, receipts) lives under: `data/`
@@ -367,7 +385,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 ---
 
-## 15) Static Assets Detail
+## 16) Static Assets Detail
 
 - **JavaScript**
   - Modals & Toasts: `static/js/modal-system.js`, `static/js/toast.js`
@@ -386,7 +404,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 ---
 
-## 16) Root-Level Files & Scripts
+## 17) Root-Level Files & Scripts
 
 - **Entry / config**
   - App entry: `wsgi.py`
@@ -422,7 +440,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 ---
 
-## 17) When Updating This Index
+## 18) When Updating This Index
 
 - If you:
   - Add a new feature/page, or

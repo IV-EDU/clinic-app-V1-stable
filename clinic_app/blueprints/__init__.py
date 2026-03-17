@@ -12,6 +12,7 @@ def register_blueprints(app) -> None:
         "clinic_app.blueprints.images",
         "clinic_app.blueprints.patients.routes",
         "clinic_app.blueprints.payments.routes",
+        "clinic_app.blueprints.reception.routes",
         "clinic_app.blueprints.reports.routes",
     ]
 

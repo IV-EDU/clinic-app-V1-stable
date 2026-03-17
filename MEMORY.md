@@ -260,6 +260,24 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - `new_payment` stays payment-only and must not silently become `new_treatment` at approval time.
 - Final approval is a confirmation step, not a second edit form.
 
+### Session: Reception Phase 1A backend foundation
+**Date:** 2026-03-17
+**What was done:**
+- Added runtime bootstrap for `reception_entries` and `reception_entry_events` so Reception drafts/history are stored separately from live patient and payment data.
+- Added runtime Reception permission seeding for `reception_entries:create`, `reception_entries:review`, and `reception_entries:approve`, with default-role assignment for Admin, Manager, and Reception only.
+- Added `clinic_app/services/reception_entries.py` with payload validation, draft creation, draft fetch/list helpers, and submitted-event creation.
+- Added targeted tests covering bootstrap idempotence, role permission assignment, draft validation, draft storage, event creation, and JSON decoding.
+
+**Current state:**
+- Reception backend foundation exists, but there is still no `/reception` route or user-facing screen yet.
+- Current live patient/payment entry permissions were intentionally not changed in this slice.
+- Next implementation step should be the first minimal Reception Desk surface that calls the new draft service.
+
+**Key decisions:**
+- Reception draft storage uses new staging tables in the same SQLite DB, not live payment rows.
+- Reception permissions are seeded at startup without touching custom roles or removing any existing permissions.
+- Matching logic is still deferred; current draft records store warnings/placeholders only.
+
 ### Session: [Brief Title]
 **Date:** YYYY-MM-DD
 **What was done:**

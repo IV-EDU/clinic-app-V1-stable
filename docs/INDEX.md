@@ -305,6 +305,8 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - DB helper: `clinic_app/services/database.py`
   - Auto-migrate: `clinic_app/services/auto_migrate.py`
   - Migrations helpers: `clinic_app/services/migrations.py`
+  - Reception draft bootstrap: `clinic_app/services/reception_bootstrap.py`
+  - Reception draft storage/service: `clinic_app/services/reception_entries.py`
 
 - **Security & auth**
   - Security helpers: `clinic_app/services/security.py`

@@ -20,6 +20,7 @@ from .services.auto_migrate import auto_upgrade
 from .services.bootstrap import ensure_base_tables
 from .services.admin_guard import ensure_admin_exists
 from .services.data_fixes import backfill_missing_payment_doctors
+from .services.reception_bootstrap import ensure_reception_permissions
 from .cli import register_cli
 from .auth import login_manager
 
@@ -208,6 +209,7 @@ def create_app() -> Flask:
     register_blueprints(app)
     auto_upgrade(app)
     ensure_base_tables(Path(app.config["PALMER_PLUS_DB"]))
+    ensure_reception_permissions()
     # Fill missing doctor_id on older clinic databases (safe default: Any Doctor).
     try:
         backfill_missing_payment_doctors(str(app.config["PALMER_PLUS_DB"]))

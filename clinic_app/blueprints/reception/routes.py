@@ -14,6 +14,7 @@ from clinic_app.services.reception_entries import (
     list_entry_events,
     list_queue_entries,
     reject_entry,
+    resubmit_returned_entry,
     return_entry,
     validate_entry_payload,
 )
@@ -57,6 +58,17 @@ def _doctor_options() -> list[dict[str, str]]:
     return get_active_doctor_options(include_any=True)
 
 
+def _doctor_label_for(doctor_id: str) -> str:
+    return next(
+        (
+            doctor["doctor_label"]
+            for doctor in _doctor_options()
+            if doctor["doctor_id"] == doctor_id
+        ),
+        "",
+    )
+
+
 def _default_form_data() -> dict[str, str]:
     return {
         "patient_name": "",
@@ -71,6 +83,64 @@ def _default_form_data() -> dict[str, str]:
         "total_amount": "",
         "discount_amount": "",
         "note": "",
+    }
+
+
+def _entry_form_data(entry: dict | None = None) -> dict[str, str]:
+    if not entry:
+        return _default_form_data()
+    payload = entry.get("payload_json") or {}
+    note = payload.get("note") if isinstance(payload, dict) else ""
+    paid_today = ""
+    if entry.get("paid_today_cents") is not None:
+        paid_today = f"{(entry['paid_today_cents'] or 0) / 100:.2f}".rstrip("0").rstrip(".")
+    total_amount = ""
+    if entry.get("total_amount_cents") is not None:
+        total_amount = f"{(entry['total_amount_cents'] or 0) / 100:.2f}".rstrip("0").rstrip(".")
+    discount_amount = ""
+    if entry.get("discount_amount_cents") is not None:
+        discount_amount = f"{(entry['discount_amount_cents'] or 0) / 100:.2f}".rstrip("0").rstrip(".")
+    return {
+        "patient_name": entry.get("patient_name") or "",
+        "phone": entry.get("phone") or "",
+        "page_number": entry.get("page_number") or "",
+        "visit_date": entry.get("visit_date") or "",
+        "visit_type": entry.get("visit_type") or "exam",
+        "treatment_text": entry.get("treatment_text") or "",
+        "doctor_id": entry.get("doctor_id") or ANY_DOCTOR_ID,
+        "money_received_today": "1" if entry.get("money_received_today") else "",
+        "paid_today": paid_today,
+        "total_amount": total_amount,
+        "discount_amount": discount_amount,
+        "note": note or "",
+    }
+
+
+def _read_form_data() -> dict[str, str]:
+    return {
+        "patient_name": (request.form.get("patient_name") or "").strip(),
+        "phone": (request.form.get("phone") or "").strip(),
+        "page_number": (request.form.get("page_number") or "").strip(),
+        "visit_date": (request.form.get("visit_date") or "").strip(),
+        "visit_type": (request.form.get("visit_type") or "").strip(),
+        "treatment_text": (request.form.get("treatment_text") or "").strip(),
+        "doctor_id": (request.form.get("doctor_id") or "").strip(),
+        "money_received_today": (request.form.get("money_received_today") or "").strip(),
+        "paid_today": (request.form.get("paid_today") or "").strip(),
+        "total_amount": (request.form.get("total_amount") or "").strip(),
+        "discount_amount": (request.form.get("discount_amount") or "").strip(),
+        "note": (request.form.get("note") or "").strip(),
+    }
+
+
+def _entry_payload_from_form_data(form_data: dict[str, str]) -> dict:
+    return {
+        "draft_type": "new_treatment",
+        "source": "reception_desk",
+        "patient_intent": "unknown",
+        **form_data,
+        "doctor_label": _doctor_label_for(form_data["doctor_id"]),
+        "payload_json": {"note": form_data["note"]} if form_data["note"] else {},
     }
 
 
@@ -195,6 +265,17 @@ def _can_access_entry(entry: dict) -> bool:
     return _can_create() and entry.get("submitted_by_user_id") == current_user.id
 
 
+def _can_edit_returned_entry(entry: dict) -> bool:
+    return (
+        _can_create()
+        and entry.get("submitted_by_user_id") == current_user.id
+        and entry.get("draft_type") == "new_treatment"
+        and entry.get("source") == "reception_desk"
+        and entry.get("status") == "edited"
+        and entry.get("last_action") == "returned"
+    )
+
+
 def _detail_context(
     entry: dict,
     *,
@@ -216,6 +297,24 @@ def _detail_context(
     }
 
 
+def _edit_context(
+    entry: dict,
+    *,
+    form_data: dict[str, str] | None = None,
+    errors: list[str] | None = None,
+) -> dict:
+    if not _can_edit_returned_entry(entry):
+        abort(403)
+    return {
+        "show_back": False,
+        "entry": entry,
+        "doctor_options": _doctor_options(),
+        "reception_form": form_data or _entry_form_data(entry),
+        "reception_errors": errors or [],
+        "return_reason": entry.get("return_reason") or "",
+    }
+
+
 def _render_detail(
     entry: dict,
     *,
@@ -227,6 +326,22 @@ def _render_detail(
         render_page(
             "reception/detail.html",
             **_detail_context(entry, action_errors=action_errors, action_form=action_form),
+        ),
+        status_code,
+    )
+
+
+def _render_edit(
+    entry: dict,
+    *,
+    form_data: dict[str, str] | None = None,
+    errors: list[str] | None = None,
+    status_code: int = 200,
+):
+    return (
+        render_page(
+            "reception/edit.html",
+            **_edit_context(entry, form_data=form_data, errors=errors),
         ),
         status_code,
     )
@@ -261,35 +376,8 @@ def create_reception_entry():
     if not _can_create():
         abort(403)
 
-    form_data = {
-        "patient_name": (request.form.get("patient_name") or "").strip(),
-        "phone": (request.form.get("phone") or "").strip(),
-        "page_number": (request.form.get("page_number") or "").strip(),
-        "visit_date": (request.form.get("visit_date") or "").strip(),
-        "visit_type": (request.form.get("visit_type") or "").strip(),
-        "treatment_text": (request.form.get("treatment_text") or "").strip(),
-        "doctor_id": (request.form.get("doctor_id") or "").strip(),
-        "money_received_today": (request.form.get("money_received_today") or "").strip(),
-        "paid_today": (request.form.get("paid_today") or "").strip(),
-        "total_amount": (request.form.get("total_amount") or "").strip(),
-        "discount_amount": (request.form.get("discount_amount") or "").strip(),
-        "note": (request.form.get("note") or "").strip(),
-    }
-    payload = {
-        "draft_type": "new_treatment",
-        "source": "reception_desk",
-        "patient_intent": "unknown",
-        **form_data,
-        "doctor_label": next(
-            (
-                doctor["doctor_label"]
-                for doctor in _doctor_options()
-                if doctor["doctor_id"] == form_data["doctor_id"]
-            ),
-            "",
-        ),
-        "payload_json": {"note": form_data["note"]} if form_data["note"] else {},
-    }
+    form_data = _read_form_data()
+    payload = _entry_payload_from_form_data(form_data)
 
     errors, _warnings, _normalized = validate_entry_payload(payload)
     if not errors:
@@ -318,6 +406,38 @@ def reception_entry_detail(entry_id: str):
         "reception/detail.html",
         **_detail_context(entry),
     )
+
+
+@bp.route("/reception/entries/<entry_id>/edit", methods=["GET"])
+@login_required
+def edit_reception_entry(entry_id: str):
+    if not _can_create():
+        abort(403)
+    entry = _find_entry_or_404(entry_id)
+    return render_page(
+        "reception/edit.html",
+        **_edit_context(entry),
+    )
+
+
+@bp.route("/reception/entries/<entry_id>/edit", methods=["POST"])
+@login_required
+def submit_reception_entry_edit(entry_id: str):
+    if not _can_create():
+        abort(403)
+    entry = _find_entry_or_404(entry_id)
+    form_data = _read_form_data()
+    payload = _entry_payload_from_form_data(form_data)
+    errors, _warnings, _normalized = validate_entry_payload(payload)
+    if errors:
+        return _render_edit(entry, form_data=form_data, errors=errors, status_code=400)
+    try:
+        resubmit_returned_entry(entry_id, payload, actor_user_id=current_user.id)
+    except ValueError as exc:
+        refreshed_entry = _find_entry_or_404(entry_id)
+        return _render_edit(refreshed_entry, form_data=form_data, errors=[str(exc)], status_code=400)
+    flash(T("reception_draft_resubmitted"), "ok")
+    return redirect(url_for("reception.index", view="desk"))
 
 
 @bp.route("/reception/entries/<entry_id>/hold", methods=["POST"])

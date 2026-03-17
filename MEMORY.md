@@ -12,12 +12,12 @@
 **Branch:** `main`
 **Data:** Production use (do not break).
 **Login:** `admin` / `admin` (NEVER change this)
-**Tests:** Last known Reception/RBAC regression subset: 40 passing (verified March 17, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
+**Tests:** Last known Reception/RBAC regression subset: 49 passing (verified March 17, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
 
 ### Fast ramp (don’t re-discover the repo)
 
 - Read `docs/AGENT_HANDOFF.md` for the app map + the locked Reception Desk decisions.
-- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, and a narrow approval path for Desk-origin `new_treatment` drafts.
+- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, and a narrow approval path for Desk-origin `new_treatment` drafts.
 - Older historical session notes were archived into `MEMORY_ARCHIVE.md`.
 
 ---
@@ -321,3 +321,21 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - Approval is still intentionally narrow: only Desk-origin `new_treatment` drafts are supported.
 - This slice creates a new patient and treatment only; it does not resolve duplicates or attach to existing live patients yet.
 - Payment-only drafts, correction drafts, and manager-side duplicate resolution remain deferred.
+
+### Session: Reception returned draft edit/resubmit loop
+**Date:** 2026-03-17
+**What was done:**
+- Added receptionist-side edit/resubmit routes for returned Desk-origin `new_treatment` drafts only.
+- Extracted the shared Reception draft form into a partial and added a dedicated returned-draft edit page.
+- Added `resubmit_returned_entry(...)`, cleared active return state on successful resubmit, and changed desk/queue ordering to `updated_at DESC` so resubmitted drafts float to the top.
+- Added route/service coverage for returned-draft ownership, invalid resubmit attempts, sticky form re-rendering, and desk/queue ordering after resubmit.
+
+**Current state:**
+- Reception can now complete the daily loop: submit draft, manager returns, receptionist fixes it, and resubmits it to the manager queue.
+- Only returned Desk-origin `new_treatment` drafts are editable in this slice; held drafts remain manager-side and approval scope is unchanged.
+- Reception/RBAC regression subset now passes with 49 tests.
+
+**Key decisions:**
+- Only returned drafts are editable by reception; held drafts are not.
+- Returned reasons are cleared from active draft state after successful resubmit but remain in workflow history.
+- Queue and desk lists must prioritize `updated_at`, not original `submitted_at`.

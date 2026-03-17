@@ -24,6 +24,7 @@ It includes:
 ### Reception Workflow
 - The new Reception area lives at `/reception`.
 - Reception staff can submit treatment drafts there without touching the live patient file.
+- Returned Desk-origin treatment drafts can now be opened, edited, and resubmitted from the same Reception area.
 - Managers can now open the same area to review pending drafts and mark them as held, returned, rejected, or approved.
 - Current approval is intentionally narrow: it only posts Desk-origin `new_treatment` drafts into a new live patient file and treatment row.
 - Matching overrides, correction approvals, and payment-only approvals are still deferred to later Reception slices.

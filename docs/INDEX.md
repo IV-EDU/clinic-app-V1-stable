@@ -284,6 +284,8 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 - **Templates**
   - Reception Desk: `templates/reception/index.html`
   - Reception draft detail / manager review: `templates/reception/detail.html`
+  - Reception returned-draft edit page: `templates/reception/edit.html`
+  - Reception shared draft form partial: `templates/reception/_entry_form.html`
 
 - **Services**
   - Reception permission/bootstrap: `clinic_app/services/reception_bootstrap.py`
@@ -293,6 +295,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - `/reception` → `reception.index`
   - `/reception/entries` → `reception.create_reception_entry`
   - `/reception/entries/<entry_id>` → `reception.reception_entry_detail`
+  - `/reception/entries/<entry_id>/edit` → `reception.edit_reception_entry` / `reception.submit_reception_entry_edit`
   - `/reception/entries/<entry_id>/approve` → `reception.approve_reception_entry`
   - `/reception/entries/<entry_id>/hold` → `reception.hold_reception_entry`
   - `/reception/entries/<entry_id>/return` → `reception.return_reception_entry`

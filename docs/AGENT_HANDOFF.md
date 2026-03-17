@@ -120,6 +120,8 @@ Reception does daily entry work as drafts; manager/admin reviews; the system pos
   - Desk page exists
   - Manager queue exists
   - Hold / Return / Reject review actions exist
+  - Returned Desk-origin `new_treatment` drafts can be edited and resubmitted by the original receptionist
   - Narrow approval exists for Desk-origin `new_treatment` drafts only
 - Approval currently creates a new live patient + treatment row only.
+- Desk and queue ordering now uses `updated_at DESC` so resubmitted drafts return to the top.
 - Do not casually widen approval to corrections, payment-only drafts, or duplicate-resolution flows without updating the Reception planning docs first.

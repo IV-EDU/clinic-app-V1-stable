@@ -158,6 +158,19 @@ def _require_active_entry(row, *, action: str) -> dict[str, Any]:
     return entry
 
 
+def _require_returned_resubmittable_entry(row, *, actor_user_id: str) -> dict[str, Any]:
+    if row is None:
+        raise ValueError("Reception draft was not found.")
+    entry = _decode_row(row)
+    if entry.get("submitted_by_user_id") != actor_user_id:
+        raise ValueError("You can only edit your own returned drafts.")
+    if entry.get("draft_type") != "new_treatment" or entry.get("source") != "reception_desk":
+        raise ValueError("Only returned desk treatment drafts can be edited in this slice.")
+    if entry.get("status") != "edited" or entry.get("last_action") != "returned":
+        raise ValueError("Only returned drafts can be edited and resubmitted.")
+    return entry
+
+
 def validate_entry_payload(data: dict) -> tuple[list[str], list[str], dict[str, Any]]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -352,7 +365,7 @@ def list_entries(
             f"""
             SELECT * FROM reception_entries
             {where}
-            ORDER BY submitted_at DESC, updated_at DESC
+            ORDER BY updated_at DESC, submitted_at DESC
             LIMIT ?
             """,
             (*params, limit),
@@ -371,7 +384,7 @@ def list_queue_entries(*, limit: int = 50) -> list[dict[str, Any]]:
             f"""
             SELECT * FROM reception_entries
             WHERE status IN ({placeholders})
-            ORDER BY submitted_at DESC, updated_at DESC
+            ORDER BY updated_at DESC, submitted_at DESC
             LIMIT ?
             """,
             (*QUEUE_STATUSES, limit),
@@ -379,6 +392,112 @@ def list_queue_entries(*, limit: int = 50) -> list[dict[str, Any]]:
         return [_decode_row(row) for row in rows]
     finally:
         conn.close()
+
+
+def resubmit_returned_entry(entry_id: str, data: dict, *, actor_user_id: str) -> dict[str, Any]:
+    existing = get_entry(entry_id)
+    entry = _require_returned_resubmittable_entry(existing, actor_user_id=actor_user_id)
+
+    payload = {
+        "draft_type": entry["draft_type"],
+        "source": entry["source"],
+        "patient_intent": entry.get("patient_intent") or "unknown",
+        "locked_patient_id": entry.get("locked_patient_id"),
+        "locked_treatment_id": entry.get("locked_treatment_id"),
+        "locked_payment_id": entry.get("locked_payment_id"),
+        "target_patient_id": entry.get("target_patient_id"),
+        "target_treatment_id": entry.get("target_treatment_id"),
+        "target_payment_id": entry.get("target_payment_id"),
+        "match_summary_json": entry.get("match_summary_json") or {},
+        **data,
+    }
+    errors, warnings, normalized = validate_entry_payload(payload)
+    if errors:
+        raise ValueError("; ".join(errors))
+
+    now = _utc_now_iso()
+    conn = raw_db()
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.execute(
+            """
+            UPDATE reception_entries
+            SET patient_intent=?,
+                locked_patient_id=?,
+                locked_treatment_id=?,
+                locked_payment_id=?,
+                target_patient_id=?,
+                target_treatment_id=?,
+                target_payment_id=?,
+                patient_name=?,
+                page_number=?,
+                phone=?,
+                visit_date=?,
+                visit_type=?,
+                treatment_text=?,
+                doctor_id=?,
+                doctor_label=?,
+                money_received_today=?,
+                paid_today_cents=?,
+                total_amount_cents=?,
+                discount_amount_cents=?,
+                payload_json=?,
+                warnings_json=?,
+                match_summary_json=?,
+                status=?,
+                updated_at=?,
+                reviewed_by_user_id=NULL,
+                reviewed_at=NULL,
+                last_action=?,
+                return_reason=NULL,
+                hold_reason=NULL,
+                rejection_reason=NULL
+            WHERE id=?
+            """,
+            (
+                normalized["patient_intent"],
+                normalized["locked_patient_id"],
+                normalized["locked_treatment_id"],
+                normalized["locked_payment_id"],
+                normalized["target_patient_id"],
+                normalized["target_treatment_id"],
+                normalized["target_payment_id"],
+                normalized["patient_name"],
+                normalized["page_number"],
+                normalized["phone"],
+                normalized["visit_date"],
+                normalized["visit_type"],
+                normalized["treatment_text"],
+                normalized["doctor_id"],
+                normalized["doctor_label"],
+                normalized["money_received_today"],
+                normalized["paid_today_cents"],
+                normalized["total_amount_cents"],
+                normalized["discount_amount_cents"],
+                normalized["payload_json"],
+                _json_string(warnings, warnings),
+                normalized["match_summary_json"],
+                "edited",
+                now,
+                "edited",
+                entry_id,
+            ),
+        )
+        _insert_event(
+            conn,
+            entry_id=entry_id,
+            action="edited",
+            actor_user_id=actor_user_id,
+            from_status="edited",
+            to_status="edited",
+            note=None,
+            meta_json={"resubmitted": True},
+            created_at=now,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return get_entry(entry_id)
 
 
 def hold_entry(entry_id: str, *, actor_user_id: str, note: str | None = None) -> dict[str, Any]:

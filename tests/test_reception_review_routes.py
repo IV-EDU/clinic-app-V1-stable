@@ -190,16 +190,19 @@ def test_return_requires_reason(client, admin_user):
     assert unchanged["status"] == "new"
 
 
-def test_review_user_can_return_draft_and_reception_sees_returned_state(logged_in_client, client):
+def test_review_user_can_return_draft_and_reception_sees_returned_state(client):
+    owner_role_id = _create_role("Reception Desk Owner Returned", ["reception_entries:create"])
     review_role_id = _create_role("Reception Return Team 2", ["reception_entries:review"])
+    owner_user_id = _create_user("desk-owner-returned", "password123", [owner_role_id])
     _create_user("review-return-user-2", "password123", [review_role_id])
 
-    entry = _create_draft(patient_name="Returned Draft", actor_user_id="admin-test")
+    entry = _create_draft(patient_name="Returned Draft", actor_user_id=owner_user_id)
 
-    _login(client, "review-return-user-2", "password123")
-    page = client.get(f"/reception/entries/{entry['id']}")
+    reviewer_client = client.application.test_client()
+    _login(reviewer_client, "review-return-user-2", "password123")
+    page = reviewer_client.get(f"/reception/entries/{entry['id']}")
     token = _extract_csrf(page)
-    resp = client.post(
+    resp = reviewer_client.post(
         f"/reception/entries/{entry['id']}/return",
         data={"csrf_token": token, "return_reason": "Fix total"},
         follow_redirects=False,
@@ -212,11 +215,194 @@ def test_review_user_can_return_draft_and_reception_sees_returned_state(logged_i
     assert updated["return_reason"] == "Fix total"
     assert list_entry_events(entry["id"])[0]["action"] == "returned"
 
-    desk = logged_in_client.get("/reception")
+    owner_client = client.application.test_client()
+    _login(owner_client, "desk-owner-returned", "password123")
+    desk = owner_client.get("/reception")
     body = desk.data.decode("utf-8")
     assert "Returned Draft" in body
     assert "Returned" in body
     assert "Fix total" in body
+    assert "Edit Draft" in body
+
+
+def test_owner_can_open_edit_page_for_returned_draft(client):
+    owner_role_id = _create_role("Reception Desk Owner Edit", ["reception_entries:create"])
+    review_role_id = _create_role("Reception Return Team 3", ["reception_entries:review"])
+    owner_user_id = _create_user("desk-owner-edit", "password123", [owner_role_id])
+    _create_user("review-return-user-3", "password123", [review_role_id])
+
+    entry = _create_draft(patient_name="Edit Me", actor_user_id=owner_user_id)
+    reviewer_client = client.application.test_client()
+    _login(reviewer_client, "review-return-user-3", "password123")
+    page = reviewer_client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    reviewer_client.post(
+        f"/reception/entries/{entry['id']}/return",
+        data={"csrf_token": token, "return_reason": "Please update note"},
+        follow_redirects=False,
+    )
+
+    owner_client = client.application.test_client()
+    _login(owner_client, "desk-owner-edit", "password123")
+    resp = owner_client.get(f"/reception/entries/{entry['id']}/edit")
+    assert resp.status_code == 200
+    body = resp.data.decode("utf-8")
+    assert "Edit returned draft" in body
+    assert "Please update note" in body
+    assert 'value="Edit Me"' in body
+
+
+def test_owner_cannot_open_edit_page_for_non_returned_draft(client):
+    owner_role_id = _create_role("Reception Desk Owner Non Returned", ["reception_entries:create"])
+    owner_user_id = _create_user("desk-owner-non-returned", "password123", [owner_role_id])
+    entry = _create_draft(patient_name="Not Returned Yet", actor_user_id=owner_user_id)
+    owner_client = client.application.test_client()
+    _login(owner_client, "desk-owner-non-returned", "password123")
+    resp = owner_client.get(f"/reception/entries/{entry['id']}/edit")
+    assert resp.status_code == 403
+
+
+def test_non_owner_gets_403_on_edit_page(client):
+    helper_role_id = _create_role("Reception Edit Helper", ["reception_entries:create"])
+    other_user_id = _create_user("edit-owner", "password123", [helper_role_id])
+    _create_user("edit-viewer", "password123", [helper_role_id])
+    entry = _create_draft(patient_name="Other User Draft", actor_user_id=other_user_id)
+
+    review_role_id = _create_role("Reception Return Team 4", ["reception_entries:review"])
+    _create_user("review-return-user-4", "password123", [review_role_id])
+    _login(client, "review-return-user-4", "password123")
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    client.post(
+        f"/reception/entries/{entry['id']}/return",
+        data={"csrf_token": token, "return_reason": "Owner must fix"},
+        follow_redirects=False,
+    )
+
+    _login(client, "edit-viewer", "password123")
+    resp = client.get(f"/reception/entries/{entry['id']}/edit")
+    assert resp.status_code == 403
+
+
+def test_valid_edit_post_resubmits_returned_draft_and_requeues_it(client):
+    owner_role_id = _create_role("Reception Desk Owner Resubmit", ["reception_entries:create"])
+    review_role_id = _create_role("Reception Return Team 5", ["reception_entries:review"])
+    owner_user_id = _create_user("desk-owner-resubmit", "password123", [owner_role_id])
+    _create_user("review-return-user-5", "password123", [review_role_id])
+
+    older = _create_draft(patient_name="Older Waiting", actor_user_id=owner_user_id)
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Resubmit Me",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "total_amount": "100",
+            "payload_json": {"note": "old note"},
+        },
+        actor_user_id=owner_user_id,
+    )
+
+    reviewer_client = client.application.test_client()
+    _login(reviewer_client, "review-return-user-5", "password123")
+    page = reviewer_client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    reviewer_client.post(
+        f"/reception/entries/{entry['id']}/return",
+        data={"csrf_token": token, "return_reason": "Fix total and note"},
+        follow_redirects=False,
+    )
+
+    owner_client = client.application.test_client()
+    _login(owner_client, "desk-owner-resubmit", "password123")
+    edit_page = owner_client.get(f"/reception/entries/{entry['id']}/edit")
+    edit_token = _extract_csrf(edit_page)
+    resp = owner_client.post(
+        f"/reception/entries/{entry['id']}/edit",
+        data={
+            "csrf_token": edit_token,
+            "patient_name": "Resubmit Me",
+            "phone": "01012300000",
+            "page_number": "45",
+            "visit_date": "2026-03-18",
+            "visit_type": "followup",
+            "treatment_text": "Updated Treatment",
+            "doctor_id": "any-doctor",
+            "money_received_today": "1",
+            "paid_today": "50",
+            "total_amount": "150",
+            "discount_amount": "10",
+            "note": "fixed note",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    assert resp.headers["Location"].endswith("/reception?view=desk")
+
+    updated = get_entry(entry["id"])
+    assert updated["last_action"] == "edited"
+    assert updated["status"] == "edited"
+    assert updated["return_reason"] is None
+    assert updated["payload_json"] == {"note": "fixed note"}
+    assert list_entry_events(entry["id"])[0]["action"] == "edited"
+
+    desk = owner_client.get("/reception?view=desk")
+    desk_body = desk.data.decode("utf-8")
+    assert "Fix total and note" not in desk_body
+    assert "Waiting review" in desk_body
+    assert desk_body.index("Resubmit Me") < desk_body.index("Older Waiting")
+
+    queue = reviewer_client.get("/reception?view=queue")
+    queue_body = queue.data.decode("utf-8")
+    assert "Resubmit Me" in queue_body
+    assert "Fix total and note" not in queue_body
+    assert queue_body.index("Resubmit Me") < queue_body.index("Older Waiting")
+
+
+def test_invalid_edit_post_rerenders_with_sticky_values(client):
+    owner_role_id = _create_role("Reception Desk Owner Sticky", ["reception_entries:create"])
+    review_role_id = _create_role("Reception Return Team 6", ["reception_entries:review"])
+    owner_user_id = _create_user("desk-owner-sticky", "password123", [owner_role_id])
+    _create_user("review-return-user-6", "password123", [review_role_id])
+
+    entry = _create_draft(patient_name="Sticky Edit", actor_user_id=owner_user_id)
+    reviewer_client = client.application.test_client()
+    _login(reviewer_client, "review-return-user-6", "password123")
+    page = reviewer_client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    reviewer_client.post(
+        f"/reception/entries/{entry['id']}/return",
+        data={"csrf_token": token, "return_reason": "Doctor missing"},
+        follow_redirects=False,
+    )
+
+    owner_client = client.application.test_client()
+    _login(owner_client, "desk-owner-sticky", "password123")
+    edit_page = owner_client.get(f"/reception/entries/{entry['id']}/edit")
+    edit_token = _extract_csrf(edit_page)
+    resp = owner_client.post(
+        f"/reception/entries/{entry['id']}/edit",
+        data={
+            "csrf_token": edit_token,
+            "patient_name": "Sticky Edited",
+            "doctor_id": "",
+            "money_received_today": "1",
+            "paid_today": "",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    body = resp.data.decode("utf-8")
+    assert "Doctor is required." in body
+    assert "Paid today is required when money was received today." in body
+    assert 'value="Sticky Edited"' in body
+
+    unchanged = get_entry(entry["id"])
+    assert unchanged["last_action"] == "returned"
+    assert unchanged["return_reason"] == "Doctor missing"
 
 
 def test_reject_requires_reason_and_valid_reject_closes_draft(client, admin_user):

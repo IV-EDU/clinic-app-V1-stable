@@ -25,12 +25,15 @@ It includes:
 - The new Reception area lives at `/reception`.
 - Reception staff can submit treatment drafts there without touching the live patient file.
 - Reception staff can now also open a locked payment-draft page from a specific treatment card and send that payment for manager review.
+- Reception staff can now also open a locked patient-correction draft from a patient file and send same-record profile changes for manager review.
 - Returned Desk-origin treatment drafts can now be opened, edited, and resubmitted from the same Reception area.
+- Returned patient-correction drafts can now be opened, edited, and resubmitted by the original receptionist.
 - Managers can now open the same area to review pending drafts and mark them as held, returned, rejected, or approved.
 - Current approval is still intentionally narrow:
   - Desk-origin `new_treatment` drafts can create a new live patient file and treatment row.
   - Treatment-card `new_payment` drafts can add one live payment onto the locked existing treatment.
-- Matching overrides, correction approvals, desk-origin payment drafts, and broader payment/correction posting are still deferred to later Reception slices.
+  - Patient-file `edit_patient` drafts can update the locked live patient profile only.
+- Matching overrides, desk-origin payment drafts, and broader payment/treatment correction posting are still deferred to later Reception slices.
 
 This folder "Clinic-App-Local" is the main project folder.
 

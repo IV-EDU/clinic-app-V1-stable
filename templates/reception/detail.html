@@ -45,7 +45,13 @@
   <section class="reception-detail-header">
     <div>
       <h1 class="reception-detail-title">{{ entry.patient_name or t('reception_unknown_patient') }}</h1>
-      <p class="reception-detail-subtitle">{{ entry.treatment_text or t('reception_no_treatment_text') }}</p>
+      <p class="reception-detail-subtitle">
+        {% if entry.draft_type == 'edit_patient' %}
+          {{ t('reception_patient_correction_kind') }}
+        {% else %}
+          {{ entry.treatment_text or t('reception_no_treatment_text') }}
+        {% endif %}
+      </p>
     </div>
     <span class="reception-chip {{ chip_class }}">{{ entry.status_label }}</span>
   </section>
@@ -54,6 +60,102 @@
     <div class="reception-detail-stack">
       <article class="card reception-detail-card">
         <h2>{{ t('reception_detail_title') }}</h2>
+        {% if entry.draft_type == 'edit_patient' %}
+        <div class="reception-detail-meta">
+          <div>
+            <div class="reception-detail-label">{{ t('submitted_by') }}</div>
+            <div class="reception-detail-value">{{ entry.submitted_by_user_id }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('date') }}</div>
+            <div class="reception-detail-value">{{ entry.submitted_at[:10] if entry.submitted_at else '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('source') }}</div>
+            <div class="reception-detail-value">{{ entry.source or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('file_no') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.current.short_id if entry_payload.current else '') or (locked_patient_context.short_id if locked_patient_context else '') or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('page_number') }}</div>
+            <div class="reception-detail-value">{{ entry.page_number or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('phone') }}</div>
+            <div class="reception-detail-value">{{ entry.phone or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_draft_type_label') }}</div>
+            <div class="reception-detail-value">{{ t('reception_patient_correction_kind') }}</div>
+          </div>
+        </div>
+        <div class="reception-detail-meta reception-spaced">
+          <div>
+            <div class="reception-detail-label">{{ t('reception_patient_current_profile') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.current.full_name if entry_payload.current else '') or (locked_patient_context.patient_name if locked_patient_context else '') or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_patient_proposed_profile') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.proposed.full_name if entry_payload.proposed else '') or entry.patient_name or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('phone') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.current.primary_phone if entry_payload.current else '') or '—' }} &rarr; {{ (entry_payload.proposed.primary_phone if entry_payload.proposed else '') or '—' }}</div>
+          </div>
+          {% if show_file_numbers %}
+          <div>
+            <div class="reception-detail-label">{{ t('page_number') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.current.primary_page_number if entry_payload.current else '') or '—' }} &rarr; {{ (entry_payload.proposed.primary_page_number if entry_payload.proposed else '') or '—' }}</div>
+          </div>
+          {% endif %}
+        </div>
+        <div class="reception-spaced">
+          <strong>{{ t('phone_numbers') }}</strong>
+          <ul>
+            {% for phone_row in (entry_payload.current.phones if entry_payload.current else []) %}
+            <li>{{ phone_row.phone or '—' }}</li>
+            {% else %}
+            <li>—</li>
+            {% endfor %}
+          </ul>
+          <strong>{{ t('reception_patient_proposed_profile') }}</strong>
+          <ul>
+            {% for phone_row in (entry_payload.proposed.phones if entry_payload.proposed else []) %}
+            <li>{{ phone_row.phone or '—' }}</li>
+            {% else %}
+            <li>—</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% if show_file_numbers %}
+        <div class="reception-spaced">
+          <strong>{{ t('page_numbers') }}</strong>
+          <ul>
+            {% for page_row in (entry_payload.current.pages if entry_payload.current else []) %}
+            <li>{{ page_row.page_number or '—' }}</li>
+            {% else %}
+            <li>—</li>
+            {% endfor %}
+          </ul>
+          <strong>{{ t('reception_patient_proposed_profile') }}</strong>
+          <ul>
+            {% for page_row in (entry_payload.proposed.pages if entry_payload.proposed else []) %}
+            <li>{{ page_row.page_number or '—' }}</li>
+            {% else %}
+            <li>—</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <div class="reception-spaced">
+          <strong>{{ t('notes') }}</strong>
+          <div class="reception-reason">{{ (entry_payload.current.notes if entry_payload.current else '') or '—' }}</div>
+          <strong>{{ t('reception_patient_proposed_profile') }}</strong>
+          <div class="reception-reason">{{ (entry_payload.proposed.notes if entry_payload.proposed else '') or '—' }}</div>
+        </div>
+        {% else %}
         <div class="reception-detail-meta">
           <div>
             <div class="reception-detail-label">{{ t('submitted_by') }}</div>
@@ -121,6 +223,7 @@
         </div>
         {% if locked_treatment_context and locked_treatment_context.remaining_cents != (entry_payload.treatment_remaining_cents_at_submit or 0) %}
         <div class="reception-alert warning reception-spaced">{{ t('reception_live_remaining_changed') }}</div>
+        {% endif %}
         {% endif %}
         {% endif %}
         {% if entry.note %}

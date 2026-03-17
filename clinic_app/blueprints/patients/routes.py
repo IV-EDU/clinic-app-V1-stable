@@ -14,10 +14,12 @@ from clinic_app.services.i18n import T
 from clinic_app.services.audit import write_event
 from clinic_app.services.arabic_search import normalize_arabic
 from clinic_app.services.patients import (
+    apply_patient_profile_update,
     migrate_patients_drop_unique_short_id,
     next_short_id,
     merge_patient_records,
     MergeConflict,
+    normalize_patient_profile_update,
 )
 from clinic_app.services.patient_pages import PatientPageService, AdminSettingsService
 from clinic_app.extensions import csrf
@@ -586,52 +588,29 @@ def edit_patient(pid):
     existing_phones = _load_patient_phones(conn, pid, p["phone"])
 
     if request.method == "POST":
-        short_id_in = (request.form.get("short_id") or "").strip()
-        full = (request.form.get("full_name") or "").strip()
-        phone_entries, phone_error = _collect_phone_entries(request.form)
-        page_entries = _collect_page_entries(request.form)
-        # Persist page color even when the UI hides notebook names.
-        for entry in page_entries:
-            if entry.get("notebook_color") and not (entry.get("notebook_name") or "").strip():
-                entry["notebook_name"] = _page_color_notebook_key(pid, entry.get("page_number") or "")
-        phone = phone_entries[0]["phone"] if phone_entries else None
-        primary_page = page_entries[0]["page_number"] if page_entries else None
-        notes = (request.form.get("notes") or "").strip()
-        if not full:
-            flash(T("name") + " ?", "err")
+        errors, normalized = normalize_patient_profile_update(request.form, patient_id=pid)
+        if errors:
+            for error in errors:
+                flash(error, "err")
+            sticky_patient = dict(p)
+            sticky_patient["short_id"] = normalized.get("short_id") or sticky_patient.get("short_id")
+            sticky_patient["full_name"] = normalized.get("full_name") or ""
+            sticky_patient["phone"] = normalized.get("primary_phone") or ""
+            sticky_patient["notes"] = normalized.get("notes") or ""
+            sticky_patient["primary_page_number"] = normalized.get("primary_page_number") or ""
             html = render_page(
                 "patients/edit.html",
-                p=p,
+                p=sticky_patient,
                 show_back=True,
                 action=url_for("patients.edit_patient", pid=pid),
                 notebook_options=notebook_options,
-                phone_rows=phone_entries,
-                page_rows=page_entries,
-            )
-            conn.close()
-            return html
-        if phone_error:
-            flash(phone_error, "err")
-            html = render_page(
-                "patients/edit.html",
-                p=p,
-                show_back=True,
-                action=url_for("patients.edit_patient", pid=pid),
-                notebook_options=notebook_options,
-                phone_rows=phone_entries,
-                page_rows=page_entries,
+                phone_rows=normalized.get("phones") or [],
+                page_rows=normalized.get("pages") or [],
             )
             conn.close()
             return html
 
-        sid = short_id_in if short_id_in else (p["short_id"] if p else None)
-        cur.execute(
-            "UPDATE patients SET short_id=?, full_name=?, phone=?, notes=?, primary_page_number=? WHERE id=?",
-            (sid, full, phone, notes, primary_page, pid),
-        )
-        _save_patient_phones(conn, pid, phone_entries)
-        _save_patient_pages(conn, pid, page_entries)
-        _upsert_notebooks_from_pages(conn, page_entries)
+        apply_patient_profile_update(conn, pid, normalized)
         conn.commit()
         migrate_patients_drop_unique_short_id(conn)
         conn.close()

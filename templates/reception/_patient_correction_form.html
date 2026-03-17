@@ -1,0 +1,140 @@
+{% if patient_correction_errors %}
+<div class="reception-errors">
+  <ul>
+    {% for error in patient_correction_errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% set primary_phone = (patient_correction_form.phone_rows[0].phone if patient_correction_form.phone_rows else '') %}
+{% set primary_page = (patient_correction_form.page_rows[0].page_number if patient_correction_form.page_rows else '') %}
+{% set primary_notebook = (patient_correction_form.page_rows[0].notebook_name if patient_correction_form.page_rows else '') %}
+{% set primary_color = (patient_correction_form.page_rows[0].notebook_color if patient_correction_form.page_rows else '') %}
+<form method="post" action="{{ form_action }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="patient_id" value="{{ current_patient.patient_id }}">
+  <div class="reception-form-grid">
+    <div>
+      <label class="form-label">{{ t('file_no') }}</label>
+      <input class="form-control" type="text" value="{{ patient_correction_form.short_id or '—' }}" disabled>
+    </div>
+    <div>
+      <label class="form-label">{{ t('name') }}</label>
+      <input class="form-control" type="text" name="full_name" value="{{ patient_correction_form.full_name }}" required>
+    </div>
+    <div>
+      <label class="form-label">{{ t('phone') }}</label>
+      <input class="form-control" type="text" name="phone" value="{{ primary_phone }}">
+    </div>
+    {% if show_file_numbers %}
+    <div>
+      <label class="form-label">{{ t('page_number') }}</label>
+      <div class="page-number-input-wrap">
+        <input class="form-control page-number-input" type="text" name="primary_page_number" value="{{ primary_page }}">
+        <input type="hidden" name="primary_notebook_name" value="{{ primary_notebook or '' }}">
+        <input type="hidden" name="primary_notebook_color" data-color-hidden value="{{ primary_color or '' }}">
+        <input
+          type="color"
+          class="page-color-picker"
+          data-color-picker
+          value="{{ primary_color or '#e5e7eb' }}"
+          aria-label="{{ t('notebook_color') }}"
+          title="{{ t('notebook_color') }}"
+        >
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="full">
+      <label class="form-label">{{ t('additional_phones') }}</label>
+      <div id="extra-phone-rows-correction" class="reception-repeaters">
+        {% for phone_row in patient_correction_form.phone_rows %}
+          {% if not loop.first %}
+          <div class="reception-repeater-row" data-repeater-row>
+            <input class="form-control" type="text" name="extra_phone_number" value="{{ phone_row.phone or '' }}" placeholder="{{ t('phone') }}">
+            <input type="hidden" name="extra_phone_label" value="{{ phone_row.label or '' }}">
+            <button type="button" class="btn secondary repeater-remove-btn" data-repeater-remove aria-label="{{ t('remove') }}" title="{{ t('remove') }}">&times;</button>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <button
+        type="button"
+        class="btn secondary"
+        data-repeater-add="phone"
+        data-container-id="extra-phone-rows-correction"
+        data-template-id="patient-correction-phone-row-template"
+      >{{ t('add_phone') }}</button>
+    </div>
+
+    {% if show_file_numbers %}
+    <div class="full">
+      <label class="form-label">{{ t('additional_pages') }}</label>
+      <div id="extra-page-rows-correction" class="reception-repeaters">
+        {% for page_row in patient_correction_form.page_rows %}
+          {% if not loop.first %}
+          <div class="reception-repeater-row" data-repeater-row>
+            <div class="page-number-input-wrap">
+              <input class="form-control page-number-input" type="text" name="extra_page_number" value="{{ page_row.page_number or '' }}" placeholder="{{ t('page_number_placeholder') }}">
+              <input type="hidden" name="extra_notebook_name" value="{{ page_row.notebook_name or '' }}">
+              <input type="hidden" name="extra_notebook_color" data-color-hidden value="{{ page_row.notebook_color or '' }}">
+              <input
+                type="color"
+                class="page-color-picker"
+                data-color-picker
+                value="{{ page_row.notebook_color or '#e5e7eb' }}"
+                aria-label="{{ t('notebook_color') }}"
+                title="{{ t('notebook_color') }}"
+              >
+            </div>
+            <button type="button" class="btn secondary repeater-remove-btn" data-repeater-remove aria-label="{{ t('remove') }}" title="{{ t('remove') }}">&times;</button>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <button
+        type="button"
+        class="btn secondary"
+        data-repeater-add="page"
+        data-container-id="extra-page-rows-correction"
+        data-template-id="patient-correction-page-row-template"
+      >{{ t('add_page_number') }}</button>
+    </div>
+    {% endif %}
+
+    <div class="full">
+      <label class="form-label">{{ t('notes') }}</label>
+      <textarea class="form-control" name="notes" rows="3">{{ patient_correction_form.notes }}</textarea>
+    </div>
+    <div class="full">
+      <label class="form-label">{{ t('reception_receptionist_note') }}</label>
+      <textarea class="form-control" name="reception_note" rows="3">{{ patient_correction_form.reception_note }}</textarea>
+    </div>
+    <div class="full">
+      <button class="btn primary" type="submit">{{ submit_label }}</button>
+    </div>
+  </div>
+</form>
+
+<template id="patient-correction-phone-row-template">
+  <div class="reception-repeater-row" data-repeater-row>
+    <input class="form-control" type="text" name="extra_phone_number" placeholder="{{ t('phone') }}">
+    <input type="hidden" name="extra_phone_label" value="">
+    <button type="button" class="btn secondary repeater-remove-btn" data-repeater-remove aria-label="{{ t('remove') }}" title="{{ t('remove') }}">&times;</button>
+  </div>
+</template>
+
+{% if show_file_numbers %}
+<template id="patient-correction-page-row-template">
+  <div class="reception-repeater-row" data-repeater-row>
+    <div class="page-number-input-wrap">
+      <input class="form-control page-number-input" type="text" name="extra_page_number" placeholder="{{ t('page_number_placeholder') }}">
+      <input type="hidden" name="extra_notebook_name" value="">
+      <input type="hidden" name="extra_notebook_color" data-color-hidden value="">
+      <input type="color" class="page-color-picker" data-color-picker value="#e5e7eb" aria-label="{{ t('notebook_color') }}" title="{{ t('notebook_color') }}">
+    </div>
+    <button type="button" class="btn secondary repeater-remove-btn" data-repeater-remove aria-label="{{ t('remove') }}" title="{{ t('remove') }}">&times;</button>
+  </div>
+</template>
+{% endif %}

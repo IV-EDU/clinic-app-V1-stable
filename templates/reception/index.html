@@ -109,7 +109,11 @@
               <div>
                 <p class="reception-draft-title">{{ entry.patient_name or t('reception_unknown_patient') }}</p>
                 <div class="reception-draft-meta">
-                  {{ entry.treatment_text or t('reception_no_treatment_text') }}
+                  {% if entry.draft_type == 'edit_patient' %}
+                    {{ t('reception_patient_correction_kind') }}
+                  {% else %}
+                    {{ entry.treatment_text or t('reception_no_treatment_text') }}
+                  {% endif %}
                   {% if entry.visit_date %} • {{ entry.visit_date }}{% endif %}
                 </div>
               </div>
@@ -167,7 +171,13 @@
           <div class="reception-draft-top">
             <div>
               <p class="reception-draft-title">{{ entry.patient_name or t('reception_unknown_patient') }}</p>
-              <div class="reception-draft-meta">{{ entry.treatment_text or t('reception_no_treatment_text') }}</div>
+              <div class="reception-draft-meta">
+                {% if entry.draft_type == 'edit_patient' %}
+                  {{ t('reception_patient_correction_kind') }}
+                {% else %}
+                  {{ entry.treatment_text or t('reception_no_treatment_text') }}
+                {% endif %}
+              </div>
             </div>
             <span class="reception-chip {{ chip_class }}">{{ entry.status_label }}</span>
           </div>

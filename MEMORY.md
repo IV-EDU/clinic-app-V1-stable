@@ -12,12 +12,12 @@
 **Branch:** `main`
 **Data:** Production use (do not break).
 **Login:** `admin` / `admin` (NEVER change this)
-**Tests:** Last known Reception/payment/RBAC regression subset: 66 passing (verified March 17, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
+**Tests:** Last known Reception/patient-profile/RBAC regression subset: 80 passing (verified March 17, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
 
 ### Fast ramp (don’t re-discover the repo)
 
 - Read `docs/AGENT_HANDOFF.md` for the app map + the locked Reception Desk decisions.
-- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, a narrow approval path for Desk-origin `new_treatment`, and a locked treatment-card `new_payment` draft/approval path.
+- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, a narrow approval path for Desk-origin `new_treatment`, a locked treatment-card `new_payment` draft/approval path, and the first same-record `edit_patient` correction path.
 - Older historical session notes were archived into `MEMORY_ARCHIVE.md`.
 
 ---
@@ -357,3 +357,24 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - `new_payment` drafts stay locked to `treatment_card` source only in this slice.
 - Reception approval must reuse the shared live add-payment helper; no separate Reception-only SQL path for child payments.
 - Parent `remaining_cents` recomputation is now part of the shared helper contract, not optional route cleanup.
+
+### Session: Reception same-record edit_patient correction
+**Date:** 2026-03-17
+**What was done:**
+- Added patient-file launcher support for locked `edit_patient` drafts and a dedicated Reception patient-correction page.
+- Extended Reception detail/review/approval so managers can compare current vs proposed patient values and approve those drafts onto the same live patient only.
+- Added returned-draft edit/resubmit support for `edit_patient` drafts owned by the original receptionist.
+- Refactored live `/patients/<pid>/edit` to use the same shared patient-profile normalization/update helper as Reception approval, then added regression coverage for phone/page sync.
+
+**Current state:**
+- Reception now supports one same-record correction type end-to-end: `edit_patient` from the patient file.
+- Supported live approval paths are now:
+  - Desk-origin `new_treatment`
+  - Treatment-card locked `new_payment`
+  - Patient-file locked `edit_patient`
+- Reception/patient-profile/RBAC regression subset now passes with 80 tests.
+
+**Key decisions:**
+- `edit_patient` stays locked to the same live patient; no merge, reassignment, or short-id rewrite logic was added.
+- Returned `edit_patient` drafts are editable by the original receptionist; held drafts are not.
+- Live patient edit and Reception patient-correction approval must keep sharing the same patient-profile persistence helper.

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from clinic_app.services.database import db as raw_db
 from clinic_app.services.reception_entries import (
+    approve_edit_patient_entry,
     approve_new_payment_entry,
     create_entry,
     get_entry,
+    get_locked_patient_context,
     get_locked_treatment_context,
     list_entries,
     list_entry_events,
@@ -24,6 +26,35 @@ def _seed_patient(patient_id: str, full_name: str = "Locked Patient") -> None:
             VALUES (?, ?, ?, ?, ?, ?)
             """,
             (patient_id, "P-LOCKED", full_name, "01000000000", "", "12"),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _seed_patient_profile(patient_id: str, full_name: str = "Locked Patient") -> None:
+    conn = raw_db()
+    try:
+        conn.execute(
+            """
+            INSERT INTO patients (id, short_id, full_name, phone, notes, primary_page_number)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (patient_id, "P-LOCKED", full_name, "01000000000", "Original note", "12"),
+        )
+        conn.execute(
+            """
+            INSERT INTO patient_phones(id, patient_id, phone, phone_normalized, label, is_primary)
+            VALUES (?, ?, ?, ?, ?, 1)
+            """,
+            (f"phone-{patient_id}", patient_id, "01000000000", "01000000000", None),
+        )
+        conn.execute(
+            """
+            INSERT INTO patient_pages(id, patient_id, page_number, notebook_name)
+            VALUES (?, ?, ?, ?)
+            """,
+            (f"page-{patient_id}", patient_id, "12", "Notebook A"),
         )
         conn.commit()
     finally:
@@ -123,29 +154,45 @@ def test_create_entry_stores_unlocked_new_treatment(app, admin_user):
 
 
 def test_create_entry_stores_locked_patient_correction(app, admin_user):
-    _seed_patient("patient-locked-1")
+    _seed_patient_profile("patient-locked-1")
 
     entry = create_entry(
         {
             "draft_type": "edit_patient",
             "source": "patient_file",
             "locked_patient_id": "patient-locked-1",
-            "doctor_id": "_any_",
-            "doctor_label": "Any Doctor",
-            "money_received_today": False,
-            "payload_json": {"fields": ["phone"]},
+            "payload_json": {
+                "current": {
+                    "short_id": "P-LOCKED",
+                    "full_name": "Locked Patient",
+                    "primary_phone": "01000000000",
+                    "phones": [{"phone": "01000000000", "label": None, "is_primary": 1}],
+                    "primary_page_number": "12",
+                    "pages": [{"page_number": "12", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Original note",
+                },
+                "proposed": {
+                    "full_name": "Locked Patient Updated",
+                    "phones": [
+                        {"phone": "01099999999", "label": None, "is_primary": 1},
+                        {"phone": "01088888888", "label": None, "is_primary": 0},
+                    ],
+                    "pages": [{"page_number": "44", "notebook_name": "Notebook B", "notebook_color": ""}],
+                    "notes": "Updated note",
+                },
+                "note": "Reception correction note",
+            },
         },
         actor_user_id="admin-test",
     )
 
     assert entry["locked_patient_id"] == "patient-locked-1"
-    assert entry["patient_name"] is None
-    assert entry["warnings_json"] == [
-        "Phone is missing.",
-        "Page number is missing.",
-        "Total amount is missing.",
-        "Remaining amount is unknown.",
-    ]
+    assert entry["patient_name"] == "Locked Patient Updated"
+    assert entry["phone"] == "01099999999"
+    assert entry["page_number"] == "44"
+    assert entry["warnings_json"] == []
+    assert entry["payload_json"]["current"]["full_name"] == "Locked Patient"
+    assert entry["payload_json"]["proposed"]["full_name"] == "Locked Patient Updated"
 
 
 def test_validate_requires_patient_name_when_unlocked():
@@ -388,7 +435,148 @@ def test_resubmit_returned_entry_rejects_unsupported_draft_type(app, admin_user)
         )
         assert False, "Expected ValueError for unsupported draft type"
     except ValueError as exc:
-        assert "Only returned desk treatment drafts can be edited in this slice." in str(exc)
+        assert "Only returned desk treatment drafts and patient correction drafts can be edited in this slice." in str(exc)
+
+
+def test_get_locked_patient_context_returns_snapshot(app, admin_user):
+    _seed_patient_profile("patient-profile-1", "Snapshot Patient")
+
+    context = get_locked_patient_context("patient-profile-1")
+
+    assert context is not None
+    assert context["patient_name"] == "Snapshot Patient"
+    assert context["primary_phone"] == "01000000000"
+    assert context["primary_page_number"] == "12"
+    assert context["notes"] == "Original note"
+    assert context["phones"][0]["phone"] == "01000000000"
+
+
+def test_validate_edit_patient_payload_uses_profile_rules(app, admin_user):
+    _seed_patient_profile("patient-profile-2", "Validation Patient")
+
+    errors, warnings, normalized = validate_entry_payload(
+        {
+            "draft_type": "edit_patient",
+            "source": "patient_file",
+            "locked_patient_id": "patient-profile-2",
+            "payload_json": {
+                "proposed": {
+                    "full_name": "",
+                    "phones": [
+                        {"phone": "01011111111", "label": None, "is_primary": 1},
+                        {"phone": "01011111111", "label": None, "is_primary": 0},
+                    ],
+                    "pages": [
+                        {"page_number": "11", "notebook_name": None, "notebook_color": ""},
+                        {"page_number": "11", "notebook_name": None, "notebook_color": ""},
+                    ],
+                    "notes": "",
+                }
+            },
+        }
+    )
+
+    assert "Name is required." in errors
+    assert "Duplicate phone numbers are not allowed." in errors
+    assert "Duplicate page numbers are not allowed." in errors
+    assert warnings == []
+    assert normalized["draft_type"] == "edit_patient"
+
+
+def test_resubmit_returned_edit_patient_preserves_locked_context(app, admin_user):
+    _seed_user("manager-edit-patient", "manager-edit-patient")
+    _seed_patient_profile("patient-resubmit-1", "Resubmit Patient")
+    created = create_entry(
+        {
+            "draft_type": "edit_patient",
+            "source": "patient_file",
+            "locked_patient_id": "patient-resubmit-1",
+            "payload_json": {
+                "current": {
+                    "short_id": "P-LOCKED",
+                    "full_name": "Resubmit Patient",
+                    "primary_phone": "01000000000",
+                    "phones": [{"phone": "01000000000", "label": None, "is_primary": 1}],
+                    "primary_page_number": "12",
+                    "pages": [{"page_number": "12", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Original note",
+                },
+                "proposed": {
+                    "full_name": "Resubmit Patient Draft",
+                    "phones": [{"phone": "01022222222", "label": None, "is_primary": 1}],
+                    "pages": [{"page_number": "22", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Draft note",
+                },
+                "note": "Reception note",
+            },
+        },
+        actor_user_id="admin-test",
+    )
+    submitted_at = created["submitted_at"]
+    return_entry(created["id"], actor_user_id="manager-edit-patient", reason="Fix the phone")
+
+    updated = resubmit_returned_entry(
+        created["id"],
+        {
+            "payload_json": {
+                "current": created["payload_json"]["current"],
+                "proposed": {
+                    "full_name": "Resubmit Patient Final",
+                    "phones": [{"phone": "01033333333", "label": None, "is_primary": 1}],
+                    "pages": [{"page_number": "33", "notebook_name": "Notebook B", "notebook_color": ""}],
+                    "notes": "Final note",
+                },
+                "note": "Updated reception note",
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    assert updated["locked_patient_id"] == "patient-resubmit-1"
+    assert updated["patient_name"] == "Resubmit Patient Final"
+    assert updated["phone"] == "01033333333"
+    assert updated["page_number"] == "33"
+    assert updated["submitted_at"] == submitted_at
+    assert updated["return_reason"] is None
+    assert updated["last_action"] == "edited"
+    assert updated["payload_json"]["note"] == "Updated reception note"
+    assert list_entry_events(created["id"])[0]["meta_json"] == {"resubmitted": True}
+
+
+def test_approve_edit_patient_entry_rejects_unsupported_source(app, admin_user):
+    _seed_user("approver-edit-patient", "approver-edit-patient")
+    _seed_patient_profile("patient-approve-unsupported", "Unsupported Source Patient")
+    entry = create_entry(
+        {
+            "draft_type": "edit_patient",
+            "source": "reception_desk",
+            "locked_patient_id": "patient-approve-unsupported",
+            "payload_json": {
+                "current": {
+                    "short_id": "P-LOCKED",
+                    "full_name": "Unsupported Source Patient",
+                    "primary_phone": "01000000000",
+                    "phones": [{"phone": "01000000000", "label": None, "is_primary": 1}],
+                    "primary_page_number": "12",
+                    "pages": [{"page_number": "12", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Original note",
+                },
+                "proposed": {
+                    "full_name": "Unsupported Source Patient Updated",
+                    "phones": [{"phone": "01055555555", "label": None, "is_primary": 1}],
+                    "pages": [{"page_number": "55", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Updated note",
+                },
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    try:
+        approve_edit_patient_entry(entry["id"], actor_user_id="approver-edit-patient")
+        assert False, "Expected ValueError for unsupported patient correction source"
+    except ValueError as exc:
+        assert "Only patient-file correction drafts can be approved in this slice." in str(exc)
 
 
 def test_resubmitted_draft_sorts_by_updated_at_for_desk_and_queue(app, admin_user):

@@ -140,6 +140,37 @@ def _seed_patient_with_treatment(*, remaining_cents: int = 14000) -> tuple[str, 
     return patient_id, treatment_id
 
 
+def _seed_patient_profile(*, full_name: str = "Correction Patient") -> str:
+    patient_id = f"patient-{uuid4()}"
+    conn = raw_db()
+    try:
+        conn.execute(
+            """
+            INSERT INTO patients(id, short_id, full_name, phone, notes, primary_page_number, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            """,
+            (patient_id, f"P-{uuid4().hex[:6]}", full_name, "01012121212", "Original note", "18"),
+        )
+        conn.execute(
+            """
+            INSERT INTO patient_phones(id, patient_id, phone, phone_normalized, label, is_primary)
+            VALUES (?, ?, ?, ?, ?, 1)
+            """,
+            (f"phone-{uuid4()}", patient_id, "01012121212", "01012121212", None),
+        )
+        conn.execute(
+            """
+            INSERT INTO patient_pages(id, patient_id, page_number, notebook_name)
+            VALUES (?, ?, ?, ?)
+            """,
+            (f"page-{uuid4()}", patient_id, "18", "Notebook A"),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return patient_id
+
+
 def test_create_only_user_cannot_open_manager_queue(client):
     create_role_id = _create_role("Reception Desk Only", ["reception_entries:create"])
     _create_user("desk-only-user", "password123", [create_role_id])
@@ -884,3 +915,309 @@ def test_reapproving_new_payment_draft_is_blocked(client, admin_user):
     )
     assert second.status_code == 400
     assert "Cannot approve a closed draft." in second.data.decode("utf-8")
+
+
+def test_manager_can_open_edit_patient_draft_detail(client, admin_user):
+    review_role_id = _create_role("Reception Review Patient Detail", ["reception_entries:review"])
+    _create_user("review-patient-detail", "password123", [review_role_id])
+    _login(client, "review-patient-detail", "password123")
+    patient_id = _seed_patient_profile(full_name="Patient Detail Source")
+    entry = create_entry(
+        {
+            "draft_type": "edit_patient",
+            "source": "patient_file",
+            "locked_patient_id": patient_id,
+            "payload_json": {
+                "current": {
+                    "short_id": "P-ORIG",
+                    "full_name": "Patient Detail Source",
+                    "primary_phone": "01012121212",
+                    "phones": [{"phone": "01012121212", "label": None, "is_primary": 1}],
+                    "primary_page_number": "18",
+                    "pages": [{"page_number": "18", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Original note",
+                },
+                "proposed": {
+                    "full_name": "Patient Detail Updated",
+                    "phones": [{"phone": "01034343434", "label": None, "is_primary": 1}],
+                    "pages": [{"page_number": "44", "notebook_name": "Notebook B", "notebook_color": ""}],
+                    "notes": "Updated note",
+                },
+                "note": "Reception correction note",
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    resp = client.get(f"/reception/entries/{entry['id']}")
+    assert resp.status_code == 200
+    body = resp.data.decode("utf-8")
+    assert "Current patient profile" in body
+    assert "Proposed patient profile" in body
+    assert "Patient Detail Source" in body
+    assert "Patient Detail Updated" in body
+
+
+def test_manager_can_approve_edit_patient_draft(client, admin_user):
+    approve_role_id = _create_role("Reception Approve Patient Correction", ["reception_entries:approve"])
+    _create_user("approve-patient-correction", "password123", [approve_role_id])
+    _login(client, "approve-patient-correction", "password123")
+    patient_id = _seed_patient_profile(full_name="Correction Source")
+    entry = create_entry(
+        {
+            "draft_type": "edit_patient",
+            "source": "patient_file",
+            "locked_patient_id": patient_id,
+            "payload_json": {
+                "current": {
+                    "short_id": "P-ORIG",
+                    "full_name": "Correction Source",
+                    "primary_phone": "01012121212",
+                    "phones": [{"phone": "01012121212", "label": None, "is_primary": 1}],
+                    "primary_page_number": "18",
+                    "pages": [{"page_number": "18", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Original note",
+                },
+                "proposed": {
+                    "full_name": "Correction Final",
+                    "phones": [
+                        {"phone": "01056565656", "label": None, "is_primary": 1},
+                        {"phone": "01078787878", "label": None, "is_primary": 0},
+                    ],
+                    "pages": [
+                        {"page_number": "77", "notebook_name": "Notebook C", "notebook_color": ""},
+                        {"page_number": "78", "notebook_name": "Notebook D", "notebook_color": ""},
+                    ],
+                    "notes": "Approved correction note",
+                },
+                "note": "Reception correction note",
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    approved = get_entry(entry["id"])
+    assert approved["status"] == "approved"
+    assert approved["target_patient_id"] == patient_id
+    assert list_entry_events(entry["id"])[0]["action"] == "approved"
+
+    conn = raw_db()
+    try:
+        patient = conn.execute(
+            "SELECT full_name, phone, notes, primary_page_number FROM patients WHERE id=?",
+            (patient_id,),
+        ).fetchone()
+        phones = conn.execute(
+            "SELECT phone FROM patient_phones WHERE patient_id=? ORDER BY is_primary DESC, rowid ASC",
+            (patient_id,),
+        ).fetchall()
+        pages = conn.execute(
+            "SELECT page_number FROM patient_pages WHERE patient_id=? ORDER BY rowid ASC",
+            (patient_id,),
+        ).fetchall()
+    finally:
+        conn.close()
+
+    assert patient["full_name"] == "Correction Final"
+    assert patient["phone"] == "01056565656"
+    assert patient["notes"] == "Approved correction note"
+    assert patient["primary_page_number"] == "77"
+    assert [row["phone"] for row in phones] == ["01056565656", "01078787878"]
+    assert [row["page_number"] for row in pages] == ["77", "78"]
+
+
+def test_reapproving_edit_patient_draft_is_blocked(client, admin_user):
+    approve_role_id = _create_role("Reception Approve Patient Correction 2", ["reception_entries:approve"])
+    _create_user("approve-patient-correction-2", "password123", [approve_role_id])
+    _login(client, "approve-patient-correction-2", "password123")
+    patient_id = _seed_patient_profile(full_name="Reapprove Patient")
+    entry = create_entry(
+        {
+            "draft_type": "edit_patient",
+            "source": "patient_file",
+            "locked_patient_id": patient_id,
+            "payload_json": {
+                "current": {
+                    "short_id": "P-ORIG",
+                    "full_name": "Reapprove Patient",
+                    "primary_phone": "01012121212",
+                    "phones": [{"phone": "01012121212", "label": None, "is_primary": 1}],
+                    "primary_page_number": "18",
+                    "pages": [{"page_number": "18", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Original note",
+                },
+                "proposed": {
+                    "full_name": "Reapprove Patient Updated",
+                    "phones": [{"phone": "01099900000", "label": None, "is_primary": 1}],
+                    "pages": [{"page_number": "90", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Updated note",
+                },
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    first = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+    assert first.status_code in (302, 303)
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    second = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+    assert second.status_code == 400
+    assert "Cannot approve a closed draft." in second.data.decode("utf-8")
+
+
+def test_returned_edit_patient_draft_can_be_opened_and_resubmitted_by_owner(client, admin_user):
+    owner_role_id = _create_role("Reception Patient Correction Owner", ["reception_entries:create"])
+    review_role_id = _create_role("Reception Patient Correction Reviewer", ["reception_entries:review"])
+    owner_user_id = _create_user("patient-correction-owner", "password123", [owner_role_id])
+    _create_user("patient-correction-reviewer", "password123", [review_role_id])
+    patient_id = _seed_patient_profile(full_name="Returned Correction")
+    entry = create_entry(
+        {
+            "draft_type": "edit_patient",
+            "source": "patient_file",
+            "locked_patient_id": patient_id,
+            "payload_json": {
+                "current": {
+                    "short_id": "P-ORIG",
+                    "full_name": "Returned Correction",
+                    "primary_phone": "01012121212",
+                    "phones": [{"phone": "01012121212", "label": None, "is_primary": 1}],
+                    "primary_page_number": "18",
+                    "pages": [{"page_number": "18", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Original note",
+                },
+                "proposed": {
+                    "full_name": "Returned Correction Draft",
+                    "phones": [{"phone": "01056565656", "label": None, "is_primary": 1}],
+                    "pages": [{"page_number": "56", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Draft note",
+                },
+            },
+        },
+        actor_user_id=owner_user_id,
+    )
+
+    reviewer_client = client.application.test_client()
+    _login(reviewer_client, "patient-correction-reviewer", "password123")
+    page = reviewer_client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    reviewer_client.post(
+        f"/reception/entries/{entry['id']}/return",
+        data={"csrf_token": token, "return_reason": "Fix phone and page"},
+        follow_redirects=False,
+    )
+
+    owner_client = client.application.test_client()
+    _login(owner_client, "patient-correction-owner", "password123")
+    edit_page = owner_client.get(f"/reception/entries/{entry['id']}/edit")
+    assert edit_page.status_code == 200
+    body = edit_page.data.decode("utf-8")
+    assert "Edit returned patient correction" in body
+    assert "Fix phone and page" in body
+
+    edit_token = _extract_csrf(edit_page)
+    resp = owner_client.post(
+        f"/reception/entries/{entry['id']}/edit",
+        data={
+            "csrf_token": edit_token,
+            "patient_id": patient_id,
+            "full_name": "Returned Correction Final",
+            "phone": "01034343434",
+            "primary_page_number": "34",
+            "notes": "Updated after return",
+            "reception_note": "Owner fixed it",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    updated = get_entry(entry["id"])
+    assert updated["status"] == "edited"
+    assert updated["last_action"] == "edited"
+    assert updated["return_reason"] is None
+    assert updated["patient_name"] == "Returned Correction Final"
+    assert updated["phone"] == "01034343434"
+    assert updated["page_number"] == "34"
+
+
+def test_non_owner_cannot_edit_returned_edit_patient_draft_and_held_is_blocked(client, admin_user):
+    owner_role_id = _create_role("Reception Patient Correction Owner 2", ["reception_entries:create"])
+    review_role_id = _create_role("Reception Patient Correction Reviewer 2", ["reception_entries:review"])
+    owner_user_id = _create_user("patient-correction-owner-2", "password123", [owner_role_id])
+    _create_user("patient-correction-other", "password123", [owner_role_id])
+    _create_user("patient-correction-reviewer-2", "password123", [review_role_id])
+    patient_id = _seed_patient_profile(full_name="Held Correction")
+    entry = create_entry(
+        {
+            "draft_type": "edit_patient",
+            "source": "patient_file",
+            "locked_patient_id": patient_id,
+            "payload_json": {
+                "current": {
+                    "short_id": "P-ORIG",
+                    "full_name": "Held Correction",
+                    "primary_phone": "01012121212",
+                    "phones": [{"phone": "01012121212", "label": None, "is_primary": 1}],
+                    "primary_page_number": "18",
+                    "pages": [{"page_number": "18", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Original note",
+                },
+                "proposed": {
+                    "full_name": "Held Correction Draft",
+                    "phones": [{"phone": "01098989898", "label": None, "is_primary": 1}],
+                    "pages": [{"page_number": "98", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Draft note",
+                },
+            },
+        },
+        actor_user_id=owner_user_id,
+    )
+
+    reviewer_client = client.application.test_client()
+    _login(reviewer_client, "patient-correction-reviewer-2", "password123")
+    page = reviewer_client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    reviewer_client.post(
+        f"/reception/entries/{entry['id']}/return",
+        data={"csrf_token": token, "return_reason": "Owner only"},
+        follow_redirects=False,
+    )
+
+    other_client = client.application.test_client()
+    _login(other_client, "patient-correction-other", "password123")
+    forbidden = other_client.get(f"/reception/entries/{entry['id']}/edit")
+    assert forbidden.status_code == 403
+
+    page = reviewer_client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    reviewer_client.post(
+        f"/reception/entries/{entry['id']}/hold",
+        data={"csrf_token": token, "hold_note": "Do not edit yet"},
+        follow_redirects=False,
+    )
+
+    owner_client = client.application.test_client()
+    _login(owner_client, "patient-correction-owner-2", "password123")
+    held_resp = owner_client.get(f"/reception/entries/{entry['id']}/edit")
+    assert held_resp.status_code == 403

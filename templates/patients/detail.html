@@ -70,11 +70,15 @@
   {% set can_edit_patient = current_user.is_authenticated and current_user.has_permission('patients:edit') %}
   {% set can_merge_patient = current_user.is_authenticated and current_user.has_permission('patients:merge') %}
   {% set can_delete_patient = current_user.is_authenticated and current_user.has_permission('patients:delete') %}
-  {% if can_diagnose or can_edit_patient or can_merge_patient or can_delete_patient %}
+  {% set can_create_reception_entry = current_user.is_authenticated and current_user.has_permission('reception_entries:create') %}
+  {% if can_diagnose or can_edit_patient or can_merge_patient or can_delete_patient or can_create_reception_entry %}
     <div class="patient-actions">
       <div class="actions-group">
         {% if can_diagnose %}
         <a class="btn primary" href="{{ url_for('palmer_plus.diag_page', pid=p['id']) }}">{{ t('diagnosis') }}</a>
+        {% endif %}
+        {% if can_create_reception_entry %}
+        <a class="btn secondary" href="{{ url_for('reception.new_patient_correction_entry', patient_id=p['id']) }}">{{ t('reception_send_patient_correction') }}</a>
         {% endif %}
         {% if can_edit_patient %}
         <a class="btn secondary edit-patient-btn" href="{{ url_for('patients.edit_patient', pid=p['id']) }}">{{ t('edit_patient') }}</a>

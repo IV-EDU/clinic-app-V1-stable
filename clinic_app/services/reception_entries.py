@@ -9,7 +9,13 @@ from uuid import uuid4
 
 from clinic_app.services.audit import write_event
 from clinic_app.services.database import db as raw_db
-from clinic_app.services.patients import migrate_patients_drop_unique_short_id, next_short_id
+from clinic_app.services.patients import (
+    apply_patient_profile_update,
+    get_patient_profile_snapshot,
+    migrate_patients_drop_unique_short_id,
+    next_short_id,
+    normalize_patient_profile_update,
+)
 from clinic_app.services.payments import cents_guard, parse_money_to_cents
 from clinic_app.services.payments import add_payment_to_treatment
 
@@ -129,6 +135,63 @@ def _visit_type_flags(raw_value: str | None) -> tuple[int, int]:
     return (1 if value == "exam" else 0, 1 if value == "followup" else 0)
 
 
+def _patient_profile_payload(data: dict[str, Any] | None, *, include_short_id: bool = False) -> dict[str, Any]:
+    data = data or {}
+    phones: list[dict[str, Any]] = []
+    for row in data.get("phones") or []:
+        phone = _text((row or {}).get("phone"))
+        if not phone:
+            continue
+        phones.append(
+            {
+                "phone": phone,
+                "label": _nullable_text((row or {}).get("label")),
+                "is_primary": 1 if (row or {}).get("is_primary") else 0,
+            }
+        )
+    if not phones and _text(data.get("primary_phone")):
+        phones.append(
+            {
+                "phone": _text(data.get("primary_phone")),
+                "label": None,
+                "is_primary": 1,
+            }
+        )
+
+    pages: list[dict[str, Any]] = []
+    for row in data.get("pages") or []:
+        page_number = _text((row or {}).get("page_number"))
+        if not page_number:
+            continue
+        pages.append(
+            {
+                "page_number": page_number,
+                "notebook_name": _nullable_text((row or {}).get("notebook_name")),
+                "notebook_color": _text((row or {}).get("notebook_color")),
+            }
+        )
+    if not pages and _text(data.get("primary_page_number")):
+        pages.append(
+            {
+                "page_number": _text(data.get("primary_page_number")),
+                "notebook_name": None,
+                "notebook_color": "",
+            }
+        )
+
+    payload = {
+        "full_name": _text(data.get("full_name")),
+        "primary_phone": phones[0]["phone"] if phones else "",
+        "phones": phones,
+        "primary_page_number": pages[0]["page_number"] if pages else "",
+        "pages": pages,
+        "notes": _text(data.get("notes")),
+    }
+    if include_short_id:
+        payload["short_id"] = _text(data.get("short_id"))
+    return payload
+
+
 def _insert_event(
     conn,
     *,
@@ -177,8 +240,12 @@ def _require_returned_resubmittable_entry(row, *, actor_user_id: str) -> dict[st
     entry = _decode_row(row)
     if entry.get("submitted_by_user_id") != actor_user_id:
         raise ValueError("You can only edit your own returned drafts.")
-    if entry.get("draft_type") != "new_treatment" or entry.get("source") != "reception_desk":
-        raise ValueError("Only returned desk treatment drafts can be edited in this slice.")
+    supports_resubmit = (
+        (entry.get("draft_type") == "new_treatment" and entry.get("source") == "reception_desk")
+        or (entry.get("draft_type") == "edit_patient" and entry.get("source") == "patient_file")
+    )
+    if not supports_resubmit:
+        raise ValueError("Only returned desk treatment drafts and patient correction drafts can be edited in this slice.")
     if entry.get("status") != "edited" or entry.get("last_action") != "returned":
         raise ValueError("Only returned drafts can be edited and resubmitted.")
     return entry
@@ -232,6 +299,59 @@ def validate_entry_payload(data: dict) -> tuple[list[str], list[str], dict[str, 
             errors.append("Paid today cannot be greater than the amount due.")
         patient_intent = "existing"
         money_received_today = 1
+    elif draft_type == "edit_patient":
+        if not locked_patient_id:
+            errors.append("Locked patient context is required.")
+        patient_intent = "existing"
+
+        proposed_raw = payload_dict.get("proposed")
+        if proposed_raw is None:
+            proposed_raw = {}
+        if not isinstance(proposed_raw, dict):
+            errors.append("Malformed patient correction payload.")
+            proposed_raw = {}
+
+        current_payload = payload_dict.get("current")
+        current_snapshot = current_payload if isinstance(current_payload, dict) else None
+        if not current_snapshot and locked_patient_id:
+            live_snapshot = get_patient_profile_snapshot(locked_patient_id)
+            if live_snapshot:
+                current_snapshot = _patient_profile_payload(live_snapshot, include_short_id=True)
+        if locked_patient_id and not current_snapshot:
+            errors.append("Locked patient was not found.")
+            current_snapshot = {}
+
+        profile_errors, normalized_profile = normalize_patient_profile_update(
+            proposed_raw,
+            patient_id=locked_patient_id,
+        )
+        errors.extend(profile_errors)
+
+        current_short_id = _text((current_snapshot or {}).get("short_id"))
+        proposed_short_id = _text(normalized_profile.get("short_id"))
+        if proposed_short_id and proposed_short_id != current_short_id:
+            errors.append("Changing file number is not supported in this slice.")
+
+        patient_name = _nullable_text(normalized_profile.get("full_name"))
+        phone = _nullable_text(normalized_profile.get("primary_phone"))
+        page_number = _nullable_text(normalized_profile.get("primary_page_number"))
+        treatment_text = None
+        visit_date = None
+        visit_type = None
+        money_received_today = 0
+        paid_today_cents = None
+        total_amount_cents = None
+        discount_amount_cents = 0
+        warnings = []
+        if not phone:
+            warnings.append("Phone is missing.")
+        if not page_number:
+            warnings.append("Page number is missing.")
+        payload_dict = {
+            "current": current_snapshot or {},
+            "proposed": _patient_profile_payload(normalized_profile),
+            "note": _text(payload_dict.get("note")),
+        }
     else:
         if not locked_patient_id and not patient_name:
             errors.append("Patient name is required when patient context is not locked.")
@@ -352,6 +472,23 @@ def get_locked_treatment_context(patient_id: str, treatment_id: str) -> dict[str
         }
     finally:
         conn.close()
+
+
+def get_locked_patient_context(patient_id: str) -> dict[str, Any] | None:
+    snapshot = get_patient_profile_snapshot(patient_id)
+    if not snapshot:
+        return None
+    return {
+        "patient_id": snapshot["id"],
+        "short_id": snapshot.get("short_id") or "",
+        "patient_name": snapshot.get("full_name") or "",
+        "full_name": snapshot.get("full_name") or "",
+        "primary_phone": snapshot.get("primary_phone") or "",
+        "phones": snapshot.get("phones") or [],
+        "primary_page_number": snapshot.get("primary_page_number") or "",
+        "pages": snapshot.get("pages") or [],
+        "notes": snapshot.get("notes") or "",
+    }
 
 
 def create_entry(data: dict, *, actor_user_id: str) -> dict[str, Any]:
@@ -1025,6 +1162,110 @@ def approve_new_payment_entry(entry_id: str, *, actor_user_id: str) -> dict[str,
                     "treatment_id": locked_treatment_id,
                     "amount_cents": amount_cents,
                     "source": "reception_approval",
+                    "reception_entry_id": entry_id,
+                },
+            )
+        except Exception:
+            pass
+    return get_entry(entry_id)
+
+
+def approve_edit_patient_entry(entry_id: str, *, actor_user_id: str) -> dict[str, Any]:
+    now = _utc_now_iso()
+    locked_patient_id: str | None = None
+    conn = raw_db()
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        entry = _require_active_entry(_fetch_entry(conn, entry_id), action="approve")
+
+        if entry.get("draft_type") != "edit_patient" or entry.get("source") != "patient_file":
+            raise ValueError("Only patient-file correction drafts can be approved in this slice.")
+        if entry.get("status") not in {"new", "edited", "held"}:
+            raise ValueError("Only pending drafts can be approved.")
+
+        locked_patient_id = _nullable_text(entry.get("locked_patient_id"))
+        if not locked_patient_id:
+            raise ValueError("Locked patient context is required for approval.")
+        if entry.get("target_patient_id") or entry.get("target_treatment_id") or entry.get("target_payment_id"):
+            raise ValueError("This patient correction draft already has live targets and cannot be approved again.")
+
+        live_snapshot = get_patient_profile_snapshot(locked_patient_id, conn=conn)
+        if not live_snapshot:
+            raise ValueError("Locked patient was not found.")
+
+        payload = entry.get("payload_json") or {}
+        proposed_raw = payload.get("proposed")
+        if not isinstance(proposed_raw, dict):
+            raise ValueError("Malformed patient correction payload.")
+        profile_errors, normalized_profile = normalize_patient_profile_update(
+            proposed_raw,
+            patient_id=locked_patient_id,
+        )
+        if profile_errors:
+            raise ValueError("; ".join(profile_errors))
+        proposed_short_id = _text(normalized_profile.get("short_id"))
+        if proposed_short_id and proposed_short_id != _text(live_snapshot.get("short_id")):
+            raise ValueError("Changing file number is not supported in this slice.")
+
+        apply_patient_profile_update(conn, locked_patient_id, normalized_profile)
+
+        conn.execute(
+            """
+            UPDATE reception_entries
+            SET status=?,
+                reviewed_by_user_id=?,
+                updated_at=?,
+                reviewed_at=?,
+                last_action=?,
+                hold_reason=NULL,
+                return_reason=NULL,
+                rejection_reason=NULL,
+                target_patient_id=?,
+                target_treatment_id=NULL,
+                target_payment_id=NULL
+            WHERE id=?
+            """,
+            (
+                "approved",
+                actor_user_id,
+                now,
+                now,
+                "approved",
+                locked_patient_id,
+                entry_id,
+            ),
+        )
+        _insert_event(
+            conn,
+            entry_id=entry_id,
+            action="approved",
+            actor_user_id=actor_user_id,
+            from_status=entry["status"],
+            to_status="approved",
+            note=None,
+            meta_json={
+                "target_patient_id": locked_patient_id,
+                "draft_type": "edit_patient",
+                "source": "patient_file",
+            },
+            created_at=now,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    if locked_patient_id:
+        try:
+            write_event(
+                actor_user_id,
+                "patient_update",
+                entity="patient",
+                entity_id=locked_patient_id,
+                meta={
+                    "patient_id": locked_patient_id,
+                    "target_patient_id": locked_patient_id,
+                    "source": "reception_approval",
+                    "draft_type": "edit_patient",
                     "reception_entry_id": entry_id,
                 },
             )

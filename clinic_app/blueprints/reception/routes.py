@@ -5,14 +5,16 @@ from datetime import date
 from flask import Blueprint, abort, flash, redirect, request, url_for
 from flask_login import current_user, login_required
 
-from clinic_app.services.doctor_colors import ANY_DOCTOR_ID, get_active_doctor_options
+from clinic_app.services.doctor_colors import ANY_DOCTOR_ID, ANY_DOCTOR_LABEL, get_active_doctor_options
 from clinic_app.services.i18n import T
 from clinic_app.services.payments import money_input, parse_money_to_cents
 from clinic_app.services.reception_entries import (
+    approve_edit_patient_entry,
     approve_new_payment_entry,
     approve_new_treatment_entry,
     create_entry,
     get_entry,
+    get_locked_patient_context,
     get_locked_treatment_context,
     hold_entry,
     list_entries,
@@ -151,6 +153,172 @@ def _payment_form_data(context: dict | None = None, entry: dict | None = None) -
     return form_data
 
 
+def _patient_payload_from_context(current_patient: dict | None) -> dict[str, object]:
+    current_patient = current_patient or {}
+    phones = []
+    for row in current_patient.get("phones") or []:
+        phone = (row.get("phone") or "").strip()
+        if not phone:
+            continue
+        phones.append(
+            {
+                "phone": phone,
+                "label": (row.get("label") or "").strip() or None,
+                "is_primary": 1 if row.get("is_primary") else 0,
+            }
+        )
+    if not phones and (current_patient.get("primary_phone") or "").strip():
+        phones.append(
+            {
+                "phone": (current_patient.get("primary_phone") or "").strip(),
+                "label": None,
+                "is_primary": 1,
+            }
+        )
+
+    pages = []
+    for row in current_patient.get("pages") or []:
+        page_number = (row.get("page_number") or "").strip()
+        if not page_number:
+            continue
+        pages.append(
+            {
+                "page_number": page_number,
+                "notebook_name": (row.get("notebook_name") or "").strip() or None,
+                "notebook_color": (row.get("notebook_color") or "").strip(),
+            }
+        )
+    if not pages and (current_patient.get("primary_page_number") or "").strip():
+        pages.append(
+            {
+                "page_number": (current_patient.get("primary_page_number") or "").strip(),
+                "notebook_name": None,
+                "notebook_color": "",
+            }
+        )
+
+    return {
+        "short_id": (current_patient.get("short_id") or "").strip(),
+        "full_name": (current_patient.get("full_name") or current_patient.get("patient_name") or "").strip(),
+        "primary_phone": phones[0]["phone"] if phones else "",
+        "phones": phones,
+        "primary_page_number": pages[0]["page_number"] if pages else "",
+        "pages": pages,
+        "notes": (current_patient.get("notes") or "").strip(),
+    }
+
+
+def _patient_correction_form_data(current_patient: dict | None = None, entry: dict | None = None) -> dict[str, object]:
+    payload = (entry or {}).get("payload_json") or {}
+    proposed = payload.get("proposed") if isinstance(payload, dict) else None
+    current = payload.get("current") if isinstance(payload, dict) else None
+
+    source = proposed if isinstance(proposed, dict) else _patient_payload_from_context(current_patient)
+    source_phones = list(source.get("phones") or [])
+    source_pages = list(source.get("pages") or [])
+    return {
+        "short_id": (current or {}).get("short_id") if isinstance(current, dict) else (_patient_payload_from_context(current_patient).get("short_id") or ""),
+        "full_name": source.get("full_name") or "",
+        "phone_rows": source_phones,
+        "page_rows": source_pages,
+        "notes": source.get("notes") or "",
+        "reception_note": (payload.get("note") or "") if isinstance(payload, dict) else "",
+    }
+
+
+def _read_patient_correction_form_data(current_patient: dict | None = None) -> dict[str, object]:
+    phone_rows: list[dict[str, object]] = []
+    primary_phone = (request.form.get("phone") or "").strip()
+    if primary_phone:
+        phone_rows.append({"phone": primary_phone, "label": None, "is_primary": 1})
+    extra_numbers = request.form.getlist("extra_phone_number")
+    extra_labels = request.form.getlist("extra_phone_label")
+    for index, phone_raw in enumerate(extra_numbers):
+        phone = (phone_raw or "").strip()
+        if not phone:
+            continue
+        label = (extra_labels[index] if index < len(extra_labels) else "").strip() or None
+        phone_rows.append({"phone": phone, "label": label, "is_primary": 0})
+
+    page_rows: list[dict[str, object]] = []
+    primary_page = (request.form.get("primary_page_number") or "").strip()
+    primary_notebook_name = (request.form.get("primary_notebook_name") or "").strip() or None
+    primary_notebook_color = (request.form.get("primary_notebook_color") or "").strip()
+    if primary_page:
+        page_rows.append(
+            {
+                "page_number": primary_page,
+                "notebook_name": primary_notebook_name,
+                "notebook_color": primary_notebook_color,
+            }
+        )
+    extra_pages = request.form.getlist("extra_page_number")
+    extra_notebook_names = request.form.getlist("extra_notebook_name")
+    extra_notebook_colors = request.form.getlist("extra_notebook_color")
+    row_count = max(len(extra_pages), len(extra_notebook_names), len(extra_notebook_colors))
+    for index in range(row_count):
+        page_number = (extra_pages[index] if index < len(extra_pages) else "").strip()
+        if not page_number:
+            continue
+        notebook_name = (extra_notebook_names[index] if index < len(extra_notebook_names) else "").strip() or None
+        notebook_color = (extra_notebook_colors[index] if index < len(extra_notebook_colors) else "").strip()
+        page_rows.append(
+            {
+                "page_number": page_number,
+                "notebook_name": notebook_name,
+                "notebook_color": notebook_color,
+            }
+        )
+
+    return {
+        "short_id": (current_patient or {}).get("short_id") or "",
+        "full_name": (request.form.get("full_name") or "").strip(),
+        "phone_rows": phone_rows,
+        "page_rows": page_rows,
+        "notes": (request.form.get("notes") or "").strip(),
+        "reception_note": (request.form.get("reception_note") or "").strip(),
+    }
+
+
+def _patient_correction_entry_payload_from_form_data(
+    form_data: dict[str, object],
+    current_patient: dict,
+    *,
+    locked_patient_id: str,
+) -> dict:
+    proposed_payload = {
+        "full_name": form_data.get("full_name") or "",
+        "phones": form_data.get("phone_rows") or [],
+        "pages": form_data.get("page_rows") or [],
+        "notes": form_data.get("notes") or "",
+    }
+    current_payload = _patient_payload_from_context(current_patient)
+    primary_phone = ""
+    phone_rows = form_data.get("phone_rows") or []
+    if phone_rows:
+        primary_phone = (phone_rows[0].get("phone") or "").strip()
+    primary_page = ""
+    page_rows = form_data.get("page_rows") or []
+    if page_rows:
+        primary_page = (page_rows[0].get("page_number") or "").strip()
+    return {
+        "draft_type": "edit_patient",
+        "source": "patient_file",
+        "patient_intent": "existing",
+        "locked_patient_id": locked_patient_id,
+        "patient_name": (form_data.get("full_name") or "").strip(),
+        "phone": primary_phone,
+        "page_number": primary_page,
+        "doctor_id": ANY_DOCTOR_ID,
+        "doctor_label": _doctor_label_for(ANY_DOCTOR_ID) or ANY_DOCTOR_LABEL,
+        "payload_json": {
+            "current": current_payload,
+            "proposed": proposed_payload,
+            "note": (form_data.get("reception_note") or "").strip(),
+        },
+    }
+
+
 def _read_form_data() -> dict[str, str]:
     return {
         "patient_name": (request.form.get("patient_name") or "").strip(),
@@ -282,6 +450,8 @@ def _decorate_entry(entry: dict) -> dict:
 def _approval_confirmation_key(entry: dict) -> str:
     if entry.get("draft_type") == "new_payment":
         return "reception_payment_approve_confirmation_label"
+    if entry.get("draft_type") == "edit_patient":
+        return "reception_patient_approve_confirmation_label"
     return "reception_approve_confirmation_label"
 
 
@@ -350,7 +520,7 @@ def _can_access_entry(entry: dict) -> bool:
 
 
 def _can_edit_returned_entry(entry: dict) -> bool:
-    return (
+    is_returned_treatment = (
         _can_create()
         and entry.get("submitted_by_user_id") == current_user.id
         and entry.get("draft_type") == "new_treatment"
@@ -358,6 +528,15 @@ def _can_edit_returned_entry(entry: dict) -> bool:
         and entry.get("status") == "edited"
         and entry.get("last_action") == "returned"
     )
+    is_returned_patient_correction = (
+        _can_create()
+        and entry.get("submitted_by_user_id") == current_user.id
+        and entry.get("draft_type") == "edit_patient"
+        and entry.get("source") == "patient_file"
+        and entry.get("status") == "edited"
+        and entry.get("last_action") == "returned"
+    )
+    return is_returned_treatment or is_returned_patient_correction
 
 
 def _detail_context(
@@ -370,17 +549,21 @@ def _detail_context(
         abort(403)
     events = list_entry_events(entry["id"])
     locked_treatment_context = None
+    locked_patient_context = None
     payload = entry.get("payload_json") or {}
     if entry.get("draft_type") == "new_payment" and entry.get("locked_patient_id") and entry.get("locked_treatment_id"):
         locked_treatment_context = get_locked_treatment_context(
             entry["locked_patient_id"],
             entry["locked_treatment_id"],
         )
+    if entry.get("draft_type") == "edit_patient" and entry.get("locked_patient_id"):
+        locked_patient_context = get_locked_patient_context(entry["locked_patient_id"])
     return {
         "show_back": False,
         "entry": entry,
         "entry_events": events,
         "locked_treatment_context": locked_treatment_context,
+        "locked_patient_context": locked_patient_context,
         "entry_payload": payload if isinstance(payload, dict) else {},
         "can_review_reception": _can_review(),
         "can_approve_reception": _can_approve(),
@@ -406,6 +589,33 @@ def _edit_context(
         "reception_form": form_data or _entry_form_data(entry),
         "reception_errors": errors or [],
         "return_reason": entry.get("return_reason") or "",
+    }
+
+
+def _patient_correction_context(
+    current_patient: dict,
+    *,
+    entry: dict | None = None,
+    form_data: dict[str, object] | None = None,
+    errors: list[str] | None = None,
+    page_title_key: str,
+    page_subtitle_key: str,
+    submit_label_key: str,
+    form_action: str,
+    back_href: str,
+) -> dict:
+    return {
+        "show_back": False,
+        "entry": entry,
+        "current_patient": current_patient,
+        "patient_correction_form": form_data or _patient_correction_form_data(current_patient=current_patient, entry=entry),
+        "patient_correction_errors": errors or [],
+        "page_title_key": page_title_key,
+        "page_subtitle_key": page_subtitle_key,
+        "submit_label": T(submit_label_key),
+        "form_action": form_action,
+        "return_reason": (entry or {}).get("return_reason") or "",
+        "back_href": back_href,
     }
 
 
@@ -461,6 +671,38 @@ def _render_new_payment(
     )
 
 
+def _render_patient_correction(
+    current_patient: dict,
+    *,
+    entry: dict | None = None,
+    form_data: dict[str, object] | None = None,
+    errors: list[str] | None = None,
+    page_title_key: str,
+    page_subtitle_key: str,
+    submit_label_key: str,
+    form_action: str,
+    back_href: str,
+    status_code: int = 200,
+):
+    return (
+        render_page(
+            "reception/edit_patient.html",
+            **_patient_correction_context(
+                current_patient,
+                entry=entry,
+                form_data=form_data,
+                errors=errors,
+                page_title_key=page_title_key,
+                page_subtitle_key=page_subtitle_key,
+                submit_label_key=submit_label_key,
+                form_action=form_action,
+                back_href=back_href,
+            ),
+        ),
+        status_code,
+    )
+
+
 def _locked_treatment_context_or_abort(patient_id: str, treatment_id: str) -> dict:
     context = get_locked_treatment_context(patient_id, treatment_id)
     if context:
@@ -477,6 +719,13 @@ def _locked_treatment_context_or_abort(patient_id: str, treatment_id: str) -> di
         conn.close()
     if payment and (payment["parent_payment_id"] or "").strip():
         abort(400)
+    abort(404)
+
+
+def _locked_patient_context_or_abort(patient_id: str) -> dict:
+    context = get_locked_patient_context(patient_id)
+    if context:
+        return context
     abort(404)
 
 
@@ -567,6 +816,61 @@ def create_new_payment_entry():
     return redirect(url_for("reception.index", view="desk"))
 
 
+@bp.route("/reception/entries/new-patient-correction", methods=["GET"])
+@login_required
+def new_patient_correction_entry():
+    if not _can_create() or not _can_view_patients():
+        abort(403)
+    patient_id = (request.args.get("patient_id") or "").strip()
+    if not patient_id:
+        abort(404)
+    current_patient = _locked_patient_context_or_abort(patient_id)
+    return render_page(
+        "reception/edit_patient.html",
+        **_patient_correction_context(
+            current_patient,
+            page_title_key="reception_patient_correction_title",
+            page_subtitle_key="reception_patient_correction_subtitle",
+            submit_label_key="reception_patient_save_draft",
+            form_action=url_for("reception.create_new_patient_correction_entry"),
+            back_href=url_for("patients.patient_detail", pid=patient_id),
+        ),
+    )
+
+
+@bp.route("/reception/entries/new-patient-correction", methods=["POST"])
+@login_required
+def create_new_patient_correction_entry():
+    if not _can_create() or not _can_view_patients():
+        abort(403)
+    patient_id = (request.form.get("patient_id") or "").strip()
+    if not patient_id:
+        abort(404)
+    current_patient = _locked_patient_context_or_abort(patient_id)
+    form_data = _read_patient_correction_form_data(current_patient)
+    payload = _patient_correction_entry_payload_from_form_data(
+        form_data,
+        current_patient,
+        locked_patient_id=patient_id,
+    )
+    errors, _warnings, _normalized = validate_entry_payload(payload)
+    if errors:
+        return _render_patient_correction(
+            current_patient,
+            form_data=form_data,
+            errors=errors,
+            page_title_key="reception_patient_correction_title",
+            page_subtitle_key="reception_patient_correction_subtitle",
+            submit_label_key="reception_patient_save_draft",
+            form_action=url_for("reception.create_new_patient_correction_entry"),
+            back_href=url_for("patients.patient_detail", pid=patient_id),
+            status_code=400,
+        )
+    create_entry(payload, actor_user_id=current_user.id)
+    flash(T("reception_patient_draft_saved"), "ok")
+    return redirect(url_for("reception.index", view="desk"))
+
+
 @bp.route("/reception/entries/<entry_id>", methods=["GET"])
 @login_required
 def reception_entry_detail(entry_id: str):
@@ -587,6 +891,25 @@ def edit_reception_entry(entry_id: str):
     if not _can_create():
         abort(403)
     entry = _find_entry_or_404(entry_id)
+    if entry.get("draft_type") == "edit_patient":
+        if not _can_edit_returned_entry(entry):
+            abort(403)
+        current_patient = get_locked_patient_context(entry.get("locked_patient_id") or "") or {
+            "patient_id": entry.get("locked_patient_id") or "",
+            **((entry.get("payload_json") or {}).get("current") or {}),
+        }
+        return render_page(
+            "reception/edit_patient.html",
+            **_patient_correction_context(
+                current_patient,
+                entry=entry,
+                page_title_key="reception_edit_patient_title",
+                page_subtitle_key="reception_edit_patient_subtitle",
+                submit_label_key="reception_resubmit_draft",
+                form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
+                back_href=url_for("reception.index", view="desk"),
+            ),
+        )
     return render_page(
         "reception/edit.html",
         **_edit_context(entry),
@@ -599,6 +922,50 @@ def submit_reception_entry_edit(entry_id: str):
     if not _can_create():
         abort(403)
     entry = _find_entry_or_404(entry_id)
+    if entry.get("draft_type") == "edit_patient":
+        current_patient = get_locked_patient_context(entry.get("locked_patient_id") or "") or {
+            "patient_id": entry.get("locked_patient_id") or "",
+            **((entry.get("payload_json") or {}).get("current") or {}),
+        }
+        form_data = _read_patient_correction_form_data(current_patient)
+        payload = _patient_correction_entry_payload_from_form_data(
+            form_data,
+            current_patient,
+            locked_patient_id=entry.get("locked_patient_id") or "",
+        )
+        errors, _warnings, _normalized = validate_entry_payload(payload)
+        if errors:
+            return _render_patient_correction(
+                current_patient,
+                entry=entry,
+                form_data=form_data,
+                errors=errors,
+                page_title_key="reception_edit_patient_title",
+                page_subtitle_key="reception_edit_patient_subtitle",
+                submit_label_key="reception_resubmit_draft",
+                form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
+                back_href=url_for("reception.index", view="desk"),
+                status_code=400,
+            )
+        try:
+            resubmit_returned_entry(entry_id, payload, actor_user_id=current_user.id)
+        except ValueError as exc:
+            refreshed_entry = _find_entry_or_404(entry_id)
+            refreshed_patient = get_locked_patient_context(refreshed_entry.get("locked_patient_id") or "") or current_patient
+            return _render_patient_correction(
+                refreshed_patient,
+                entry=refreshed_entry,
+                form_data=form_data,
+                errors=[str(exc)],
+                page_title_key="reception_edit_patient_title",
+                page_subtitle_key="reception_edit_patient_subtitle",
+                submit_label_key="reception_resubmit_draft",
+                form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
+                back_href=url_for("reception.index", view="desk"),
+                status_code=400,
+            )
+        flash(T("reception_draft_resubmitted"), "ok")
+        return redirect(url_for("reception.index", view="desk"))
     form_data = _read_form_data()
     payload = _entry_payload_from_form_data(form_data)
     errors, _warnings, _normalized = validate_entry_payload(payload)
@@ -681,6 +1048,9 @@ def approve_reception_entry(entry_id: str):
         if entry.get("draft_type") == "new_payment":
             approve_new_payment_entry(entry_id, actor_user_id=current_user.id)
             success_key = "reception_payment_draft_approved"
+        elif entry.get("draft_type") == "edit_patient":
+            approve_edit_patient_entry(entry_id, actor_user_id=current_user.id)
+            success_key = "reception_patient_draft_approved"
         else:
             approve_new_treatment_entry(entry_id, actor_user_id=current_user.id)
             success_key = "reception_draft_approved"

@@ -231,10 +231,46 @@ def add_payment_to_treatment(
     note: str,
     doctor_id: str,
     doctor_label: str,
-) -> str:
-    """Add a child payment to an existing treatment."""
+) -> Dict[str, Any]:
+    """Add a child payment to an existing treatment and persist the parent's remaining balance."""
     import uuid
-    
+
+    if int(amount_cents or 0) <= 0:
+        raise ValueError("Payment amount must be greater than zero.")
+
+    treatment = conn.execute(
+        """
+        SELECT id, patient_id, parent_payment_id, amount_cents, total_amount_cents, discount_cents
+          FROM payments
+         WHERE id = ?
+           AND patient_id = ?
+           AND (parent_payment_id IS NULL OR parent_payment_id = '')
+        """,
+        (treatment_id, patient_id),
+    ).fetchone()
+    if not treatment:
+        raise ValueError("Treatment not found.")
+
+    child_sum_row = conn.execute(
+        """
+        SELECT COALESCE(SUM(amount_cents), 0) AS child_paid
+          FROM payments
+         WHERE parent_payment_id = ?
+           AND patient_id = ?
+        """,
+        (treatment_id, patient_id),
+    ).fetchone()
+
+    total_cents = int(treatment["total_amount_cents"] or 0)
+    discount_cents = int(treatment["discount_cents"] or 0)
+    initial_cents = int(treatment["amount_cents"] or 0)
+    child_paid_cents = int((child_sum_row["child_paid"] or 0) if child_sum_row else 0)
+    due_cents = max(total_cents - discount_cents, 0)
+    current_remaining_cents = max(due_cents - (initial_cents + child_paid_cents), 0)
+
+    if int(amount_cents) > current_remaining_cents:
+        raise ValueError("Paid today cannot be greater than the amount due.")
+
     payment_id = str(uuid.uuid4())
     conn.execute(
         """
@@ -250,8 +286,20 @@ def add_payment_to_treatment(
             method, note, doctor_id, doctor_label,
         )
     )
-    conn.commit()
-    return payment_id
+
+    total_paid_cents = initial_cents + child_paid_cents + int(amount_cents)
+    remaining_cents = max(due_cents - total_paid_cents, 0)
+    conn.execute(
+        "UPDATE payments SET remaining_cents = ? WHERE id = ?",
+        (remaining_cents, treatment_id),
+    )
+
+    return {
+        "payment_id": payment_id,
+        "remaining_cents": remaining_cents,
+        "total_paid_cents": total_paid_cents,
+        "treatment_id": treatment_id,
+    }
 
 
 def get_treatment_status_label(status: str) -> str:

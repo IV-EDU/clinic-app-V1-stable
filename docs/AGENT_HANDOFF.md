@@ -121,7 +121,12 @@ Reception does daily entry work as drafts; manager/admin reviews; the system pos
   - Manager queue exists
   - Hold / Return / Reject review actions exist
   - Returned Desk-origin `new_treatment` drafts can be edited and resubmitted by the original receptionist
-  - Narrow approval exists for Desk-origin `new_treatment` drafts only
-- Approval currently creates a new live patient + treatment row only.
+  - Narrow approval exists for:
+    - Desk-origin `new_treatment` drafts
+    - Treatment-card locked `new_payment` drafts
+- Approval currently supports only:
+  - creating a new live patient + treatment for Desk-origin `new_treatment`
+  - posting one live child payment onto the locked treatment for treatment-card `new_payment`
+- Treatment-card payment drafts now use the shared `clinic_app/services/payments.py:add_payment_to_treatment(...)` helper, which also recomputes and persists parent `remaining_cents`.
 - Desk and queue ordering now uses `updated_at DESC` so resubmitted drafts return to the top.
-- Do not casually widen approval to corrections, payment-only drafts, or duplicate-resolution flows without updating the Reception planning docs first.
+- Do not casually widen approval to desk-origin payment drafts, corrections, patient reassignment, or duplicate-resolution flows without updating the Reception planning docs first.

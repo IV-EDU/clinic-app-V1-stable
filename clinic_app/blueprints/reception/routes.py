@@ -1,14 +1,19 @@
 from __future__ import annotations
 
+from datetime import date
+
 from flask import Blueprint, abort, flash, redirect, request, url_for
 from flask_login import current_user, login_required
 
 from clinic_app.services.doctor_colors import ANY_DOCTOR_ID, get_active_doctor_options
 from clinic_app.services.i18n import T
+from clinic_app.services.payments import money_input, parse_money_to_cents
 from clinic_app.services.reception_entries import (
+    approve_new_payment_entry,
     approve_new_treatment_entry,
     create_entry,
     get_entry,
+    get_locked_treatment_context,
     hold_entry,
     list_entries,
     list_entry_events,
@@ -37,6 +42,10 @@ def _can_access_reception() -> bool:
 
 def _can_create() -> bool:
     return current_user.is_authenticated and current_user.has_permission("reception_entries:create")
+
+
+def _can_view_patients() -> bool:
+    return current_user.is_authenticated and current_user.has_permission("patients:view")
 
 
 def _has_manager_visibility() -> bool:
@@ -86,6 +95,16 @@ def _default_form_data() -> dict[str, str]:
     }
 
 
+def _default_payment_form_data() -> dict[str, str]:
+    return {
+        "amount": "",
+        "visit_date": date.today().isoformat(),
+        "method": "cash",
+        "doctor_id": ANY_DOCTOR_ID,
+        "note": "",
+    }
+
+
 def _entry_form_data(entry: dict | None = None) -> dict[str, str]:
     if not entry:
         return _default_form_data()
@@ -116,6 +135,22 @@ def _entry_form_data(entry: dict | None = None) -> dict[str, str]:
     }
 
 
+def _payment_form_data(context: dict | None = None, entry: dict | None = None) -> dict[str, str]:
+    form_data = _default_payment_form_data()
+    if context:
+        form_data["doctor_id"] = context.get("doctor_id") or ANY_DOCTOR_ID
+        form_data["visit_date"] = context.get("paid_at") or form_data["visit_date"]
+    if entry:
+        payload = entry.get("payload_json") or {}
+        form_data["amount"] = money_input(entry.get("paid_today_cents"))
+        form_data["visit_date"] = entry.get("visit_date") or form_data["visit_date"]
+        form_data["doctor_id"] = entry.get("doctor_id") or form_data["doctor_id"]
+        if isinstance(payload, dict):
+            form_data["method"] = payload.get("method") or form_data["method"]
+            form_data["note"] = payload.get("note") or ""
+    return form_data
+
+
 def _read_form_data() -> dict[str, str]:
     return {
         "patient_name": (request.form.get("patient_name") or "").strip(),
@@ -133,6 +168,16 @@ def _read_form_data() -> dict[str, str]:
     }
 
 
+def _read_payment_form_data() -> dict[str, str]:
+    return {
+        "amount": (request.form.get("amount") or "").strip(),
+        "visit_date": (request.form.get("visit_date") or "").strip(),
+        "method": (request.form.get("method") or "").strip(),
+        "doctor_id": (request.form.get("doctor_id") or "").strip(),
+        "note": (request.form.get("note") or "").strip(),
+    }
+
+
 def _entry_payload_from_form_data(form_data: dict[str, str]) -> dict:
     return {
         "draft_type": "new_treatment",
@@ -141,6 +186,39 @@ def _entry_payload_from_form_data(form_data: dict[str, str]) -> dict:
         **form_data,
         "doctor_label": _doctor_label_for(form_data["doctor_id"]),
         "payload_json": {"note": form_data["note"]} if form_data["note"] else {},
+    }
+
+
+def _payment_entry_payload_from_form_data(
+    form_data: dict[str, str],
+    locked_context: dict[str, str | int],
+) -> dict:
+    raw_amount = form_data.get("amount") or ""
+    amount_cents = parse_money_to_cents(raw_amount)
+    return {
+        "draft_type": "new_payment",
+        "source": "treatment_card",
+        "patient_intent": "existing",
+        "locked_patient_id": locked_context["patient_id"],
+        "locked_treatment_id": locked_context["treatment_id"],
+        "patient_name": locked_context.get("patient_name") or "",
+        "phone": locked_context.get("phone") or "",
+        "page_number": locked_context.get("page_number") or "",
+        "visit_date": form_data.get("visit_date") or "",
+        "treatment_text": locked_context.get("treatment_text") or "",
+        "doctor_id": form_data["doctor_id"],
+        "doctor_label": _doctor_label_for(form_data["doctor_id"]),
+        "money_received_today": True,
+        "paid_today": raw_amount,
+        "total_amount": money_input(int(locked_context.get("total_amount_cents") or 0)),
+        "discount_amount": money_input(int(locked_context.get("discount_amount_cents") or 0)),
+        "payload_json": {
+            "submitted_amount_cents": amount_cents,
+            "treatment_remaining_cents_at_submit": int(locked_context.get("remaining_cents") or 0),
+            "treatment_total_paid_cents_at_submit": int(locked_context.get("total_paid_cents") or 0),
+            "method": form_data.get("method") or "cash",
+            "note": form_data.get("note") or "",
+        },
     }
 
 
@@ -199,6 +277,12 @@ def _decorate_entry(entry: dict) -> dict:
     entry["note"] = (payload.get("note") if isinstance(payload, dict) else "") or ""
     entry["action_reason"] = _entry_reason(entry)
     return entry
+
+
+def _approval_confirmation_key(entry: dict) -> str:
+    if entry.get("draft_type") == "new_payment":
+        return "reception_payment_approve_confirmation_label"
+    return "reception_approve_confirmation_label"
 
 
 def _recent_entries_for_current_user(limit: int = 20) -> list[dict]:
@@ -285,15 +369,25 @@ def _detail_context(
     if not _can_access_entry(entry):
         abort(403)
     events = list_entry_events(entry["id"])
+    locked_treatment_context = None
+    payload = entry.get("payload_json") or {}
+    if entry.get("draft_type") == "new_payment" and entry.get("locked_patient_id") and entry.get("locked_treatment_id"):
+        locked_treatment_context = get_locked_treatment_context(
+            entry["locked_patient_id"],
+            entry["locked_treatment_id"],
+        )
     return {
         "show_back": False,
         "entry": entry,
         "entry_events": events,
+        "locked_treatment_context": locked_treatment_context,
+        "entry_payload": payload if isinstance(payload, dict) else {},
         "can_review_reception": _can_review(),
         "can_approve_reception": _can_approve(),
         "can_create_reception": _can_create(),
         "action_errors": action_errors or [],
         "action_form": action_form or {"hold_note": "", "return_reason": "", "reject_reason": "", "confirm_approve": ""},
+        "approval_confirmation_key": _approval_confirmation_key(entry),
     }
 
 
@@ -347,6 +441,45 @@ def _render_edit(
     )
 
 
+def _render_new_payment(
+    locked_context: dict,
+    *,
+    form_data: dict[str, str] | None = None,
+    errors: list[str] | None = None,
+    status_code: int = 200,
+):
+    return (
+        render_page(
+            "reception/new_payment.html",
+            show_back=False,
+            doctor_options=_doctor_options(),
+            payment_form=form_data or _payment_form_data(locked_context),
+            payment_errors=errors or [],
+            locked_treatment=locked_context,
+        ),
+        status_code,
+    )
+
+
+def _locked_treatment_context_or_abort(patient_id: str, treatment_id: str) -> dict:
+    context = get_locked_treatment_context(patient_id, treatment_id)
+    if context:
+        return context
+    from clinic_app.services.database import db as raw_db
+
+    conn = raw_db()
+    try:
+        payment = conn.execute(
+            "SELECT id, patient_id, parent_payment_id FROM payments WHERE id=?",
+            (treatment_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    if payment and (payment["parent_payment_id"] or "").strip():
+        abort(400)
+    abort(404)
+
+
 @bp.route("/reception", methods=["GET"])
 @login_required
 def index():
@@ -392,6 +525,46 @@ def create_reception_entry():
         ),
         200,
     )
+
+
+@bp.route("/reception/entries/new-payment", methods=["GET"])
+@login_required
+def new_payment_entry():
+    if not _can_create() or not _can_view_patients():
+        abort(403)
+    patient_id = (request.args.get("patient_id") or "").strip()
+    treatment_id = (request.args.get("treatment_id") or "").strip()
+    if not patient_id or not treatment_id:
+        abort(404)
+    context = _locked_treatment_context_or_abort(patient_id, treatment_id)
+    return render_page(
+        "reception/new_payment.html",
+        show_back=False,
+        doctor_options=_doctor_options(),
+        payment_form=_payment_form_data(context),
+        payment_errors=[],
+        locked_treatment=context,
+    )
+
+
+@bp.route("/reception/entries/new-payment", methods=["POST"])
+@login_required
+def create_new_payment_entry():
+    if not _can_create() or not _can_view_patients():
+        abort(403)
+    patient_id = (request.form.get("patient_id") or "").strip()
+    treatment_id = (request.form.get("treatment_id") or "").strip()
+    if not patient_id or not treatment_id:
+        abort(404)
+    context = _locked_treatment_context_or_abort(patient_id, treatment_id)
+    form_data = _read_payment_form_data()
+    payload = _payment_entry_payload_from_form_data(form_data, context)
+    errors, _warnings, _normalized = validate_entry_payload(payload)
+    if errors:
+        return _render_new_payment(context, form_data=form_data, errors=errors, status_code=400)
+    create_entry(payload, actor_user_id=current_user.id)
+    flash(T("reception_payment_draft_saved"), "ok")
+    return redirect(url_for("reception.index", view="desk"))
 
 
 @bp.route("/reception/entries/<entry_id>", methods=["GET"])
@@ -505,7 +678,12 @@ def approve_reception_entry(entry_id: str):
             status_code=400,
         )
     try:
-        approve_new_treatment_entry(entry_id, actor_user_id=current_user.id)
+        if entry.get("draft_type") == "new_payment":
+            approve_new_payment_entry(entry_id, actor_user_id=current_user.id)
+            success_key = "reception_payment_draft_approved"
+        else:
+            approve_new_treatment_entry(entry_id, actor_user_id=current_user.id)
+            success_key = "reception_draft_approved"
     except ValueError as exc:
         refreshed_entry = _find_entry_or_404(entry_id)
         return _render_detail(
@@ -514,5 +692,5 @@ def approve_reception_entry(entry_id: str):
             action_form={"hold_note": "", "return_reason": "", "reject_reason": "", "confirm_approve": "1"},
             status_code=400,
         )
-    flash(T("reception_draft_approved"), "ok")
+    flash(T(success_key), "ok")
     return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id))

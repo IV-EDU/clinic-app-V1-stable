@@ -12,12 +12,12 @@
 **Branch:** `main`
 **Data:** Production use (do not break).
 **Login:** `admin` / `admin` (NEVER change this)
-**Tests:** Last known Reception/RBAC regression subset: 49 passing (verified March 17, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
+**Tests:** Last known Reception/payment/RBAC regression subset: 66 passing (verified March 17, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
 
 ### Fast ramp (don’t re-discover the repo)
 
 - Read `docs/AGENT_HANDOFF.md` for the app map + the locked Reception Desk decisions.
-- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, and a narrow approval path for Desk-origin `new_treatment` drafts.
+- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, a narrow approval path for Desk-origin `new_treatment`, and a locked treatment-card `new_payment` draft/approval path.
 - Older historical session notes were archived into `MEMORY_ARCHIVE.md`.
 
 ---
@@ -339,3 +339,21 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - Only returned drafts are editable by reception; held drafts are not.
 - Returned reasons are cleared from active draft state after successful resubmit but remain in workflow history.
 - Queue and desk lists must prioritize `updated_at`, not original `submitted_at`.
+
+### Session: Reception locked new_payment draft/approval
+**Date:** 2026-03-17
+**What was done:**
+- Added locked-context `new_payment` drafts launched from treatment cards into a dedicated `/reception/entries/new-payment` page.
+- Added manager approval for those drafts through the existing Reception detail flow, posting one child payment onto the locked live treatment.
+- Hardened the shared `add_payment_to_treatment(...)` helper so both the live payment route and the Reception approval path now recompute and persist parent `remaining_cents`.
+- Added route/service/payment regression coverage for payment draft creation, approval, stale-balance failure, and shared helper balance updates.
+
+**Current state:**
+- Reception can now create `new_payment` drafts only from a specific treatment card, not from the Desk page.
+- Managers can approve those locked payment drafts; approval re-checks the current live remaining amount and blocks overpayment if the balance changed.
+- Reception/payment/RBAC regression subset now passes with 66 tests.
+
+**Key decisions:**
+- `new_payment` drafts stay locked to `treatment_card` source only in this slice.
+- Reception approval must reuse the shared live add-payment helper; no separate Reception-only SQL path for child payments.
+- Parent `remaining_cents` recomputation is now part of the shared helper contract, not optional route cleanup.

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from clinic_app.services.database import db as raw_db
 from clinic_app.services.reception_entries import (
+    approve_new_payment_entry,
     create_entry,
     get_entry,
+    get_locked_treatment_context,
     list_entries,
     list_entry_events,
     list_queue_entries,
@@ -18,10 +20,10 @@ def _seed_patient(patient_id: str, full_name: str = "Locked Patient") -> None:
     try:
         conn.execute(
             """
-            INSERT INTO patients (id, short_id, full_name, phone, notes)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO patients (id, short_id, full_name, phone, notes, primary_page_number)
+            VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (patient_id, "P-LOCKED", full_name, "01000000000", ""),
+            (patient_id, "P-LOCKED", full_name, "01000000000", "", "12"),
         )
         conn.commit()
     finally:
@@ -37,6 +39,44 @@ def _seed_user(user_id: str, username: str) -> None:
             VALUES (?, ?, ?, 'assistant', 1, datetime('now'), datetime('now'))
             """,
             (user_id, username, "test-hash"),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _seed_parent_treatment(
+    patient_id: str,
+    treatment_id: str,
+    *,
+    amount_cents: int = 5000,
+    total_amount_cents: int = 20000,
+    discount_cents: int = 1000,
+) -> None:
+    conn = raw_db()
+    try:
+        conn.execute(
+            """
+            INSERT INTO payments(
+                id, patient_id, parent_payment_id, paid_at, amount_cents, method, note, treatment,
+                doctor_id, doctor_label, remaining_cents, total_amount_cents, examination_flag,
+                followup_flag, discount_cents
+            ) VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
+            """,
+            (
+                treatment_id,
+                patient_id,
+                "2026-03-17",
+                amount_cents,
+                "cash",
+                "",
+                "Locked Crown",
+                "_any_",
+                "Any Doctor",
+                max(total_amount_cents - discount_cents - amount_cents, 0),
+                total_amount_cents,
+                discount_cents,
+            ),
         )
         conn.commit()
     finally:
@@ -138,7 +178,7 @@ def test_validate_requires_doctor():
 def test_validate_requires_paid_today_when_money_received():
     errors, _, _ = validate_entry_payload(
         {
-            "draft_type": "new_payment",
+            "draft_type": "new_treatment",
             "source": "reception_desk",
             "patient_name": "Money Case",
             "doctor_id": "_any_",
@@ -197,7 +237,7 @@ def test_list_entries_returns_newest_first(app, admin_user):
     )
     newer = create_entry(
         {
-            "draft_type": "new_payment",
+            "draft_type": "new_treatment",
             "source": "reception_desk",
             "patient_name": "Newer Draft",
             "doctor_id": "_any_",
@@ -318,13 +358,19 @@ def test_resubmit_returned_entry_rejects_non_returned_draft(app, admin_user):
 
 def test_resubmit_returned_entry_rejects_unsupported_draft_type(app, admin_user):
     _seed_user("manager-test", "manager-test")
+    _seed_patient("payment-patient-unsupported", "Payment Draft")
+    _seed_parent_treatment("payment-patient-unsupported", "treatment-unsupported")
     created = create_entry(
         {
             "draft_type": "new_payment",
-            "source": "reception_desk",
+            "source": "treatment_card",
+            "locked_patient_id": "payment-patient-unsupported",
+            "locked_treatment_id": "treatment-unsupported",
             "patient_name": "Payment Draft",
             "doctor_id": "_any_",
             "doctor_label": "Any Doctor",
+            "paid_today": "25",
+            "payload_json": {"treatment_remaining_cents_at_submit": 14000},
         },
         actor_user_id="admin-test",
     )
@@ -385,3 +431,168 @@ def test_resubmitted_draft_sorts_by_updated_at_for_desk_and_queue(app, admin_use
     assert desk_rows[0]["id"] == returned["id"]
     assert queue_rows[0]["id"] == returned["id"]
     assert desk_rows[0]["id"] != older["id"]
+
+
+def test_validate_new_payment_requires_locked_context_and_positive_amount():
+    errors, warnings, normalized = validate_entry_payload(
+        {
+            "draft_type": "new_payment",
+            "source": "treatment_card",
+            "doctor_id": "_any_",
+            "doctor_label": "Any Doctor",
+            "paid_today": "0",
+        }
+    )
+
+    assert "Patient context is required for payment drafts." in errors
+    assert "Treatment context is required for payment drafts." in errors
+    assert "Payment amount must be greater than zero." in errors
+    assert warnings == []
+    assert normalized["patient_intent"] == "existing"
+    assert normalized["money_received_today"] == 1
+
+
+def test_get_locked_treatment_context_returns_live_snapshot(app, admin_user):
+    _seed_patient("payment-patient-1", "Snapshot Patient")
+    _seed_parent_treatment("payment-patient-1", "treatment-1", amount_cents=5000, total_amount_cents=20000, discount_cents=1000)
+
+    context = get_locked_treatment_context("payment-patient-1", "treatment-1")
+
+    assert context is not None
+    assert context["patient_name"] == "Snapshot Patient"
+    assert context["page_number"] == "12"
+    assert context["treatment_text"] == "Locked Crown"
+    assert context["total_paid_cents"] == 5000
+    assert context["remaining_cents"] == 14000
+
+
+def test_create_locked_new_payment_stores_snapshot_and_no_generic_warnings(app, admin_user):
+    _seed_patient("payment-patient-2", "Payment Draft Patient")
+    _seed_parent_treatment("payment-patient-2", "treatment-2", amount_cents=6000, total_amount_cents=25000, discount_cents=2000)
+
+    context = get_locked_treatment_context("payment-patient-2", "treatment-2")
+    assert context is not None
+
+    entry = create_entry(
+        {
+            "draft_type": "new_payment",
+            "source": "treatment_card",
+            "locked_patient_id": context["patient_id"],
+            "locked_treatment_id": context["treatment_id"],
+            "patient_name": context["patient_name"],
+            "phone": context["phone"],
+            "page_number": context["page_number"],
+            "treatment_text": context["treatment_text"],
+            "doctor_id": "_any_",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-18",
+            "paid_today": "50",
+            "total_amount": "250",
+            "discount_amount": "20",
+            "payload_json": {
+                "submitted_amount_cents": 5000,
+                "treatment_remaining_cents_at_submit": context["remaining_cents"],
+                "treatment_total_paid_cents_at_submit": context["total_paid_cents"],
+                "method": "cash",
+                "note": "draft payment",
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    assert entry["draft_type"] == "new_payment"
+    assert entry["source"] == "treatment_card"
+    assert entry["locked_patient_id"] == "payment-patient-2"
+    assert entry["locked_treatment_id"] == "treatment-2"
+    assert entry["warnings_json"] == []
+    assert entry["paid_today_cents"] == 5000
+    assert entry["payload_json"]["treatment_remaining_cents_at_submit"] == context["remaining_cents"]
+
+
+def test_approve_new_payment_entry_posts_child_payment_and_updates_remaining(app, admin_user):
+    _seed_user("approver-test", "approver-test")
+    _seed_patient("payment-patient-3", "Approve Payment Patient")
+    _seed_parent_treatment("payment-patient-3", "treatment-3", amount_cents=5000, total_amount_cents=20000, discount_cents=1000)
+    context = get_locked_treatment_context("payment-patient-3", "treatment-3")
+    assert context is not None
+
+    entry = create_entry(
+        {
+            "draft_type": "new_payment",
+            "source": "treatment_card",
+            "locked_patient_id": context["patient_id"],
+            "locked_treatment_id": context["treatment_id"],
+            "patient_name": context["patient_name"],
+            "phone": context["phone"],
+            "page_number": context["page_number"],
+            "treatment_text": context["treatment_text"],
+            "doctor_id": "_any_",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-18",
+            "paid_today": "40",
+            "total_amount": "200",
+            "discount_amount": "10",
+            "payload_json": {
+                "submitted_amount_cents": 4000,
+                "treatment_remaining_cents_at_submit": context["remaining_cents"],
+                "treatment_total_paid_cents_at_submit": context["total_paid_cents"],
+                "method": "card",
+                "note": "service approve payment",
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    approved = approve_new_payment_entry(entry["id"], actor_user_id="approver-test")
+
+    assert approved["status"] == "approved"
+    assert approved["target_patient_id"] == "payment-patient-3"
+    assert approved["target_treatment_id"] == "treatment-3"
+    assert approved["target_payment_id"]
+    assert list_entry_events(entry["id"])[0]["action"] == "approved"
+
+    conn = raw_db()
+    try:
+        child = conn.execute(
+            "SELECT parent_payment_id, amount_cents, method, note FROM payments WHERE id=?",
+            (approved["target_payment_id"],),
+        ).fetchone()
+        parent = conn.execute(
+            "SELECT remaining_cents FROM payments WHERE id=?",
+            ("treatment-3",),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert child["parent_payment_id"] == "treatment-3"
+    assert int(child["amount_cents"] or 0) == 4000
+    assert child["method"] == "card"
+    assert child["note"] == "service approve payment"
+    assert int(parent["remaining_cents"] or 0) == 10000
+
+
+def test_approve_new_payment_entry_rejects_unsupported_source(app, admin_user):
+    _seed_user("approver-test-2", "approver-test-2")
+    _seed_patient("payment-patient-4", "Bad Source Patient")
+    _seed_parent_treatment("payment-patient-4", "treatment-4")
+
+    entry = create_entry(
+        {
+            "draft_type": "new_payment",
+            "source": "reception_desk",
+            "locked_patient_id": "payment-patient-4",
+            "locked_treatment_id": "treatment-4",
+            "patient_name": "Bad Source Patient",
+            "doctor_id": "_any_",
+            "doctor_label": "Any Doctor",
+            "paid_today": "25",
+            "payload_json": {"treatment_remaining_cents_at_submit": 14000},
+        },
+        actor_user_id="admin-test",
+    )
+
+    try:
+        approve_new_payment_entry(entry["id"], actor_user_id="approver-test-2")
+        assert False, "Expected ValueError for unsupported payment source"
+    except ValueError as exc:
+        assert "Only treatment-card payment drafts can be approved in this slice." in str(exc)

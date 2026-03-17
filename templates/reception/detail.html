@@ -21,6 +21,7 @@
 .reception-reason{padding:12px 14px;border-radius:12px;background:color-mix(in srgb, var(--warning, #b45309) 8%, transparent)}
 .reception-spaced{margin-top:16px}
 .reception-alert{margin:0;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb, var(--danger, #b91c1c) 28%, transparent);background:color-mix(in srgb, var(--danger, #b91c1c) 8%, transparent);color:var(--danger, #b91c1c)}
+.reception-alert.warning{border-color:color-mix(in srgb, var(--warning, #b45309) 28%, transparent);background:color-mix(in srgb, var(--warning, #b45309) 8%, transparent);color:var(--warning, #b45309)}
 .reception-event-list{display:grid;gap:12px}
 .reception-event-item{padding:14px;border:1px solid var(--ring, rgba(148,163,184,.35));border-radius:12px;background:var(--card, #fff)}
 .reception-event-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
@@ -86,7 +87,42 @@
             <div class="reception-detail-label">{{ t('total_amount') }}</div>
             <div class="reception-detail-value">{{ ((entry.total_amount_cents or 0) / 100)|round(2) if entry.total_amount_cents is not none else '—' }}</div>
           </div>
+          {% if entry.draft_type == 'new_payment' %}
+          <div>
+            <div class="reception-detail-label">{{ t('source') }}</div>
+            <div class="reception-detail-value">{{ entry.source or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('method') }}</div>
+            <div class="reception-detail-value">{{ t((entry_payload.method or 'cash')|lower) }}</div>
+          </div>
+          {% endif %}
         </div>
+        {% if entry.draft_type == 'new_payment' %}
+        <div class="reception-detail-meta reception-spaced">
+          <div>
+            <div class="reception-detail-label">{{ t('reception_submitted_amount') }}</div>
+            <div class="reception-detail-value">{{ ((entry_payload.submitted_amount_cents or entry.paid_today_cents or 0) / 100)|round(2) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_submitted_snapshot_remaining') }}</div>
+            <div class="reception-detail-value">{{ ((entry_payload.treatment_remaining_cents_at_submit or 0) / 100)|round(2) }}</div>
+          </div>
+          {% if locked_treatment_context %}
+          <div>
+            <div class="reception-detail-label">{{ t('reception_paid_so_far') }}</div>
+            <div class="reception-detail-value">{{ ((locked_treatment_context.total_paid_cents or 0) / 100)|round(2) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_current_remaining') }}</div>
+            <div class="reception-detail-value">{{ ((locked_treatment_context.remaining_cents or 0) / 100)|round(2) }}</div>
+          </div>
+          {% endif %}
+        </div>
+        {% if locked_treatment_context and locked_treatment_context.remaining_cents != (entry_payload.treatment_remaining_cents_at_submit or 0) %}
+        <div class="reception-alert warning reception-spaced">{{ t('reception_live_remaining_changed') }}</div>
+        {% endif %}
+        {% endif %}
         {% if entry.note %}
         <div class="reception-reason reception-spaced">{{ entry.note }}</div>
         {% endif %}
@@ -156,7 +192,7 @@
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <label class="reception-checkline" for="confirm_approve">
             <input id="confirm_approve" type="checkbox" name="confirm_approve" value="1" {{ 'checked' if action_form.confirm_approve else '' }}>
-            <span>{{ t('reception_approve_confirmation_label') }}</span>
+            <span>{{ t(approval_confirmation_key) }}</span>
           </label>
           <button class="btn success" type="submit">{{ t('reception_action_approve') }}</button>
         </form>

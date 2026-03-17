@@ -286,14 +286,18 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Reception draft detail / manager review: `templates/reception/detail.html`
   - Reception returned-draft edit page: `templates/reception/edit.html`
   - Reception shared draft form partial: `templates/reception/_entry_form.html`
+  - Reception locked payment-draft page: `templates/reception/new_payment.html`
+  - Reception payment-draft form partial: `templates/reception/_payment_entry_form.html`
 
 - **Services**
   - Reception permission/bootstrap: `clinic_app/services/reception_bootstrap.py`
   - Reception draft storage/service: `clinic_app/services/reception_entries.py`
+  - Shared live payment posting + balance recompute: `clinic_app/services/payments.py`
 
 - **Key routes**
   - `/reception` → `reception.index`
   - `/reception/entries` → `reception.create_reception_entry`
+  - `/reception/entries/new-payment` → `reception.new_payment_entry` / `reception.create_new_payment_entry`
   - `/reception/entries/<entry_id>` → `reception.reception_entry_detail`
   - `/reception/entries/<entry_id>/edit` → `reception.edit_reception_entry` / `reception.submit_reception_entry_edit`
   - `/reception/entries/<entry_id>/approve` → `reception.approve_reception_entry`
@@ -361,6 +365,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Auth / security: `test_auth_bootstrap.py`, `test_bypass_csrf.py`, `test_security_features.py`, `test_admin_csrf_diagnostic.py`, `test_admin_roles.py`, `test_admin_users.py`
   - Patients: `test_medical_save.py`, `test_import_dates.py`, `test_diag_set.py`
   - Payments: `test_add_payment_route.py`, `test_payments_delete_treatment_cascade.py`, `test_payments_modal_validation_doctor_required.py`, `test_payments_overall_remaining_grouped.py`, `test_payments_remove_initial_keeps_children.py`, `test_admin_audit_payments.py`
+  - Reception + locked payment drafts: `test_reception_routes.py`, `test_reception_review_routes.py`, `test_reception_payment_routes.py`, `test_reception_entries_service.py`, `test_payments_add_to_treatment.py`
   - Appointments: `test_vanilla.py`, `test_vanilla_route.py`, `test_appointments_receipts.py`
   - Reports: `test_reports_pagination.py`
   - i18n: `test_i18n_toggle.py`

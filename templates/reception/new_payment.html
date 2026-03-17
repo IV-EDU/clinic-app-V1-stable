@@ -1,0 +1,91 @@
+{% extends '_base.html' %}
+{% set use_sidebar = true %}
+
+{% block extra_css %}
+<style>
+.reception-payment-page{display:grid;gap:20px}
+.reception-payment-header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+.reception-payment-title{margin:0;font-size:clamp(1.6rem,2vw,2.1rem)}
+.reception-payment-subtitle{margin:6px 0 0;color:var(--muted, #6b7280)}
+.reception-payment-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.9fr);gap:20px;align-items:start}
+.reception-payment-card{padding:20px}
+.reception-payment-summary{display:grid;gap:14px}
+.reception-payment-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.reception-detail-label{font-size:.8rem;color:var(--muted, #6b7280);text-transform:uppercase;letter-spacing:.04em}
+.reception-detail-value{margin-top:5px;font-weight:600;word-break:break-word}
+.reception-link-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:10px;border:1px solid var(--ring, rgba(148,163,184,.35));background:transparent;color:var(--text-primary, inherit);text-decoration:none;font-weight:600}
+.reception-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.reception-form-grid .full{grid-column:1 / -1}
+.reception-errors{margin:0 0 14px;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb, var(--danger, #b91c1c) 28%, transparent);background:color-mix(in srgb, var(--danger, #b91c1c) 8%, transparent);color:var(--danger, #b91c1c)}
+.reception-errors ul{margin:0;padding-inline-start:18px}
+@media (max-width: 980px){
+  .reception-payment-grid{grid-template-columns:1fr}
+  .reception-form-grid{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reception-payment-page">
+  <section class="reception-payment-header">
+    <div>
+      <h1 class="reception-payment-title">{{ t('reception_new_payment_title') }}</h1>
+      <p class="reception-payment-subtitle">{{ t('reception_new_payment_subtitle') }}</p>
+    </div>
+    <a class="reception-link-btn" href="{{ url_for('patients.patient_detail', pid=locked_treatment.patient_id) }}">{{ t('back_to_patient') }}</a>
+  </section>
+
+  <section class="reception-payment-grid">
+    <article class="card reception-payment-card">
+      <h2>{{ t('reception_locked_treatment_summary') }}</h2>
+      <div class="reception-payment-summary">
+        <div class="reception-payment-meta">
+          <div>
+            <div class="reception-detail-label">{{ t('patient_name') }}</div>
+            <div class="reception-detail-value">{{ locked_treatment.patient_name or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('page_number') }}</div>
+            <div class="reception-detail-value">{{ locked_treatment.page_number or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('phone') }}</div>
+            <div class="reception-detail-value">{{ locked_treatment.phone or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('doctor') }}</div>
+            <div class="reception-detail-value">{{ locked_treatment.doctor_label or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('treatment_name') }}</div>
+            <div class="reception-detail-value">{{ locked_treatment.treatment_text or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('total_amount') }}</div>
+            <div class="reception-detail-value">{{ '%.2f'|format((locked_treatment.total_amount_cents or 0) / 100) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('discount') }}</div>
+            <div class="reception-detail-value">{{ '%.2f'|format((locked_treatment.discount_amount_cents or 0) / 100) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_paid_so_far') }}</div>
+            <div class="reception-detail-value">{{ '%.2f'|format((locked_treatment.total_paid_cents or 0) / 100) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_current_remaining') }}</div>
+            <div class="reception-detail-value">{{ '%.2f'|format((locked_treatment.remaining_cents or 0) / 100) }}</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="card reception-payment-card">
+      <h2>{{ t('reception_new_submission') }}</h2>
+      {% set form_action = url_for('reception.create_new_payment_entry') %}
+      {% set submit_label = t('reception_create_payment_draft') %}
+      {% include 'reception/_payment_entry_form.html' %}
+    </article>
+  </section>
+</div>
+{% endblock %}

@@ -7,6 +7,7 @@
 {% set total_due = treatments | sum(attribute='remaining_cents') %}
 {% set can_edit_payments = current_user.is_authenticated and current_user.has_permission('payments:edit') %}
 {% set can_delete_payments = current_user.is_authenticated and current_user.has_permission('payments:delete') %}
+{% set can_create_reception_entries = current_user.is_authenticated and current_user.has_permission('reception_entries:create') %}
 
 <div class="treatments-container">
   {# Header with Stats #}
@@ -285,11 +286,18 @@
               </div>
               
               {# Add Payment Button #}
-              {% if treatment.status != 'complete' and can_edit_payments %}
+              {% if treatment.status != 'complete' and (can_edit_payments or can_create_reception_entries) %}
                 <div class="add-payment-wrapper">
+                  {% if can_create_reception_entries %}
+                  <a class="btn secondary" href="{{ url_for('reception.new_payment_entry', patient_id=p.id, treatment_id=treatment.id) }}" onclick="event.stopPropagation();">
+                    <i class="fa fa-share-square-o"></i> {{ t('reception_send_payment_draft') }}
+                  </a>
+                  {% endif %}
+                  {% if can_edit_payments %}
                   <button class="btn secondary" onclick='event.stopPropagation(); showAddPaymentModal({{ treatment.id|tojson }}, {{ (treatment.doctor_id or "")|tojson }})'>
                     <i class="fa fa-plus"></i> {{ t('add_payment') }}
                   </button>
+                  {% endif %}
                 </div>
               {% endif %}
             </div>

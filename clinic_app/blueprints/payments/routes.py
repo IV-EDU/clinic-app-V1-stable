@@ -1461,8 +1461,6 @@ def export_payments_csv():
 @require_permission("payments:edit")
 def add_payment_to_treatment_route(pid, treatment_id):
     """Add a new payment to an existing treatment."""
-    import uuid
-
     conn = db()
     
     # Verify treatment exists and belongs to this patient
@@ -1492,17 +1490,25 @@ def add_payment_to_treatment_route(pid, treatment_id):
     method = (request.form.get("method") or "cash").strip()
     note = (request.form.get("note") or "").strip()
 
-    payment_id = add_payment_to_treatment(
-        conn,
-        treatment_id,
-        pid,
-        amount_cents,
-        paid_at,
-        method,
-        note,
-        doctor_id_raw,
-        doctor_label,
-    )
+    try:
+        result = add_payment_to_treatment(
+            conn,
+            treatment_id,
+            pid,
+            amount_cents,
+            paid_at,
+            method,
+            note,
+            doctor_id_raw,
+            doctor_label,
+        )
+        conn.commit()
+    except ValueError as exc:
+        conn.close()
+        flash(str(exc), "err")
+        return redirect(url_for("patients.patient_detail", pid=pid))
+
+    payment_id = result["payment_id"]
 
     # Audit log
     try:

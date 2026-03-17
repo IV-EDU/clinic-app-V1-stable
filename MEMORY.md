@@ -6,17 +6,18 @@
 
 ---
 
-## Current State (updated March 11, 2026)
+## Current State (updated March 17, 2026)
 
 **App status:** Running, stable. Flask + SQLite dental clinic on Windows.
 **Branch:** `main`
 **Data:** Production use (do not break).
 **Login:** `admin` / `admin` (NEVER change this)
-**Tests:** Last known: 107 passing, 2 skipped (verified March 8, 2026).
+**Tests:** Last known Reception/RBAC regression subset: 36 passing (verified March 17, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
 
 ### Fast ramp (don’t re-discover the repo)
 
 - Read `docs/AGENT_HANDOFF.md` for the app map + the locked Reception Desk decisions.
+- Reception now has a live Desk page, manager queue, draft detail page, and hold/return/reject actions, but still no approval posting into live records.
 - Older historical session notes were archived into `MEMORY_ARCHIVE.md`.
 
 ---
@@ -296,10 +297,15 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - Draft notes are stored inside `payload_json` for now instead of a dedicated column.
 - Review-only users can access the page shell and see a placeholder, but not the create form.
 
-### Session: [Brief Title]
-**Date:** YYYY-MM-DD
+### Session: Reception manager queue and review actions
+**Date:** 2026-03-17
 **What was done:**
-- [bullet points of changes]
+- Replaced the old manager placeholder with a real manager queue inside `/reception`, keeping the same sidebar-based shell.
+- Added per-draft detail pages and draft-only manager actions for hold, return, and reject.
+- Extended the Reception draft service so those actions update only `reception_entries` and `reception_entry_events`, never live patient or payment rows.
+- Added route coverage for queue access, detail access rules, hold/return/reject behavior, and receptionist visibility of returned drafts.
 
 **Key decisions:**
-- [any new decisions and their reasoning]
+- Manager review in this slice remains fully draft-only; approval posting is still deferred.
+- Review-only users now land on the manager queue by default instead of a placeholder page.
+- Returned drafts come back to the receptionist desk as `status='edited'` with `last_action='returned'` and visible manager reason.

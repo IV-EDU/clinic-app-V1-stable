@@ -1,0 +1,170 @@
+{% extends '_base.html' %}
+{% set use_sidebar = true %}
+
+{% block extra_css %}
+<style>
+.reception-detail-page{display:grid;gap:20px}
+.reception-detail-header{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.reception-detail-title{margin:0;font-size:clamp(1.5rem,2vw,2rem)}
+.reception-detail-subtitle{margin:6px 0 0;color:var(--muted, #6b7280)}
+.reception-detail-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.9fr);gap:20px;align-items:start}
+.reception-detail-card{padding:20px}
+.reception-detail-stack{display:grid;gap:16px}
+.reception-detail-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+.reception-detail-label{font-size:.8rem;color:var(--muted, #6b7280);text-transform:uppercase;letter-spacing:.04em}
+.reception-detail-value{margin-top:5px;font-weight:600;word-break:break-word}
+.reception-chip{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:.8rem;font-weight:700;background:color-mix(in srgb, var(--accent-color, #b98939) 12%, transparent);color:var(--accent-color, #b98939)}
+.reception-chip.returned{background:color-mix(in srgb, var(--danger, #b91c1c) 12%, transparent);color:var(--danger, #b91c1c)}
+.reception-chip.rejected{background:color-mix(in srgb, var(--danger, #b91c1c) 12%, transparent);color:var(--danger, #b91c1c)}
+.reception-chip.approved{background:color-mix(in srgb, var(--success, #15803d) 12%, transparent);color:var(--success, #15803d)}
+.reception-chip.held{background:color-mix(in srgb, var(--warning, #b45309) 12%, transparent);color:var(--warning, #b45309)}
+.reception-reason{padding:12px 14px;border-radius:12px;background:color-mix(in srgb, var(--warning, #b45309) 8%, transparent)}
+.reception-spaced{margin-top:16px}
+.reception-alert{margin:0;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb, var(--danger, #b91c1c) 28%, transparent);background:color-mix(in srgb, var(--danger, #b91c1c) 8%, transparent);color:var(--danger, #b91c1c)}
+.reception-event-list{display:grid;gap:12px}
+.reception-event-item{padding:14px;border:1px solid var(--ring, rgba(148,163,184,.35));border-radius:12px;background:var(--card, #fff)}
+.reception-event-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.reception-event-title{margin:0;font-weight:700}
+.reception-event-meta{margin-top:4px;color:var(--muted, #6b7280);font-size:.92rem}
+.reception-action-form{display:grid;gap:12px}
+.reception-action-form textarea{min-height:96px}
+.reception-action-form .btn{width:100%}
+@media (max-width: 980px){
+  .reception-detail-grid{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+{% set chip_class = 'returned' if entry.last_action == 'returned' else ('approved' if entry.status == 'approved' else ('rejected' if entry.status == 'rejected' else ('held' if entry.status == 'held' else ''))) %}
+<div class="reception-detail-page">
+  <section class="reception-detail-header">
+    <div>
+      <h1 class="reception-detail-title">{{ entry.patient_name or t('reception_unknown_patient') }}</h1>
+      <p class="reception-detail-subtitle">{{ entry.treatment_text or t('reception_no_treatment_text') }}</p>
+    </div>
+    <span class="reception-chip {{ chip_class }}">{{ entry.status_label }}</span>
+  </section>
+
+  <section class="reception-detail-grid">
+    <div class="reception-detail-stack">
+      <article class="card reception-detail-card">
+        <h2>{{ t('reception_detail_title') }}</h2>
+        <div class="reception-detail-meta">
+          <div>
+            <div class="reception-detail-label">{{ t('submitted_by') }}</div>
+            <div class="reception-detail-value">{{ entry.submitted_by_user_id }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('date') }}</div>
+            <div class="reception-detail-value">{{ entry.submitted_at[:10] if entry.submitted_at else '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('doctor') }}</div>
+            <div class="reception-detail-value">{{ entry.doctor_label or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('visit_type') }}</div>
+            <div class="reception-detail-value">{{ entry.visit_type or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('page_number') }}</div>
+            <div class="reception-detail-value">{{ entry.page_number or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('phone') }}</div>
+            <div class="reception-detail-value">{{ entry.phone or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('amount') }}</div>
+            <div class="reception-detail-value">{{ ((entry.paid_today_cents or 0) / 100)|round(2) if entry.paid_today_cents is not none else '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('total_amount') }}</div>
+            <div class="reception-detail-value">{{ ((entry.total_amount_cents or 0) / 100)|round(2) if entry.total_amount_cents is not none else '—' }}</div>
+          </div>
+        </div>
+        {% if entry.note %}
+        <div class="reception-reason reception-spaced">{{ entry.note }}</div>
+        {% endif %}
+        {% if entry.action_reason %}
+        <div class="reception-reason reception-spaced">
+          <strong>{{ t('reception_manager_note') }}</strong><br>
+          {{ entry.action_reason }}
+        </div>
+        {% endif %}
+        {% if entry.warnings_json %}
+        <div class="reception-spaced">
+          <strong>{{ t('reception_warnings_title') }}</strong>
+          <ul>
+            {% for warning in entry.warnings_json %}
+            <li>{{ warning }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      </article>
+
+      <article class="card reception-detail-card">
+        <h2>{{ t('reception_history_title') }}</h2>
+        {% if entry_events %}
+        <div class="reception-event-list">
+          {% for event in entry_events %}
+          <div class="reception-event-item">
+            <div class="reception-event-top">
+              <p class="reception-event-title">{{ event.action|replace('_', ' ')|title }}</p>
+              <span class="reception-detail-label">{{ event.created_at[:16]|replace('T', ' ') if event.created_at else '' }}</span>
+            </div>
+            <div class="reception-event-meta">{{ event.actor_user_id }}</div>
+            {% if event.note %}
+            <div class="reception-reason">{{ event.note }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="reception-detail-subtitle">{{ t('reception_history_empty') }}</p>
+        {% endif %}
+      </article>
+    </div>
+
+    {% if can_review_reception %}
+    <article class="card reception-detail-card">
+      <h2>{{ t('reception_review_actions_title') }}</h2>
+      {% if action_errors %}
+      <div class="reception-alert">
+        <ul>
+          {% for error in action_errors %}
+          <li>{{ error }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+
+      <div class="reception-detail-stack">
+        <form class="reception-action-form" method="post" action="{{ url_for('reception.hold_reception_entry', entry_id=entry.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="form-label" for="hold_note">{{ t('reception_hold_note') }}</label>
+          <textarea class="form-control" id="hold_note" name="hold_note">{{ action_form.hold_note }}</textarea>
+          <button class="btn secondary" type="submit">{{ t('reception_action_hold') }}</button>
+        </form>
+
+        <form class="reception-action-form" method="post" action="{{ url_for('reception.return_reception_entry', entry_id=entry.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="form-label" for="return_reason">{{ t('reception_return_reason') }}</label>
+          <textarea class="form-control" id="return_reason" name="return_reason">{{ action_form.return_reason }}</textarea>
+          <button class="btn primary" type="submit">{{ t('reception_action_return') }}</button>
+        </form>
+
+        <form class="reception-action-form" method="post" action="{{ url_for('reception.reject_reception_entry', entry_id=entry.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <label class="form-label" for="reject_reason">{{ t('reception_reject_reason') }}</label>
+          <textarea class="form-control" id="reject_reason" name="reject_reason">{{ action_form.reject_reason }}</textarea>
+          <button class="btn danger" type="submit">{{ t('reception_action_reject') }}</button>
+        </form>
+      </div>
+    </article>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

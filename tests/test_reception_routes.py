@@ -102,7 +102,7 @@ def test_user_without_reception_permission_gets_403(client):
     assert resp.status_code == 403
 
 
-def test_review_only_user_sees_manager_placeholder(client):
+def test_review_only_user_defaults_to_manager_queue(client):
     review_role_id = _create_role("Reception Reviewer", ["reception_entries:review"])
     _create_user("reviewer-user", "password123", [review_role_id])
     _login(client, "reviewer-user", "password123")
@@ -110,7 +110,7 @@ def test_review_only_user_sees_manager_placeholder(client):
     resp = client.get("/reception")
     assert resp.status_code == 200
     body = resp.data.decode("utf-8")
-    assert "Manager queue coming next" in body
+    assert "Pending manager queue" in body
     assert "New submission" not in body
 
 
@@ -141,7 +141,7 @@ def test_valid_reception_post_creates_entry_and_event(logged_in_client):
     )
 
     assert resp.status_code in (302, 303)
-    assert resp.headers["Location"].endswith("/reception")
+    assert resp.headers["Location"].endswith("/reception?view=desk")
     assert _count_reception_entries() == before_entries + 1
     assert _count_reception_events() == before_events + 1
 

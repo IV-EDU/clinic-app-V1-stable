@@ -5,7 +5,17 @@ from flask_login import current_user, login_required
 
 from clinic_app.services.doctor_colors import ANY_DOCTOR_ID, get_active_doctor_options
 from clinic_app.services.i18n import T
-from clinic_app.services.reception_entries import create_entry, list_entries, validate_entry_payload
+from clinic_app.services.reception_entries import (
+    create_entry,
+    get_entry,
+    hold_entry,
+    list_entries,
+    list_entry_events,
+    list_queue_entries,
+    reject_entry,
+    return_entry,
+    validate_entry_payload,
+)
 from clinic_app.services.ui import render_page
 
 bp = Blueprint("reception", __name__)
@@ -32,6 +42,10 @@ def _has_manager_visibility() -> bool:
         current_user.has_permission("reception_entries:review")
         or current_user.has_permission("reception_entries:approve")
     )
+
+
+def _can_review() -> bool:
+    return _has_manager_visibility()
 
 
 def _doctor_options() -> list[dict[str, str]]:
@@ -90,13 +104,126 @@ def _build_summary(entries: list[dict]) -> dict[str, int]:
     }
 
 
+def _review_status_label(entry: dict) -> str:
+    return T(_status_label_key(entry))
+
+
+def _entry_reason(entry: dict) -> str:
+    if entry.get("last_action") == "returned":
+        return entry.get("return_reason") or ""
+    if entry.get("status") == "held":
+        return entry.get("hold_reason") or ""
+    if entry.get("status") == "rejected":
+        return entry.get("rejection_reason") or ""
+    return ""
+
+
+def _decorate_entry(entry: dict) -> dict:
+    entry["status_label"] = _review_status_label(entry)
+    payload = entry.get("payload_json") or {}
+    entry["note"] = (payload.get("note") if isinstance(payload, dict) else "") or ""
+    entry["action_reason"] = _entry_reason(entry)
+    return entry
+
+
 def _recent_entries_for_current_user(limit: int = 20) -> list[dict]:
     entries = list_entries(submitted_by_user_id=current_user.id, limit=limit)
     for entry in entries:
-        entry["status_label"] = T(_status_label_key(entry))
-        payload = entry.get("payload_json") or {}
-        entry["note"] = (payload.get("note") if isinstance(payload, dict) else "") or ""
+        _decorate_entry(entry)
     return entries
+
+
+def _build_desk_context(
+    *,
+    form_data: dict[str, str] | None = None,
+    errors: list[str] | None = None,
+) -> dict:
+    can_create = _can_create()
+    can_review = _has_manager_visibility()
+    form_data = form_data or _default_form_data()
+    entries = _recent_entries_for_current_user() if can_create else []
+    summary = _build_summary(entries) if can_create else {"open_drafts": 0, "returned": 0, "waiting_review": 0}
+    return {
+        "show_back": False,
+        "reception_view": "desk",
+        "can_create_reception": can_create,
+        "can_review_reception": can_review,
+        "doctor_options": _doctor_options(),
+        "reception_form": form_data,
+        "reception_errors": errors or [],
+        "reception_entries": entries,
+        "reception_summary": summary,
+        "queue_entries": [],
+    }
+
+
+def _build_queue_context() -> dict:
+    if not _can_review():
+        abort(403)
+    queue_entries = list_queue_entries(limit=50)
+    for entry in queue_entries:
+        _decorate_entry(entry)
+    return {
+        "show_back": False,
+        "reception_view": "queue",
+        "can_create_reception": _can_create(),
+        "can_review_reception": True,
+        "doctor_options": _doctor_options(),
+        "reception_form": _default_form_data(),
+        "reception_errors": [],
+        "reception_entries": _recent_entries_for_current_user() if _can_create() else [],
+        "reception_summary": _build_summary(_recent_entries_for_current_user()) if _can_create() else {"open_drafts": 0, "returned": 0, "waiting_review": 0},
+        "queue_entries": queue_entries,
+    }
+
+
+def _find_entry_or_404(entry_id: str) -> dict:
+    entry = get_entry(entry_id)
+    if not entry:
+        abort(404)
+    return _decorate_entry(entry)
+
+
+def _can_access_entry(entry: dict) -> bool:
+    if _can_review():
+        return True
+    return _can_create() and entry.get("submitted_by_user_id") == current_user.id
+
+
+def _detail_context(
+    entry: dict,
+    *,
+    action_errors: list[str] | None = None,
+    action_form: dict[str, str] | None = None,
+) -> dict:
+    if not _can_access_entry(entry):
+        abort(403)
+    events = list_entry_events(entry["id"])
+    return {
+        "show_back": False,
+        "entry": entry,
+        "entry_events": events,
+        "can_review_reception": _can_review(),
+        "can_create_reception": _can_create(),
+        "action_errors": action_errors or [],
+        "action_form": action_form or {"hold_note": "", "return_reason": "", "reject_reason": ""},
+    }
+
+
+def _render_detail(
+    entry: dict,
+    *,
+    action_errors: list[str] | None = None,
+    action_form: dict[str, str] | None = None,
+    status_code: int = 200,
+):
+    return (
+        render_page(
+            "reception/detail.html",
+            **_detail_context(entry, action_errors=action_errors, action_form=action_form),
+        ),
+        status_code,
+    )
 
 
 @bp.route("/reception", methods=["GET"])
@@ -105,22 +232,20 @@ def index():
     if not _can_access_reception():
         abort(403)
 
-    can_create = _can_create()
-    can_review = _has_manager_visibility()
-    form_data = _default_form_data()
-    entries = _recent_entries_for_current_user() if can_create else []
-    summary = _build_summary(entries) if can_create else {"open_drafts": 0, "returned": 0, "waiting_review": 0}
-
+    view = (request.args.get("view") or "").strip().lower()
+    if view == "queue":
+        context = _build_queue_context()
+    elif view == "desk":
+        context = _build_desk_context()
+    elif _can_create():
+        context = _build_desk_context()
+    elif _can_review():
+        context = _build_queue_context()
+    else:
+        abort(403)
     return render_page(
         "reception/index.html",
-        show_back=False,
-        can_create_reception=can_create,
-        can_review_reception=can_review,
-        doctor_options=_doctor_options(),
-        reception_form=form_data,
-        reception_errors=[],
-        reception_entries=entries,
-        reception_summary=summary,
+        **context,
     )
 
 
@@ -164,18 +289,76 @@ def create_reception_entry():
     if not errors:
         create_entry(payload, actor_user_id=current_user.id)
         flash(T("reception_draft_saved"), "ok")
-        return redirect(url_for("reception.index"))
+        return redirect(url_for("reception.index", view="desk"))
 
-    entries = _recent_entries_for_current_user()
-    summary = _build_summary(entries)
+    return (
+        render_page(
+            "reception/index.html",
+            **_build_desk_context(form_data=form_data, errors=errors),
+        ),
+        200,
+    )
+
+
+@bp.route("/reception/entries/<entry_id>", methods=["GET"])
+@login_required
+def reception_entry_detail(entry_id: str):
+    if not _can_access_reception():
+        abort(403)
+    entry = _find_entry_or_404(entry_id)
+    if not _can_access_entry(entry):
+        abort(403)
     return render_page(
-        "reception/index.html",
-        show_back=False,
-        can_create_reception=True,
-        can_review_reception=_has_manager_visibility(),
-        doctor_options=_doctor_options(),
-        reception_form=form_data,
-        reception_errors=errors,
-        reception_entries=entries,
-        reception_summary=summary,
-    ), 200
+        "reception/detail.html",
+        **_detail_context(entry),
+    )
+
+
+@bp.route("/reception/entries/<entry_id>/hold", methods=["POST"])
+@login_required
+def hold_reception_entry(entry_id: str):
+    if not _can_review():
+        abort(403)
+    entry = _find_entry_or_404(entry_id)
+    hold_note = (request.form.get("hold_note") or "").strip()
+    hold_entry(entry_id, actor_user_id=current_user.id, note=hold_note)
+    flash(T("reception_draft_held"), "ok")
+    return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id))
+
+
+@bp.route("/reception/entries/<entry_id>/return", methods=["POST"])
+@login_required
+def return_reception_entry(entry_id: str):
+    if not _can_review():
+        abort(403)
+    entry = _find_entry_or_404(entry_id)
+    reason = (request.form.get("return_reason") or "").strip()
+    if not reason:
+        return _render_detail(
+            entry,
+            action_errors=[T("reception_return_reason_required")],
+            action_form={"hold_note": "", "return_reason": reason, "reject_reason": ""},
+            status_code=400,
+        )
+    return_entry(entry_id, actor_user_id=current_user.id, reason=reason)
+    flash(T("reception_draft_returned"), "ok")
+    return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id))
+
+
+@bp.route("/reception/entries/<entry_id>/reject", methods=["POST"])
+@login_required
+def reject_reception_entry(entry_id: str):
+    if not _can_review():
+        abort(403)
+    entry = _find_entry_or_404(entry_id)
+    reason = (request.form.get("reject_reason") or "").strip()
+    if not reason:
+        return _render_detail(
+            entry,
+            action_errors=[T("reception_reject_reason_required")],
+            action_form={"hold_note": "", "return_reason": "", "reject_reason": reason},
+            status_code=400,
+        )
+    reject_entry(entry_id, actor_user_id=current_user.id, reason=reason)
+    flash(T("reception_draft_rejected"), "ok")
+    return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id))

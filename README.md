@@ -21,6 +21,12 @@ It includes:
 - Use `PROMPTING_GUIDE.md` when asking AI to change the app. It contains copy-paste prompt templates for safe UI tasks, bug fixes, and scoped feature work.
 - The app is currently mid-rollout on a sidebar-based UI shell. Some pages are already opted in, while others still use the older top-nav-only layout.
 
+### Reception Workflow
+- The new Reception area lives at `/reception`.
+- Reception staff can submit treatment drafts there without touching the live patient file.
+- Managers can now open the same area to review pending drafts and mark them as held, returned, or rejected.
+- Live posting into the real patient/payment records is still intentionally deferred to a later slice.
+
 This folder "Clinic-App-Local" is the main project folder.
 
 --------------------------------------------------

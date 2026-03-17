@@ -7,11 +7,15 @@
 .reception-header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
 .reception-title{margin:0;font-size:clamp(1.6rem,2vw,2.1rem)}
 .reception-subtitle{margin:6px 0 0;color:var(--muted, #6b7280)}
+.reception-nav{display:flex;flex-wrap:wrap;gap:10px}
+.reception-nav-link{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:999px;border:1px solid var(--ring, rgba(148,163,184,.35));background:var(--card, #fff);color:var(--text-primary, inherit);text-decoration:none;font-weight:600}
+.reception-nav-link.active{border-color:color-mix(in srgb, var(--primary-color, #2563eb) 45%, transparent);background:color-mix(in srgb, var(--primary-color, #2563eb) 10%, transparent);color:var(--primary-color, #2563eb)}
 .reception-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
 .reception-summary-card{padding:18px}
 .reception-summary-label{font-size:.92rem;color:var(--muted, #6b7280)}
 .reception-summary-value{margin-top:8px;font-size:1.8rem;font-weight:700}
 .reception-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);gap:20px;align-items:start}
+.reception-queue-grid{display:grid;gap:20px}
 .reception-card{padding:20px}
 .reception-card h2{margin:0 0 14px}
 .reception-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -30,9 +34,16 @@
 .reception-chip.approved{background:color-mix(in srgb, var(--success, #15803d) 12%, transparent);color:var(--success, #15803d)}
 .reception-chip.held{background:color-mix(in srgb, var(--warning, #b45309) 12%, transparent);color:var(--warning, #b45309)}
 .reception-note{margin-top:10px;color:var(--muted, #6b7280)}
+.reception-reason{margin-top:10px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb, var(--warning, #b45309) 8%, transparent);color:var(--text-primary, inherit)}
 .reception-warning-list{margin:10px 0 0;padding-inline-start:18px;color:var(--warning, #b45309)}
 .reception-empty{margin:0;color:var(--muted, #6b7280)}
-.reception-manager-placeholder{border-style:dashed}
+.reception-row-actions{display:flex;justify-content:flex-end;margin-top:12px}
+.reception-link-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:10px;border:1px solid var(--ring, rgba(148,163,184,.35));background:transparent;color:var(--text-primary, inherit);text-decoration:none;font-weight:600}
+.reception-queue-list{display:grid;gap:12px}
+.reception-queue-item{padding:16px;border:1px solid var(--ring, rgba(148,163,184,.35));border-radius:14px;background:var(--card, #fff)}
+.reception-queue-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px}
+.reception-queue-label{font-size:.8rem;color:var(--muted, #6b7280);text-transform:uppercase;letter-spacing:.04em}
+.reception-queue-value{margin-top:4px;font-weight:600}
 @media (max-width: 980px){
   .reception-grid{grid-template-columns:1fr}
   .reception-form-grid{grid-template-columns:1fr}
@@ -47,9 +58,17 @@
       <h1 class="reception-title">{{ t('reception_desk_title') }}</h1>
       <p class="reception-subtitle">{{ t('reception_desk_subtitle') }}</p>
     </div>
+    <nav class="reception-nav" aria-label="{{ t('reception_section_navigation') }}">
+      {% if can_create_reception %}
+      <a class="reception-nav-link {{ 'active' if reception_view == 'desk' else '' }}" href="{{ url_for('reception.index', view='desk') }}">{{ t('reception_nav_desk') }}</a>
+      {% endif %}
+      {% if can_review_reception %}
+      <a class="reception-nav-link {{ 'active' if reception_view == 'queue' else '' }}" href="{{ url_for('reception.index', view='queue') }}">{{ t('reception_nav_queue') }}</a>
+      {% endif %}
+    </nav>
   </section>
 
-  {% if can_create_reception %}
+  {% if can_create_reception and reception_view == 'desk' %}
   <section class="reception-summary">
     <article class="card reception-summary-card">
       <div class="reception-summary-label">{{ t('reception_open_drafts') }}</div>
@@ -66,6 +85,7 @@
   </section>
   {% endif %}
 
+  {% if reception_view == 'desk' %}
   <section class="reception-grid">
     {% if can_create_reception %}
     <article class="card reception-card">
@@ -169,6 +189,9 @@
             {% if entry.note %}
             <div class="reception-note">{{ entry.note }}</div>
             {% endif %}
+            {% if entry.action_reason %}
+            <div class="reception-reason">{{ entry.action_reason }}</div>
+            {% endif %}
             {% if entry.warnings_json %}
             <ul class="reception-warning-list">
               {% for warning in entry.warnings_json %}
@@ -176,6 +199,9 @@
               {% endfor %}
             </ul>
             {% endif %}
+            <div class="reception-row-actions">
+              <a class="reception-link-btn" href="{{ url_for('reception.reception_entry_detail', entry_id=entry.id) }}">{{ t('reception_open_draft') }}</a>
+            </div>
           </div>
           {% endfor %}
         </div>
@@ -186,12 +212,64 @@
       {% endif %}
 
       {% if can_review_reception %}
-      <article class="card reception-card reception-manager-placeholder">
-        <h2>{{ t('reception_manager_placeholder_title') }}</h2>
-        <p class="reception-empty">{{ t('reception_manager_placeholder_body') }}</p>
+      <article class="card reception-card">
+        <h2>{{ t('reception_manager_queue_ready_title') }}</h2>
+        <p class="reception-empty">{{ t('reception_manager_queue_ready_body') }}</p>
+        <div class="reception-row-actions">
+          <a class="reception-link-btn" href="{{ url_for('reception.index', view='queue') }}">{{ t('reception_open_manager_queue') }}</a>
+        </div>
       </article>
       {% endif %}
     </div>
   </section>
+  {% else %}
+  <section class="reception-queue-grid">
+    <article class="card reception-card">
+      <h2>{{ t('reception_manager_queue_title') }}</h2>
+      {% if queue_entries %}
+      <div class="reception-queue-list">
+        {% for entry in queue_entries %}
+        {% set chip_class = 'returned' if entry.last_action == 'returned' else ('held' if entry.status == 'held' else '') %}
+        <div class="reception-queue-item">
+          <div class="reception-draft-top">
+            <div>
+              <p class="reception-draft-title">{{ entry.patient_name or t('reception_unknown_patient') }}</p>
+              <div class="reception-draft-meta">{{ entry.treatment_text or t('reception_no_treatment_text') }}</div>
+            </div>
+            <span class="reception-chip {{ chip_class }}">{{ entry.status_label }}</span>
+          </div>
+          <div class="reception-queue-meta">
+            <div>
+              <div class="reception-queue-label">{{ t('submitted_by') }}</div>
+              <div class="reception-queue-value">{{ entry.submitted_by_user_id }}</div>
+            </div>
+            <div>
+              <div class="reception-queue-label">{{ t('date') }}</div>
+              <div class="reception-queue-value">{{ entry.submitted_at[:10] if entry.submitted_at else '—' }}</div>
+            </div>
+            <div>
+              <div class="reception-queue-label">{{ t('doctor') }}</div>
+              <div class="reception-queue-value">{{ entry.doctor_label or '—' }}</div>
+            </div>
+            <div>
+              <div class="reception-queue-label">{{ t('amount') }}</div>
+              <div class="reception-queue-value">{{ ((entry.paid_today_cents or 0) / 100)|round(2) if entry.paid_today_cents is not none else '—' }}</div>
+            </div>
+          </div>
+          {% if entry.action_reason %}
+          <div class="reception-reason">{{ entry.action_reason }}</div>
+          {% endif %}
+          <div class="reception-row-actions">
+            <a class="reception-link-btn" href="{{ url_for('reception.reception_entry_detail', entry_id=entry.id) }}">{{ t('reception_review_draft') }}</a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="reception-empty">{{ t('reception_manager_queue_empty') }}</p>
+      {% endif %}
+    </article>
+  </section>
+  {% endif %}
 </div>
 {% endblock %}

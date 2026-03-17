@@ -22,6 +22,7 @@ ALLOWED_DRAFT_TYPES = {
 ALLOWED_SOURCES = {"reception_desk", "patient_file", "treatment_card"}
 ALLOWED_STATUSES = {"new", "edited", "held", "approved", "rejected"}
 ALLOWED_PATIENT_INTENTS = {"unknown", "existing", "new_patient"}
+QUEUE_STATUSES = ("new", "edited", "held")
 
 
 def _utc_now_iso() -> str:
@@ -80,6 +81,55 @@ def _decode_row(row) -> dict[str, Any]:
             except (TypeError, json.JSONDecodeError):
                 data[key] = empty
     return data
+
+
+def _fetch_entry(conn, entry_id: str):
+    return conn.execute(
+        "SELECT * FROM reception_entries WHERE id=?",
+        (entry_id,),
+    ).fetchone()
+
+
+def _insert_event(
+    conn,
+    *,
+    entry_id: str,
+    action: str,
+    actor_user_id: str,
+    from_status: str | None,
+    to_status: str | None,
+    note: str | None,
+    meta_json: Any = None,
+    created_at: str | None = None,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO reception_entry_events (
+            id, entry_id, action, actor_user_id,
+            from_status, to_status, note, meta_json, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            str(uuid4()),
+            entry_id,
+            action,
+            actor_user_id,
+            from_status,
+            to_status,
+            note,
+            _json_string(meta_json, {}),
+            created_at or _utc_now_iso(),
+        ),
+    )
+
+
+def _require_active_entry(row, *, action: str) -> dict[str, Any]:
+    if row is None:
+        raise ValueError("Reception draft was not found.")
+    entry = _decode_row(row)
+    if entry["status"] in {"approved", "rejected"}:
+        raise ValueError(f"Cannot {action} a closed draft.")
+    return entry
 
 
 def validate_entry_payload(data: dict) -> tuple[list[str], list[str], dict[str, Any]]:
@@ -225,24 +275,16 @@ def create_entry(data: dict, *, actor_user_id: str) -> dict[str, Any]:
                 normalized["match_summary_json"],
             ),
         )
-        conn.execute(
-            """
-            INSERT INTO reception_entry_events (
-                id, entry_id, action, actor_user_id,
-                from_status, to_status, note, meta_json, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                str(uuid4()),
-                entry_id,
-                "submitted",
-                actor_user_id,
-                None,
-                "new",
-                None,
-                json.dumps({}, ensure_ascii=True),
-                now,
-            ),
+        _insert_event(
+            conn,
+            entry_id=entry_id,
+            action="submitted",
+            actor_user_id=actor_user_id,
+            from_status=None,
+            to_status="new",
+            note=None,
+            meta_json={},
+            created_at=now,
         )
         conn.commit()
     finally:
@@ -292,6 +334,148 @@ def list_entries(
         return [_decode_row(row) for row in rows]
     finally:
         conn.close()
+
+
+def list_queue_entries(*, limit: int = 50) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit or 50), 200))
+    placeholders = ", ".join("?" for _ in QUEUE_STATUSES)
+    conn = raw_db()
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT * FROM reception_entries
+            WHERE status IN ({placeholders})
+            ORDER BY submitted_at DESC, updated_at DESC
+            LIMIT ?
+            """,
+            (*QUEUE_STATUSES, limit),
+        ).fetchall()
+        return [_decode_row(row) for row in rows]
+    finally:
+        conn.close()
+
+
+def hold_entry(entry_id: str, *, actor_user_id: str, note: str | None = None) -> dict[str, Any]:
+    now = _utc_now_iso()
+    hold_note = _nullable_text(note)
+    conn = raw_db()
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        entry = _require_active_entry(_fetch_entry(conn, entry_id), action="hold")
+        conn.execute(
+            """
+            UPDATE reception_entries
+            SET status=?,
+                reviewed_by_user_id=?,
+                updated_at=?,
+                reviewed_at=?,
+                last_action=?,
+                return_reason=NULL,
+                hold_reason=?,
+                rejection_reason=NULL
+            WHERE id=?
+            """,
+            ("held", actor_user_id, now, now, "held", hold_note, entry_id),
+        )
+        _insert_event(
+            conn,
+            entry_id=entry_id,
+            action="held",
+            actor_user_id=actor_user_id,
+            from_status=entry["status"],
+            to_status="held",
+            note=hold_note,
+            meta_json={},
+            created_at=now,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return get_entry(entry_id)
+
+
+def return_entry(entry_id: str, *, actor_user_id: str, reason: str) -> dict[str, Any]:
+    reason_text = _nullable_text(reason)
+    if not reason_text:
+        raise ValueError("Return reason is required.")
+
+    now = _utc_now_iso()
+    conn = raw_db()
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        entry = _require_active_entry(_fetch_entry(conn, entry_id), action="return")
+        conn.execute(
+            """
+            UPDATE reception_entries
+            SET status=?,
+                reviewed_by_user_id=?,
+                updated_at=?,
+                reviewed_at=?,
+                last_action=?,
+                return_reason=?,
+                hold_reason=NULL,
+                rejection_reason=NULL
+            WHERE id=?
+            """,
+            ("edited", actor_user_id, now, now, "returned", reason_text, entry_id),
+        )
+        _insert_event(
+            conn,
+            entry_id=entry_id,
+            action="returned",
+            actor_user_id=actor_user_id,
+            from_status=entry["status"],
+            to_status="edited",
+            note=reason_text,
+            meta_json={},
+            created_at=now,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return get_entry(entry_id)
+
+
+def reject_entry(entry_id: str, *, actor_user_id: str, reason: str) -> dict[str, Any]:
+    reason_text = _nullable_text(reason)
+    if not reason_text:
+        raise ValueError("Rejection reason is required.")
+
+    now = _utc_now_iso()
+    conn = raw_db()
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        entry = _require_active_entry(_fetch_entry(conn, entry_id), action="reject")
+        conn.execute(
+            """
+            UPDATE reception_entries
+            SET status=?,
+                reviewed_by_user_id=?,
+                updated_at=?,
+                reviewed_at=?,
+                last_action=?,
+                return_reason=NULL,
+                hold_reason=NULL,
+                rejection_reason=?
+            WHERE id=?
+            """,
+            ("rejected", actor_user_id, now, now, "rejected", reason_text, entry_id),
+        )
+        _insert_event(
+            conn,
+            entry_id=entry_id,
+            action="rejected",
+            actor_user_id=actor_user_id,
+            from_status=entry["status"],
+            to_status="rejected",
+            note=reason_text,
+            meta_json={},
+            created_at=now,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return get_entry(entry_id)
 
 
 def list_entry_events(entry_id: str) -> list[dict[str, Any]]:

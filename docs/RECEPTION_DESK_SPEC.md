@@ -362,6 +362,7 @@ This decision should be visible at approval time.
 
 - The system may suggest a patient, but it must never auto-post live data.
 - Manager must always confirm before anything goes live.
+- If the live target record changed after the draft was created or last reviewed, approval must pause and require re-review before posting.
 - If approving into an existing treatment:
   - receptionist entry must not silently overwrite the wrong live record
   - invalid money math must block approval
@@ -432,6 +433,11 @@ It should show:
 - money summary: total, discount, paid today, remaining after approval
 - warnings and how the manager resolved them
 - one explicit final approve-and-post action
+
+Approval safety rules:
+
+- The final approve-and-post action must be idempotent. Double-click, refresh, or retry must not create duplicate live writes.
+- If current live values changed after the draft was reviewed, the system must stop final approval and send the manager back through review with a clear stale-data warning.
 
 If values are wrong, the manager should use `Edit` first, not change values inside the final confirmation step.
 

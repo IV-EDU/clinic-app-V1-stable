@@ -304,6 +304,7 @@ Approval rules from match strength:
 - strong match may be preselected for manager review, but never auto-approved
 - weak match requires explicit manager patient choice before approval
 - conflict blocks approval until the manager resolves the target patient/treatment
+- if the locked or chosen live target changed after draft creation or last review, approval must pause until the manager re-reviews the current live state
 
 ### Final approval screen
 
@@ -321,6 +322,11 @@ It must show:
 - one explicit final action button for live posting
 
 The final approval screen must not allow free editing of draft fields. If values are wrong, manager uses `Edit` first, then comes back to approve.
+
+Approval execution safety:
+
+- The final approve-and-post action must be idempotent. Duplicate submit, retry, refresh, or double-click must not create duplicate live rows or duplicate updates.
+- Before writing live data, the system must verify the current target record still matches the state the manager reviewed. If not, approval is blocked with a stale-data warning and the draft returns to review.
 
 ### Routing rules at approval time
 
@@ -396,6 +402,7 @@ Safety rule (when approval posting is enabled later):
 - When attaching a payment to a treatment, recompute and persist the parent treatment `remaining_cents` correctly (do not leave stale remaining values).
 - Approval must be blocked if a treatment correction would create invalid money state.
 - The system must not silently force `remaining_cents` to zero to hide the issue.
+- Approval must not post twice if the manager repeats the action or the browser retries the request.
 
 ## Safe Build Sequence
 

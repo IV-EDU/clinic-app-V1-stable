@@ -11,6 +11,7 @@
 - **Users:** Dentist (owner), receptionist (data entry), both Arabic-speaking
 - **Mood:** Calm, clean, professional, trustworthy — like a modern medical office
 - **NOT:** Bold, playful, techy, startup-y, dark/moody, or experimental
+- **Quality bar:** Simple does not mean bland. The UI should feel intentional, well-composed, and human-designed, not like generic AI output or a rushed template.
 
 ---
 
@@ -118,6 +119,7 @@ Use the CSS variables defined in `static/css/design-system.css` and `static/css/
 - **No second competing navigation system on the same page.** On sidebar pages, the sidebar + slim topbar is the official shell. On legacy pages, the top nav remains the shell.
 - **No sticky headers inside scrollable content** (only the main nav is sticky).
 - **No inline `<style>` blocks** — use shared CSS files. If you must add inline styles temporarily, plan a follow-up to move them.
+- **No generic “AI-made” page patterns** — avoid random hero sections, decorative gradients, oversized empty cards, fake dashboard filler, or trendy layouts that do not improve real clinic workflows.
 
 ---
 

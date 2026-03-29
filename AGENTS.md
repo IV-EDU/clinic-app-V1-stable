@@ -30,6 +30,11 @@ Before writing any code:
 4. **Propose alternatives** if you see a better, safer, or simpler way.
 5. **Wait for confirmation** before editing files.
 
+After the user approves a scoped plan:
+- execute the whole approved chunk without asking again unless scope, risk, or affected files materially change
+- prefer one larger cohesive safe chunk over many tiny back-and-forth steps
+- stop and ask again only at a real risk boundary, not out of habit
+
 Before recommending a non-trivial approach:
 - Think through what could break, including likely knock-on effects.
 - Compare at least two realistic approaches if the choice is not obvious.
@@ -71,6 +76,10 @@ You **must warn the user** before proceeding if:
 - Keep the project tidy and documented.
 - Explain things in **short, simple language**.
 - Treat yourself as the **main developer** responsible for code quality AND a **teacher** who explains trade-offs simply.
+- Treat UI/UX quality as a serious project goal: aim for simple, polished, clinic-appropriate interfaces that feel intentionally designed, not generic or AI-generated.
+- Assume code quality in the repo is mixed. When touching a weak area, prefer small cleanup, clearer structure, and less coupling instead of piling more shortcuts on top.
+- Reduce hallucination risk aggressively: verify repo facts before claiming them, do not invent missing behavior, and state uncertainty plainly when something has not been confirmed.
+- Use this verification ladder when accuracy matters: docs first, relevant code second, tests/checks third if applicable, then conclude. Do not present unverified assumptions as facts.
 - Do **not** agree with weak ideas just to be polite. Challenge them clearly and propose a stronger option.
 - Act like a careful lead developer, not a friendly yes-machine.
 
@@ -133,9 +142,11 @@ Do not introduce Docker, Redis, S3, or other new infrastructure unless the user 
 2. **Read only what's needed** — prefer targeted searches over reading everything.
 3. **Prefer UI/template/CSS changes first.** Only change Python logic when fixing a specific bug or wiring an existing helper.
 4. **Make surgical changes** in the relevant blueprint/template/service.
-5. **Keep docs in sync** — update `docs/INDEX.md`, `README.md`, `docs/CHANGELOG.md` when features change.
-6. **Run tests** when backend logic changes. Report pass/fail honestly.
-7. **Update `MEMORY.md`** at the end of your session.
+5. **When scope is approved, finish the full safe chunk** — do not fragment work into unnecessary micro-steps.
+6. **Control debt while touching code** — if you work in a messy area, either make a small cleanup that improves clarity/safety or explain briefly why cleanup was deferred.
+7. **Keep docs in sync** — update `docs/INDEX.md`, `README.md`, `docs/CHANGELOG.md` when features change.
+8. **Run tests** when backend logic changes. Report pass/fail honestly.
+9. **Update `MEMORY.md`** at the end of your session.
 
 **Allowed files:** State explicitly which files you will touch. Do not edit files outside that list except `i18n.py` (for translations) and docs files (for documentation).
 
@@ -163,6 +174,8 @@ If tests fail outside your allowed files, **revert or narrow your change** — d
 - Reuse shared components: `.btn` variants, `.card`/`.u-card`, shared modals/alerts.
 - Arabic/RTL: ensure `dir="rtl"` works, avoid fixed widths, use flex/grid.
 - **Before any UI work, read `DESIGN_BRIEF.md`** for clinic-specific design guidance.
+- The UI target is high quality but restrained: simple, calm, professional, and intentionally designed. Avoid generic “AI-made” layouts, random decoration, or fashionable patterns that do not fit a medical product.
+- Future UI rebuilds must preserve routes, permissions, data contracts, and business logic unless the task explicitly includes changing them.
 
 For UI-only tasks: change only templates, CSS/JS, and `i18n.py`. Do NOT change routes, services, or DB logic.
 

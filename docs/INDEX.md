@@ -10,6 +10,8 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 - Figma reference links and approved design iterations:
   - `docs/FIGMA_REFERENCES.md`
+- Whole-app orientation and file-finding guide:
+  - `docs/SYSTEM_MAP.md`
 
 ---
 

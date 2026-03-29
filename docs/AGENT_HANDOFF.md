@@ -7,7 +7,8 @@ This file is a fast ramp for the next agent so they don’t have to re-discover 
 1. `AGENTS.md` (safety + protected areas)
 2. `MEMORY.md` (current state + latest decisions)
 3. `KNOWN_ISSUES.md` + `LAST_PLAN.md` (priorities)
-4. Reception workflow docs (if working on Reception):
+4. `docs/SYSTEM_MAP.md` (whole-app orientation: where things live, how features are structured)
+5. Reception workflow docs (if working on Reception):
    - `docs/RECEPTION_DESK_SPEC.md`
    - `docs/RECEPTION_DESK_IMPLEMENTATION_CONTRACT.md`
    - `docs/RECEPTION_DESK_PHASES.md`

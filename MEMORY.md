@@ -127,6 +127,62 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - Keep app/runtime logic unchanged; only improve operator diagnostics and recovery clarity.
 - Keep startup resilient across mixed schema states so migration commands can run instead of failing early with `sqlite3.OperationalError`.
 
+### Session: Reception and AI workflow guardrails
+**Date:** 2026-03-29
+**What was done:**
+- Reviewed the frozen Reception Desk plan against the current app architecture and confirmed the draft-review-approve model is still the right direction for this repo.
+- Added two missing approval hardening rules to the Reception spec/implementation contract: stale-data re-review before posting and idempotent final approval to prevent duplicate writes.
+- Updated the portable AI workflow files so agents should not invent extra suggestions when the current plan is already sound.
+
+**Key decisions:**
+- Keep the Reception workflow direction as-is; do not widen it into receptionist-side live routing or duplicate-cleanup logic.
+- AI agents should add suggestions only when they materially improve safety, fit, or decision quality.
+
+### Session: UI quality and tooling guidance hardening
+**Date:** 2026-03-29
+**What was done:**
+- Updated the main AI instruction files so future chats inherit a stronger UI quality bar: simple, polished, clinic-appropriate, and not generic AI-looking output.
+- Added explicit guidance that repo code quality is mixed and agents should prefer small cleanup over adding more debt when touching weak areas.
+- Added a rule that agents should surface useful skills/plugins/MCPs/tools only when there is a concrete benefit, not as filler.
+
+**Key decisions:**
+- Future UI work should aim for high taste and restraint, not flashy redesigns or generic templates.
+- Tooling suggestions are encouraged only when they materially improve quality, safety, or speed.
+
+### Session: Workflow hardening for fewer errors and less back-and-forth
+**Date:** 2026-03-29
+**What was done:**
+- Tightened the AI workflow files so new chats explicitly optimize for lower hallucination risk by verifying repo facts instead of guessing.
+- Added a standing rule that the AI should actively evaluate whether the user's request is vague, risky, contradictory, or based on a weak assumption, and say so clearly.
+- Added a standing rule that after one scoped approval, the AI should complete the full approved safe chunk without repeated permission prompts unless the risk boundary changes.
+
+**Key decisions:**
+- “Perfect” and “zero hallucinations” is not a realistic standard; the operational goal is very low error risk through verification, clear uncertainty, and controlled execution.
+- The workflow should favor larger cohesive approved chunks, but not cross real risk boundaries silently.
+
+### Session: Workflow cleanup and verification rules
+**Date:** 2026-03-29
+**What was done:**
+- Added an explicit verification ladder to the main AI instruction files: docs first, code second, tests/checks third, then conclude.
+- Added an explicit debt-control rule so touched weak areas should either get a small cleanup or a stated reason for deferring cleanup.
+- Added an explicit UI rebuild rule that redesign work should preserve routes, permissions, data contracts, and business logic unless the task says otherwise.
+- Added a short default tool map so future chats use docs/code search, Playwright, Figma MCP, and tests more consistently.
+
+**Key decisions:**
+- The workflow should favor verifiable claims over confident guesses.
+- Safe future UI rebuilds must preserve core behavior by default.
+
+### Session: Whole-app system map
+**Date:** 2026-03-29
+**What was done:**
+- Added `docs/SYSTEM_MAP.md` as a practical whole-program orientation doc for future AI chats and contributors.
+- Linked the new system map from `docs/AGENT_HANDOFF.md`, `START_HERE_AI.md`, and `docs/INDEX.md` so it becomes part of the normal startup/ramp path.
+- Documented the main architectural layers, structural traps, fast file-finding paths, and when to use Playwright/Figma for safer understanding.
+
+**Key decisions:**
+- No AI should be expected to “fully know” the whole program from memory alone.
+- Future chats should use layered orientation: startup docs first, system map second, then targeted code inspection for the active feature.
+
 ### Session: AI system blueprint and instruction hardening
 **Date:** 2026-03-29
 **What was done:**

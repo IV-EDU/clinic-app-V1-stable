@@ -9,6 +9,7 @@ from clinic_app.services.doctor_colors import ANY_DOCTOR_ID, ANY_DOCTOR_LABEL, g
 from clinic_app.services.i18n import T
 from clinic_app.services.payments import money_input, parse_money_to_cents
 from clinic_app.services.reception_entries import (
+    approve_edit_payment_entry,
     approve_edit_treatment_entry,
     approve_edit_patient_entry,
     approve_new_payment_entry,
@@ -16,6 +17,7 @@ from clinic_app.services.reception_entries import (
     create_entry,
     get_entry,
     get_locked_patient_context,
+    get_locked_payment_context,
     get_locked_treatment_context,
     hold_entry,
     list_entries,
@@ -152,6 +154,24 @@ def _payment_form_data(context: dict | None = None, entry: dict | None = None) -
             form_data["method"] = payload.get("method") or form_data["method"]
             form_data["note"] = payload.get("note") or ""
     return form_data
+
+
+def _payment_correction_form_data(locked_payment: dict | None = None, entry: dict | None = None) -> dict[str, str]:
+    payload = (entry or {}).get("payload_json") or {}
+    proposed = payload.get("proposed") if isinstance(payload, dict) else None
+    source = proposed if isinstance(proposed, dict) else (locked_payment or {})
+    amount_cents = source.get("amount_cents")
+    return {
+        "amount": money_input(amount_cents),
+        "visit_date": source.get("visit_date") or source.get("paid_at") or date.today().isoformat(),
+        "method": source.get("method") or "cash",
+        "doctor_id": source.get("doctor_id") or ANY_DOCTOR_ID,
+        "note": source.get("note") or "",
+    }
+    
+
+def _read_payment_correction_form_data() -> dict[str, str]:
+    return _read_payment_form_data()
 
 
 def _patient_payload_from_context(current_patient: dict | None) -> dict[str, object]:
@@ -451,6 +471,8 @@ def _decorate_entry(entry: dict) -> dict:
 def _approval_confirmation_key(entry: dict) -> str:
     if entry.get("draft_type") == "new_payment":
         return "reception_payment_approve_confirmation_label"
+    if entry.get("draft_type") == "edit_payment":
+        return "reception_edit_payment_approve_confirmation_label"
     if entry.get("draft_type") == "edit_patient":
         return "reception_patient_approve_confirmation_label"
     if entry.get("draft_type") == "edit_treatment":
@@ -547,7 +569,20 @@ def _can_edit_returned_entry(entry: dict) -> bool:
         and entry.get("status") == "edited"
         and entry.get("last_action") == "returned"
     )
-    return is_returned_treatment or is_returned_patient_correction or is_returned_treatment_correction
+    is_returned_payment_correction = (
+        _can_create()
+        and entry.get("submitted_by_user_id") == current_user.id
+        and entry.get("draft_type") == "edit_payment"
+        and entry.get("source") == "treatment_card"
+        and entry.get("status") == "edited"
+        and entry.get("last_action") == "returned"
+    )
+    return (
+        is_returned_treatment
+        or is_returned_patient_correction
+        or is_returned_payment_correction
+        or is_returned_treatment_correction
+    )
 
 
 def _detail_context(
@@ -561,11 +596,17 @@ def _detail_context(
     events = list_entry_events(entry["id"])
     locked_treatment_context = None
     locked_patient_context = None
+    locked_payment_context = None
     payload = entry.get("payload_json") or {}
-    if entry.get("draft_type") in {"new_payment", "edit_treatment"} and entry.get("locked_patient_id") and entry.get("locked_treatment_id"):
+    if entry.get("draft_type") in {"new_payment", "edit_payment", "edit_treatment"} and entry.get("locked_patient_id") and entry.get("locked_treatment_id"):
         locked_treatment_context = get_locked_treatment_context(
             entry["locked_patient_id"],
             entry["locked_treatment_id"],
+        )
+    if entry.get("draft_type") == "edit_payment" and entry.get("locked_patient_id") and entry.get("locked_payment_id"):
+        locked_payment_context = get_locked_payment_context(
+            entry["locked_patient_id"],
+            entry["locked_payment_id"],
         )
     if entry.get("draft_type") == "edit_patient" and entry.get("locked_patient_id"):
         locked_patient_context = get_locked_patient_context(entry["locked_patient_id"])
@@ -575,6 +616,7 @@ def _detail_context(
         "entry_events": events,
         "locked_treatment_context": locked_treatment_context,
         "locked_patient_context": locked_patient_context,
+        "locked_payment_context": locked_payment_context,
         "entry_payload": payload if isinstance(payload, dict) else {},
         "can_review_reception": _can_review(),
         "can_approve_reception": _can_approve(),
@@ -621,6 +663,86 @@ def _patient_correction_context(
         "current_patient": current_patient,
         "patient_correction_form": form_data or _patient_correction_form_data(current_patient=current_patient, entry=entry),
         "patient_correction_errors": errors or [],
+        "page_title_key": page_title_key,
+        "page_subtitle_key": page_subtitle_key,
+        "submit_label": T(submit_label_key),
+        "form_action": form_action,
+        "return_reason": (entry or {}).get("return_reason") or "",
+        "back_href": back_href,
+    }
+
+
+def _payment_correction_entry_payload_from_form_data(
+    form_data: dict[str, str],
+    locked_payment: dict[str, object],
+) -> dict:
+    treatment_context = locked_payment.get("treatment_context") or {}
+    current_payload = {
+        "payment_id": locked_payment.get("payment_id") or "",
+        "treatment_id": locked_payment.get("treatment_id") or "",
+        "is_initial_payment": 1 if locked_payment.get("is_initial_payment") else 0,
+        "amount_cents": int(locked_payment.get("amount_cents") or 0),
+        "visit_date": locked_payment.get("paid_at") or "",
+        "method": locked_payment.get("method") or "cash",
+        "doctor_id": locked_payment.get("doctor_id") or "",
+        "doctor_label": locked_payment.get("doctor_label") or "",
+        "note": locked_payment.get("note") or "",
+        "treatment_remaining_cents": int((treatment_context or {}).get("remaining_cents") or 0),
+        "treatment_total_paid_cents": int((treatment_context or {}).get("total_paid_cents") or 0),
+    }
+    amount_raw = form_data.get("amount") or ""
+    return {
+        "draft_type": "edit_payment",
+        "source": "treatment_card",
+        "patient_intent": "existing",
+        "locked_patient_id": locked_payment["patient_id"],
+        "locked_treatment_id": locked_payment["treatment_id"],
+        "locked_payment_id": locked_payment["payment_id"],
+        "patient_name": (treatment_context or {}).get("patient_name") or "",
+        "phone": (treatment_context or {}).get("phone") or "",
+        "page_number": (treatment_context or {}).get("page_number") or "",
+        "visit_date": form_data.get("visit_date") or "",
+        "treatment_text": (treatment_context or {}).get("treatment_text") or "",
+        "doctor_id": form_data["doctor_id"],
+        "doctor_label": _doctor_label_for(form_data["doctor_id"]),
+        "money_received_today": True,
+        "paid_today": amount_raw,
+        "payload_json": {
+            "current": current_payload,
+            "proposed": {
+                "payment_id": locked_payment["payment_id"],
+                "treatment_id": locked_payment["treatment_id"],
+                "amount": amount_raw,
+                "visit_date": form_data.get("visit_date") or "",
+                "method": form_data.get("method") or "cash",
+                "doctor_id": form_data["doctor_id"],
+                "doctor_label": _doctor_label_for(form_data["doctor_id"]),
+                "note": form_data.get("note") or "",
+            },
+        },
+    }
+
+
+def _payment_correction_context(
+    locked_payment: dict,
+    *,
+    entry: dict | None = None,
+    form_data: dict[str, str] | None = None,
+    errors: list[str] | None = None,
+    page_title_key: str,
+    page_subtitle_key: str,
+    submit_label_key: str,
+    form_action: str,
+    back_href: str,
+) -> dict:
+    return {
+        "show_back": False,
+        "entry": entry,
+        "locked_payment": locked_payment,
+        "locked_treatment": locked_payment.get("treatment_context") or {},
+        "doctor_options": _doctor_options(),
+        "payment_form": form_data or _payment_correction_form_data(locked_payment, entry),
+        "payment_errors": errors or [],
         "page_title_key": page_title_key,
         "page_subtitle_key": page_subtitle_key,
         "submit_label": T(submit_label_key),
@@ -787,6 +909,38 @@ def _render_new_payment(
     )
 
 
+def _render_payment_correction(
+    locked_payment: dict,
+    *,
+    entry: dict | None = None,
+    form_data: dict[str, str] | None = None,
+    errors: list[str] | None = None,
+    page_title_key: str,
+    page_subtitle_key: str,
+    submit_label_key: str,
+    form_action: str,
+    back_href: str,
+    status_code: int = 200,
+):
+    return (
+        render_page(
+            "reception/edit_payment.html",
+            **_payment_correction_context(
+                locked_payment,
+                entry=entry,
+                form_data=form_data,
+                errors=errors,
+                page_title_key=page_title_key,
+                page_subtitle_key=page_subtitle_key,
+                submit_label_key=submit_label_key,
+                form_action=form_action,
+                back_href=back_href,
+            ),
+        ),
+        status_code,
+    )
+
+
 def _render_patient_correction(
     current_patient: dict,
     *,
@@ -867,6 +1021,13 @@ def _locked_treatment_context_or_abort(patient_id: str, treatment_id: str) -> di
         conn.close()
     if payment and (payment["parent_payment_id"] or "").strip():
         abort(400)
+    abort(404)
+
+
+def _locked_payment_context_or_abort(patient_id: str, payment_id: str) -> dict:
+    context = get_locked_payment_context(patient_id, payment_id)
+    if context:
+        return context
     abort(404)
 
 
@@ -961,6 +1122,59 @@ def create_new_payment_entry():
         return _render_new_payment(context, form_data=form_data, errors=errors, status_code=400)
     create_entry(payload, actor_user_id=current_user.id)
     flash(T("reception_payment_draft_saved"), "ok")
+    return redirect(url_for("reception.index", view="desk"))
+
+
+@bp.route("/reception/entries/new-payment-correction", methods=["GET"])
+@login_required
+def new_payment_correction_entry():
+    if not _can_create() or not _can_view_patients():
+        abort(403)
+    patient_id = (request.args.get("patient_id") or "").strip()
+    payment_id = (request.args.get("payment_id") or "").strip()
+    if not patient_id or not payment_id:
+        abort(404)
+    locked_payment = _locked_payment_context_or_abort(patient_id, payment_id)
+    return render_page(
+        "reception/edit_payment.html",
+        **_payment_correction_context(
+            locked_payment,
+            page_title_key="reception_payment_correction_title",
+            page_subtitle_key="reception_payment_correction_subtitle",
+            submit_label_key="reception_payment_save_draft",
+            form_action=url_for("reception.create_new_payment_correction_entry"),
+            back_href=url_for("patients.patient_detail", pid=patient_id),
+        ),
+    )
+
+
+@bp.route("/reception/entries/new-payment-correction", methods=["POST"])
+@login_required
+def create_new_payment_correction_entry():
+    if not _can_create() or not _can_view_patients():
+        abort(403)
+    patient_id = (request.form.get("patient_id") or "").strip()
+    payment_id = (request.form.get("payment_id") or "").strip()
+    if not patient_id or not payment_id:
+        abort(404)
+    locked_payment = _locked_payment_context_or_abort(patient_id, payment_id)
+    form_data = _read_payment_correction_form_data()
+    payload = _payment_correction_entry_payload_from_form_data(form_data, locked_payment)
+    errors, _warnings, _normalized = validate_entry_payload(payload)
+    if errors:
+        return _render_payment_correction(
+            locked_payment,
+            form_data=form_data,
+            errors=errors,
+            page_title_key="reception_payment_correction_title",
+            page_subtitle_key="reception_payment_correction_subtitle",
+            submit_label_key="reception_payment_save_draft",
+            form_action=url_for("reception.create_new_payment_correction_entry"),
+            back_href=url_for("patients.patient_detail", pid=patient_id),
+            status_code=400,
+        )
+    create_entry(payload, actor_user_id=current_user.id)
+    flash(T("reception_payment_correction_draft_saved"), "ok")
     return redirect(url_for("reception.index", view="desk"))
 
 
@@ -1092,6 +1306,40 @@ def edit_reception_entry(entry_id: str):
     if not _can_create():
         abort(403)
     entry = _find_entry_or_404(entry_id)
+    if entry.get("draft_type") == "edit_payment":
+        if not _can_edit_returned_entry(entry):
+            abort(403)
+        locked_payment = get_locked_payment_context(
+            entry.get("locked_patient_id") or "",
+            entry.get("locked_payment_id") or "",
+        ) or {
+            "patient_id": entry.get("locked_patient_id") or "",
+            "payment_id": entry.get("locked_payment_id") or "",
+            "treatment_id": entry.get("locked_treatment_id") or "",
+            "paid_at": entry.get("visit_date") or "",
+            "amount_cents": entry.get("paid_today_cents") or 0,
+            "method": ((entry.get("payload_json") or {}).get("current") or {}).get("method") or "cash",
+            "note": ((entry.get("payload_json") or {}).get("current") or {}).get("note") or "",
+            "doctor_id": entry.get("doctor_id") or "",
+            "doctor_label": entry.get("doctor_label") or "",
+            "is_initial_payment": 1 if (entry.get("locked_payment_id") or "") == (entry.get("locked_treatment_id") or "") else 0,
+            "treatment_context": get_locked_treatment_context(
+                entry.get("locked_patient_id") or "",
+                entry.get("locked_treatment_id") or "",
+            ) or {},
+        }
+        return render_page(
+            "reception/edit_payment.html",
+            **_payment_correction_context(
+                locked_payment,
+                entry=entry,
+                page_title_key="reception_edit_payment_title",
+                page_subtitle_key="reception_edit_payment_subtitle",
+                submit_label_key="reception_resubmit_draft",
+                form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
+                back_href=url_for("reception.index", view="desk"),
+            ),
+        )
     if entry.get("draft_type") == "edit_patient":
         if not _can_edit_returned_entry(entry):
             abort(403)
@@ -1149,6 +1397,64 @@ def submit_reception_entry_edit(entry_id: str):
     if not _can_create():
         abort(403)
     entry = _find_entry_or_404(entry_id)
+    if entry.get("draft_type") == "edit_payment":
+        locked_payment = get_locked_payment_context(
+            entry.get("locked_patient_id") or "",
+            entry.get("locked_payment_id") or "",
+        ) or {
+            "patient_id": entry.get("locked_patient_id") or "",
+            "payment_id": entry.get("locked_payment_id") or "",
+            "treatment_id": entry.get("locked_treatment_id") or "",
+            "paid_at": entry.get("visit_date") or "",
+            "amount_cents": entry.get("paid_today_cents") or 0,
+            "method": ((entry.get("payload_json") or {}).get("current") or {}).get("method") or "cash",
+            "note": ((entry.get("payload_json") or {}).get("current") or {}).get("note") or "",
+            "doctor_id": entry.get("doctor_id") or "",
+            "doctor_label": entry.get("doctor_label") or "",
+            "is_initial_payment": 1 if (entry.get("locked_payment_id") or "") == (entry.get("locked_treatment_id") or "") else 0,
+            "treatment_context": get_locked_treatment_context(
+                entry.get("locked_patient_id") or "",
+                entry.get("locked_treatment_id") or "",
+            ) or {},
+        }
+        form_data = _read_payment_correction_form_data()
+        payload = _payment_correction_entry_payload_from_form_data(form_data, locked_payment)
+        errors, _warnings, _normalized = validate_entry_payload(payload)
+        if errors:
+            return _render_payment_correction(
+                locked_payment,
+                entry=entry,
+                form_data=form_data,
+                errors=errors,
+                page_title_key="reception_edit_payment_title",
+                page_subtitle_key="reception_edit_payment_subtitle",
+                submit_label_key="reception_resubmit_draft",
+                form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
+                back_href=url_for("reception.index", view="desk"),
+                status_code=400,
+            )
+        try:
+            resubmit_returned_entry(entry_id, payload, actor_user_id=current_user.id)
+        except ValueError as exc:
+            refreshed_entry = _find_entry_or_404(entry_id)
+            refreshed_payment = get_locked_payment_context(
+                refreshed_entry.get("locked_patient_id") or "",
+                refreshed_entry.get("locked_payment_id") or "",
+            ) or locked_payment
+            return _render_payment_correction(
+                refreshed_payment,
+                entry=refreshed_entry,
+                form_data=form_data,
+                errors=[str(exc)],
+                page_title_key="reception_edit_payment_title",
+                page_subtitle_key="reception_edit_payment_subtitle",
+                submit_label_key="reception_resubmit_draft",
+                form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
+                back_href=url_for("reception.index", view="desk"),
+                status_code=400,
+            )
+        flash(T("reception_draft_resubmitted"), "ok")
+        return redirect(url_for("reception.index", view="desk"))
     if entry.get("draft_type") == "edit_patient":
         current_patient = get_locked_patient_context(entry.get("locked_patient_id") or "") or {
             "patient_id": entry.get("locked_patient_id") or "",
@@ -1325,6 +1631,9 @@ def approve_reception_entry(entry_id: str):
         if entry.get("draft_type") == "new_payment":
             approve_new_payment_entry(entry_id, actor_user_id=current_user.id)
             success_key = "reception_payment_draft_approved"
+        elif entry.get("draft_type") == "edit_payment":
+            approve_edit_payment_entry(entry_id, actor_user_id=current_user.id)
+            success_key = "reception_payment_correction_draft_approved"
         elif entry.get("draft_type") == "edit_patient":
             approve_edit_patient_entry(entry_id, actor_user_id=current_user.id)
             success_key = "reception_patient_draft_approved"

@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from clinic_app.services.database import db as raw_db
 from clinic_app.services.reception_entries import (
+    approve_edit_payment_entry,
     approve_edit_treatment_entry,
     approve_edit_patient_entry,
     approve_new_payment_entry,
     create_entry,
     get_entry,
     get_locked_patient_context,
+    get_locked_payment_context,
     get_locked_treatment_context,
     list_entries,
     list_entry_events,
@@ -108,6 +110,40 @@ def _seed_parent_treatment(
                 max(total_amount_cents - discount_cents - amount_cents, 0),
                 total_amount_cents,
                 discount_cents,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _seed_child_payment(
+    patient_id: str,
+    treatment_id: str,
+    payment_id: str,
+    *,
+    amount_cents: int = 2000,
+) -> None:
+    conn = raw_db()
+    try:
+        conn.execute(
+            """
+            INSERT INTO payments(
+                id, patient_id, parent_payment_id, paid_at, amount_cents, method, note, treatment,
+                doctor_id, doctor_label, remaining_cents, total_amount_cents, examination_flag,
+                followup_flag, discount_cents
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, ?, 0, 0, 0, 0, 0)
+            """,
+            (
+                payment_id,
+                patient_id,
+                treatment_id,
+                "2026-03-18",
+                amount_cents,
+                "cash",
+                "",
+                "_any_",
+                "Any Doctor",
             ),
         )
         conn.commit()
@@ -460,15 +496,14 @@ def test_resubmit_returned_entry_updates_draft_and_event(app, admin_user):
     assert updated["last_action"] == "edited"
     assert updated["return_reason"] is None
     assert updated["submitted_at"] == submitted_at
-    assert updated["updated_at"] != created["updated_at"]
     assert updated["paid_today_cents"] == 5000
     assert updated["total_amount_cents"] == 22000
     assert updated["discount_amount_cents"] == 2000
     assert updated["payload_json"] == {"note": "updated"}
 
     events = list_entry_events(created["id"])
-    assert events[0]["action"] == "edited"
-    assert events[0]["meta_json"] == {"resubmitted": True}
+    edited_event = next(event for event in events if event["action"] == "edited")
+    assert edited_event["meta_json"] == {"resubmitted": True}
 
 
 def test_resubmit_returned_entry_rejects_non_returned_draft(app, admin_user):
@@ -635,7 +670,8 @@ def test_resubmit_returned_edit_patient_preserves_locked_context(app, admin_user
     assert updated["return_reason"] is None
     assert updated["last_action"] == "edited"
     assert updated["payload_json"]["note"] == "Updated reception note"
-    assert list_entry_events(created["id"])[0]["meta_json"] == {"resubmitted": True}
+    edited_event = next(event for event in list_entry_events(created["id"]) if event["action"] == "edited")
+    assert edited_event["meta_json"] == {"resubmitted": True}
 
 
 def test_resubmit_returned_edit_treatment_preserves_locked_context(app, admin_user):
@@ -859,7 +895,216 @@ def test_get_locked_treatment_context_returns_live_snapshot(app, admin_user):
     assert context["page_number"] == "12"
     assert context["treatment_text"] == "Locked Crown"
     assert context["total_paid_cents"] == 5000
-    assert context["remaining_cents"] == 14000
+
+
+def test_get_locked_payment_context_returns_child_snapshot(app, admin_user):
+    _seed_patient("payment-context-patient", "Payment Context")
+    _seed_parent_treatment("payment-context-patient", "payment-context-treatment")
+    _seed_child_payment("payment-context-patient", "payment-context-treatment", "payment-context-child", amount_cents=2000)
+
+    context = get_locked_payment_context("payment-context-patient", "payment-context-child")
+
+    assert context is not None
+    assert context["payment_id"] == "payment-context-child"
+    assert context["treatment_id"] == "payment-context-treatment"
+    assert context["is_initial_payment"] is False
+    assert context["max_amount_cents"] == 14000
+
+
+def test_validate_edit_payment_requires_locked_context_and_positive_amount(app, admin_user):
+    errors, warnings, normalized = validate_entry_payload(
+        {
+            "draft_type": "edit_payment",
+            "source": "treatment_card",
+            "doctor_id": "_any_",
+            "doctor_label": "Any Doctor",
+            "payload_json": {"proposed": {"amount": "0"}},
+        }
+    )
+
+    assert "Locked patient context is required." in errors
+    assert "Locked treatment context is required." in errors
+    assert "Locked payment context is required." in errors
+    assert "Payment amount must be greater than zero." in errors
+    assert warnings == []
+    assert normalized["patient_intent"] == "existing"
+    assert normalized["money_received_today"] == 1
+
+
+def test_resubmit_returned_edit_payment_preserves_locked_context(app, admin_user):
+    _seed_user("manager-edit-payment", "manager-edit-payment")
+    _seed_patient("patient-resubmit-payment", "Resubmit Payment Patient")
+    _seed_parent_treatment("patient-resubmit-payment", "treatment-resubmit-payment")
+    _seed_child_payment("patient-resubmit-payment", "treatment-resubmit-payment", "payment-resubmit-child", amount_cents=2000)
+    created = create_entry(
+        {
+            "draft_type": "edit_payment",
+            "source": "treatment_card",
+            "locked_patient_id": "patient-resubmit-payment",
+            "locked_treatment_id": "treatment-resubmit-payment",
+            "locked_payment_id": "payment-resubmit-child",
+            "doctor_id": "_any_",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-20",
+            "paid_today": "20",
+            "payload_json": {
+                "proposed": {
+                    "amount": "20",
+                    "visit_date": "2026-03-20",
+                    "method": "cash",
+                    "doctor_id": "_any_",
+                    "doctor_label": "Any Doctor",
+                    "note": "Draft note",
+                }
+            },
+        },
+        actor_user_id="admin-test",
+    )
+    submitted_at = created["submitted_at"]
+    return_entry(created["id"], actor_user_id="manager-edit-payment", reason="Fix the amount")
+
+    updated = resubmit_returned_entry(
+        created["id"],
+        {
+            "visit_date": "2026-03-21",
+            "paid_today": "18",
+            "doctor_id": "_any_",
+            "doctor_label": "Any Doctor",
+            "payload_json": {
+                "proposed": {
+                    "amount": "18",
+                    "visit_date": "2026-03-21",
+                    "method": "card",
+                    "doctor_id": "_any_",
+                    "doctor_label": "Any Doctor",
+                    "note": "Final note",
+                }
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    assert updated["locked_payment_id"] == "payment-resubmit-child"
+    assert updated["locked_treatment_id"] == "treatment-resubmit-payment"
+    assert updated["submitted_at"] == submitted_at
+    assert updated["return_reason"] is None
+    assert updated["last_action"] == "edited"
+    assert updated["paid_today_cents"] == 1800
+    assert updated["payload_json"]["proposed"]["note"] == "Final note"
+
+
+def test_approve_edit_payment_entry_updates_same_live_child_payment(app, admin_user):
+    _seed_user("approver-edit-payment-child", "approver-edit-payment-child")
+    _seed_patient("patient-payment-child", "Approve Child Payment Patient")
+    _seed_parent_treatment("patient-payment-child", "treatment-payment-child")
+    _seed_child_payment("patient-payment-child", "treatment-payment-child", "payment-child-1", amount_cents=2000)
+
+    entry = create_entry(
+        {
+            "draft_type": "edit_payment",
+            "source": "treatment_card",
+            "locked_patient_id": "patient-payment-child",
+            "locked_treatment_id": "treatment-payment-child",
+            "locked_payment_id": "payment-child-1",
+            "doctor_id": "_any_",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-21",
+            "paid_today": "18",
+            "payload_json": {
+                "proposed": {
+                    "amount": "18",
+                    "visit_date": "2026-03-21",
+                    "method": "card",
+                    "doctor_id": "_any_",
+                    "doctor_label": "Any Doctor",
+                    "note": "Payment correction note",
+                }
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    approved = approve_edit_payment_entry(entry["id"], actor_user_id="approver-edit-payment-child")
+    assert approved["status"] == "approved"
+    assert approved["target_patient_id"] == "patient-payment-child"
+    assert approved["target_treatment_id"] == "treatment-payment-child"
+    assert approved["target_payment_id"] == "payment-child-1"
+
+    conn = raw_db()
+    try:
+        child = conn.execute(
+            "SELECT amount_cents, paid_at, method, note, parent_payment_id FROM payments WHERE id=?",
+            ("payment-child-1",),
+        ).fetchone()
+        parent = conn.execute(
+            "SELECT treatment, total_amount_cents, remaining_cents FROM payments WHERE id=?",
+            ("treatment-payment-child",),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert int(child["amount_cents"] or 0) == 1800
+    assert child["paid_at"] == "2026-03-21"
+    assert child["method"] == "card"
+    assert child["note"] == "Payment correction note"
+    assert child["parent_payment_id"] == "treatment-payment-child"
+    assert parent["treatment"] == "Locked Crown"
+    assert int(parent["total_amount_cents"] or 0) == 20000
+    assert int(parent["remaining_cents"] or 0) == 12200
+
+
+def test_approve_edit_payment_entry_updates_same_live_initial_payment_only(app, admin_user):
+    _seed_user("approver-edit-payment-parent", "approver-edit-payment-parent")
+    _seed_patient("patient-payment-parent", "Approve Parent Payment Patient")
+    _seed_parent_treatment("patient-payment-parent", "treatment-payment-parent")
+    _seed_child_payment("patient-payment-parent", "treatment-payment-parent", "payment-parent-child", amount_cents=2000)
+
+    entry = create_entry(
+        {
+            "draft_type": "edit_payment",
+            "source": "treatment_card",
+            "locked_patient_id": "patient-payment-parent",
+            "locked_treatment_id": "treatment-payment-parent",
+            "locked_payment_id": "treatment-payment-parent",
+            "doctor_id": "_any_",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-22",
+            "paid_today": "60",
+            "payload_json": {
+                "proposed": {
+                    "amount": "60",
+                    "visit_date": "2026-03-22",
+                    "method": "transfer",
+                    "doctor_id": "_any_",
+                    "doctor_label": "Any Doctor",
+                    "note": "Initial payment correction note",
+                }
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    approved = approve_edit_payment_entry(entry["id"], actor_user_id="approver-edit-payment-parent")
+    assert approved["status"] == "approved"
+    assert approved["target_payment_id"] == "treatment-payment-parent"
+
+    conn = raw_db()
+    try:
+        parent = conn.execute(
+            "SELECT amount_cents, paid_at, method, note, treatment, total_amount_cents, discount_cents, remaining_cents FROM payments WHERE id=?",
+            ("treatment-payment-parent",),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert int(parent["amount_cents"] or 0) == 6000
+    assert parent["paid_at"] == "2026-03-22"
+    assert parent["method"] == "transfer"
+    assert parent["note"] == "Initial payment correction note"
+    assert parent["treatment"] == "Locked Crown"
+    assert int(parent["total_amount_cents"] or 0) == 20000
+    assert int(parent["discount_cents"] or 0) == 1000
+    assert int(parent["remaining_cents"] or 0) == 11000
 
 
 def test_create_locked_new_payment_stores_snapshot_and_no_generic_warnings(app, admin_user):

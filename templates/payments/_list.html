@@ -226,6 +226,16 @@
                         <i class="fa fa-edit"></i>
                       </button>
                       {% endif %}
+                      {% if can_create_reception_entries %}
+                      <a
+                        class="btn-icon"
+                        href="{{ url_for('reception.new_payment_correction_entry', patient_id=p.id, payment_id=treatment.id) }}"
+                        onclick="event.stopPropagation();"
+                        title="{{ t('reception_send_payment_correction') }}"
+                      >
+                        <i class="fa fa-share-square-o"></i>
+                      </a>
+                      {% endif %}
                       {% if can_delete_payments %}
                       <button
                         type="button"
@@ -283,6 +293,16 @@
                       >
                         <i class="fa fa-edit"></i>
                       </button>
+                      {% endif %}
+                      {% if can_create_reception_entries %}
+                      <a
+                        class="btn-icon"
+                        href="{{ url_for('reception.new_payment_correction_entry', patient_id=p.id, payment_id=payment.id) }}"
+                        onclick="event.stopPropagation();"
+                        title="{{ t('reception_send_payment_correction') }}"
+                      >
+                        <i class="fa fa-share-square-o"></i>
+                      </a>
                       {% endif %}
                       {% if can_delete_payments %}
                       <button type="button" class="btn-icon btn-delete" onclick="showDeletePaymentModal('{{ payment.id }}', '{{ payment.amount_fmt }}')" title="{{ t('delete_payment') }}">

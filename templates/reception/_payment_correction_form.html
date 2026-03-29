@@ -1,0 +1,47 @@
+{% if payment_errors %}
+<div class="reception-errors">
+  <ul>
+    {% for error in payment_errors %}
+    <li>{{ error }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+<form method="post" action="{{ form_action }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="patient_id" value="{{ locked_payment.patient_id }}">
+  <input type="hidden" name="payment_id" value="{{ locked_payment.payment_id }}">
+  <div class="reception-form-grid">
+    <div>
+      <label class="form-label">{{ t('amount') }}</label>
+      <input class="form-control" type="text" name="amount" value="{{ payment_form.amount }}">
+    </div>
+    <div>
+      <label class="form-label">{{ t('date') }}</label>
+      <input class="form-control" type="date" name="visit_date" value="{{ payment_form.visit_date }}">
+    </div>
+    <div>
+      <label class="form-label">{{ t('method') }}</label>
+      <select class="form-control" name="method">
+        <option value="cash" {{ 'selected' if payment_form.method == 'cash' else '' }}>{{ t('cash') }}</option>
+        <option value="card" {{ 'selected' if payment_form.method == 'card' else '' }}>{{ t('card') }}</option>
+        <option value="transfer" {{ 'selected' if payment_form.method == 'transfer' else '' }}>{{ t('transfer') }}</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label">{{ t('doctor') }}</label>
+      <select class="form-control" name="doctor_id">
+        {% for doctor in doctor_options %}
+        <option value="{{ doctor.doctor_id }}" {{ 'selected' if payment_form.doctor_id == doctor.doctor_id else '' }}>{{ doctor.doctor_label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="full">
+      <label class="form-label">{{ t('notes') }}</label>
+      <textarea class="form-control" name="note" rows="3">{{ payment_form.note }}</textarea>
+    </div>
+    <div class="full">
+      <button class="btn primary" type="submit">{{ submit_label }}</button>
+    </div>
+  </div>
+</form>

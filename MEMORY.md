@@ -135,6 +135,28 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - `edit_treatment` stays locked to the same live treatment and same live patient only.
 - Approval updates the existing treatment row directly and blocks corrections where `total - discount` would fall below the amount already paid.
 
+### Session: Reception same-record payment correction
+**Date:** 2026-03-29
+**What was done:**
+- Added the missing same-record Reception `edit_payment` flow for treatment-card payment rows.
+- Treatment cards now expose a separate Reception draft action for both the parent row’s initial payment and later child-payment rows.
+- Managers can review current-vs-proposed payment values, approve the correction onto the same live payment, and returned payment corrections can be edited/resubmitted by the original receptionist.
+- Added focused route/service coverage for both parent-row and child-row payment corrections and reran the Reception regression subset successfully.
+
+**Current state:**
+- Supported live approval paths are now:
+  - Desk-origin `new_treatment`
+  - Treatment-card locked `new_payment`
+  - Patient-file locked `edit_patient`
+  - Treatment-card locked `edit_treatment`
+  - Treatment-card locked `edit_payment`
+- Focused Reception regression subset now passes with 91 tests.
+
+**Key decisions:**
+- `edit_payment` stays locked to the same live payment, same live treatment, and same live patient only.
+- Parent-row initial-payment corrections update only payment-editable fields and recompute the parent treatment remaining balance without touching treatment-only fields.
+- Payment-correction approval blocks if the live payment changed after draft creation and uses stable SQL tie-breakers for Reception entry/event ordering.
+
 ### Session: Startup diagnostics hardening
 **Date:** 2026-03-29
 **What was done:**

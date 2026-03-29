@@ -48,6 +48,8 @@
       <p class="reception-detail-subtitle">
         {% if entry.draft_type == 'edit_patient' %}
           {{ t('reception_patient_correction_kind') }}
+        {% elif entry.draft_type == 'edit_payment' %}
+          {{ t('reception_payment_correction_kind') }}
         {% elif entry.draft_type == 'edit_treatment' %}
           {{ t('reception_treatment_correction_kind') }}
         {% else %}
@@ -156,6 +158,69 @@
           <div class="reception-reason">{{ (entry_payload.current.notes if entry_payload.current else '') or '—' }}</div>
           <strong>{{ t('reception_patient_proposed_profile') }}</strong>
           <div class="reception-reason">{{ (entry_payload.proposed.notes if entry_payload.proposed else '') or '—' }}</div>
+        </div>
+        {% elif entry.draft_type == 'edit_payment' %}
+        <div class="reception-detail-meta">
+          <div>
+            <div class="reception-detail-label">{{ t('submitted_by') }}</div>
+            <div class="reception-detail-value">{{ entry.submitted_by_user_id }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('date') }}</div>
+            <div class="reception-detail-value">{{ entry.submitted_at[:10] if entry.submitted_at else '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('source') }}</div>
+            <div class="reception-detail-value">{{ entry.source or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_payment_row_type') }}</div>
+            <div class="reception-detail-value">
+              {{ t('reception_payment_initial_row') if (entry_payload.current.is_initial_payment if entry_payload.current else false) else t('reception_payment_child_row') }}
+            </div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('doctor') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.proposed.doctor_label if entry_payload.proposed else '') or entry.doctor_label or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_draft_type_label') }}</div>
+            <div class="reception-detail-value">{{ t('reception_payment_correction_kind') }}</div>
+          </div>
+        </div>
+        <div class="reception-detail-meta reception-spaced">
+          <div>
+            <div class="reception-detail-label">{{ t('amount') }}</div>
+            <div class="reception-detail-value">{{ (((entry_payload.current.amount_cents if entry_payload.current else 0) or 0) / 100)|round(2) }} &rarr; {{ ((entry.paid_today_cents or 0) / 100)|round(2) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('date') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.current.visit_date if entry_payload.current else '') or '—' }} &rarr; {{ (entry_payload.proposed.visit_date if entry_payload.proposed else '') or entry.visit_date or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('method') }}</div>
+            <div class="reception-detail-value">{{ t((entry_payload.current.method if entry_payload.current else 'cash')|lower) }} &rarr; {{ t(((entry_payload.proposed.method if entry_payload.proposed else '') or 'cash')|lower) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('doctor') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.current.doctor_label if entry_payload.current else '') or '—' }} &rarr; {{ (entry_payload.proposed.doctor_label if entry_payload.proposed else '') or entry.doctor_label or '—' }}</div>
+          </div>
+          {% if locked_treatment_context %}
+          <div>
+            <div class="reception-detail-label">{{ t('reception_paid_so_far') }}</div>
+            <div class="reception-detail-value">{{ ((locked_treatment_context.total_paid_cents or 0) / 100)|round(2) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_current_remaining') }}</div>
+            <div class="reception-detail-value">{{ ((locked_treatment_context.remaining_cents or 0) / 100)|round(2) }}</div>
+          </div>
+          {% endif %}
+        </div>
+        <div class="reception-spaced">
+          <strong>{{ t('notes') }}</strong>
+          <div class="reception-reason">{{ (entry_payload.current.note if entry_payload.current else '') or '—' }}</div>
+          <strong>{{ t('reception_payment_proposed_changes') }}</strong>
+          <div class="reception-reason">{{ (entry_payload.proposed.note if entry_payload.proposed else '') or '—' }}</div>
         </div>
         {% elif entry.draft_type == 'edit_treatment' %}
         <div class="reception-detail-meta">

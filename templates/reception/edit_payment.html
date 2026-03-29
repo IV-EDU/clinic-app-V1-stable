@@ -1,0 +1,119 @@
+{% extends '_base.html' %}
+{% set use_sidebar = true %}
+
+{% block extra_css %}
+<style>
+.reception-payment-correction-page{display:grid;gap:20px}
+.reception-payment-correction-header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+.reception-payment-correction-title{margin:0;font-size:clamp(1.6rem,2vw,2.1rem)}
+.reception-payment-correction-subtitle{margin:6px 0 0;color:var(--muted, #6b7280)}
+.reception-payment-correction-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,.95fr);gap:20px;align-items:start}
+.reception-payment-correction-card{padding:20px}
+.reception-payment-correction-summary{display:grid;gap:14px}
+.reception-payment-correction-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+.reception-detail-label{font-size:.8rem;color:var(--muted, #6b7280);text-transform:uppercase;letter-spacing:.04em}
+.reception-detail-value{margin-top:5px;font-weight:600;word-break:break-word}
+.reception-return-card{padding:14px 16px;border-radius:14px;background:color-mix(in srgb, var(--warning, #b45309) 10%, transparent);border:1px solid color-mix(in srgb, var(--warning, #b45309) 24%, transparent)}
+.reception-return-label{font-size:.82rem;color:var(--muted, #6b7280);text-transform:uppercase;letter-spacing:.04em}
+.reception-return-text{margin-top:6px;font-weight:600}
+.reception-link-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:10px;border:1px solid var(--ring, rgba(148,163,184,.35));background:transparent;color:var(--text-primary, inherit);text-decoration:none;font-weight:600}
+.reception-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.reception-form-grid .full{grid-column:1 / -1}
+.reception-errors{margin:0 0 14px;padding:12px 14px;border-radius:12px;border:1px solid color-mix(in srgb, var(--danger, #b91c1c) 28%, transparent);background:color-mix(in srgb, var(--danger, #b91c1c) 8%, transparent);color:var(--danger, #b91c1c)}
+.reception-errors ul{margin:0;padding-inline-start:18px}
+@media (max-width: 980px){
+  .reception-payment-correction-grid{grid-template-columns:1fr}
+  .reception-form-grid{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reception-payment-correction-page">
+  <section class="reception-payment-correction-header">
+    <div>
+      <h1 class="reception-payment-correction-title">{{ t(page_title_key) }}</h1>
+      <p class="reception-payment-correction-subtitle">{{ t(page_subtitle_key) }}</p>
+    </div>
+    <a class="reception-link-btn" href="{{ back_href }}">{{ t('back') }}</a>
+  </section>
+
+  <section class="reception-payment-correction-grid">
+    <div class="reception-payment-correction-summary">
+      {% if return_reason %}
+      <article class="card reception-payment-correction-card">
+        <div class="reception-return-card">
+          <div class="reception-return-label">{{ t('reception_return_reason') }}</div>
+          <div class="reception-return-text">{{ return_reason }}</div>
+        </div>
+      </article>
+      {% endif %}
+
+      <article class="card reception-payment-correction-card">
+        <h2>{{ t('reception_payment_current_snapshot') }}</h2>
+        <div class="reception-payment-correction-meta">
+          <div>
+            <div class="reception-detail-label">{{ t('name') }}</div>
+            <div class="reception-detail-value">{{ locked_treatment.patient_name or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('phone') }}</div>
+            <div class="reception-detail-value">{{ locked_treatment.phone or '—' }}</div>
+          </div>
+          {% if show_file_numbers %}
+          <div>
+            <div class="reception-detail-label">{{ t('page_number') }}</div>
+            <div class="reception-detail-value">{{ locked_treatment.page_number or '—' }}</div>
+          </div>
+          {% endif %}
+          <div>
+            <div class="reception-detail-label">{{ t('reception_payment_row_type') }}</div>
+            <div class="reception-detail-value">
+              {{ t('reception_payment_initial_row') if locked_payment.is_initial_payment else t('reception_payment_child_row') }}
+            </div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('amount') }}</div>
+            <div class="reception-detail-value">{{ ((locked_payment.amount_cents or 0) / 100)|round(2) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('date') }}</div>
+            <div class="reception-detail-value">{{ locked_payment.paid_at or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('method') }}</div>
+            <div class="reception-detail-value">{{ t((locked_payment.method or 'cash')|lower) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('doctor') }}</div>
+            <div class="reception-detail-value">{{ locked_payment.doctor_label or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_paid_so_far') }}</div>
+            <div class="reception-detail-value">{{ ((locked_treatment.total_paid_cents or 0) / 100)|round(2) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_current_remaining') }}</div>
+            <div class="reception-detail-value">{{ ((locked_treatment.remaining_cents or 0) / 100)|round(2) }}</div>
+          </div>
+        </div>
+        <div class="reception-payment-correction-summary">
+          <div>
+            <div class="reception-detail-label">{{ t('treatment_name') }}</div>
+            <div class="reception-detail-value">{{ locked_treatment.treatment_text or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('notes') }}</div>
+            <div class="reception-detail-value">{{ locked_payment.note or '—' }}</div>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <article class="card reception-payment-correction-card">
+      <h2>{{ t('reception_payment_proposed_changes') }}</h2>
+      {% include 'reception/_payment_correction_form.html' %}
+    </article>
+  </section>
+</div>
+{% endblock %}

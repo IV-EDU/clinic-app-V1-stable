@@ -262,3 +262,200 @@ def test_new_payment_post_blocks_overpayment_against_current_remaining(logged_in
 
     assert resp.status_code == 400
     assert "Paid today cannot be greater than the amount due." in resp.data.decode("utf-8")
+
+
+def test_treatment_card_shows_send_payment_correction_buttons_for_create_capable_user(logged_in_client):
+    patient_id, _, child_id = _seed_patient_with_treatment(with_child=True)
+
+    resp = logged_in_client.get(f"/patients/{patient_id}")
+    assert resp.status_code == 200
+    body = resp.data.decode("utf-8")
+    assert f"/reception/entries/new-payment-correction?patient_id={patient_id}&amp;payment_id=" in body
+    assert child_id in body
+
+
+def test_treatment_card_hides_send_payment_correction_button_without_reception_create_permission(client):
+    role_id = _create_role("Patient Viewer No Payment Correction", ["patients:view", "payments:view"])
+    _create_user("patient-viewer-payment-correction", "password123", [role_id])
+    _login(client, "patient-viewer-payment-correction", "password123")
+    patient_id, _, _ = _seed_patient_with_treatment(with_child=True)
+
+    resp = client.get(f"/patients/{patient_id}")
+    assert resp.status_code == 200
+    assert "Send Payment Correction" not in resp.data.decode("utf-8")
+
+
+def test_new_payment_correction_get_requires_create_and_patient_visibility(client):
+    patient_id, treatment_id, _ = _seed_patient_with_treatment()
+    resp = client.get(f"/reception/entries/new-payment-correction?patient_id={patient_id}&payment_id={treatment_id}")
+    assert resp.status_code in (302, 401)
+
+    role_id = _create_role("Reception Create Without Patient View Payment Correction", ["reception_entries:create"])
+    _create_user("reception-no-patient-view-payment-correction", "password123", [role_id])
+    _login(client, "reception-no-patient-view-payment-correction", "password123")
+    blocked = client.get(f"/reception/entries/new-payment-correction?patient_id={patient_id}&payment_id={treatment_id}")
+    assert blocked.status_code == 403
+
+
+def test_new_payment_correction_get_returns_404_for_invalid_patient_payment_pair(logged_in_client):
+    patient_id, _, _ = _seed_patient_with_treatment()
+    resp = logged_in_client.get(f"/reception/entries/new-payment-correction?patient_id={patient_id}&payment_id=missing-payment")
+    assert resp.status_code == 404
+
+
+def test_valid_new_payment_correction_post_creates_locked_draft_for_child_payment(logged_in_client):
+    patient_id, treatment_id, child_id = _seed_patient_with_treatment(with_child=True)
+    page = logged_in_client.get(
+        f"/reception/entries/new-payment-correction?patient_id={patient_id}&payment_id={child_id}"
+    )
+    token = _extract_csrf(page)
+
+    resp = logged_in_client.post(
+        "/reception/entries/new-payment-correction",
+        data={
+            "csrf_token": token,
+            "patient_id": patient_id,
+            "payment_id": child_id,
+            "amount": "25",
+            "visit_date": "2026-03-22",
+            "method": "transfer",
+            "doctor_id": ANY_DOCTOR_ID,
+            "note": "route payment correction",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    assert resp.headers["Location"].endswith("/reception?view=desk")
+
+    entries = list_entries(submitted_by_user_id="admin-test", limit=20)
+    created = next(entry for entry in entries if entry["draft_type"] == "edit_payment")
+    assert created["source"] == "treatment_card"
+    assert created["locked_patient_id"] == patient_id
+    assert created["locked_treatment_id"] == treatment_id
+    assert created["locked_payment_id"] == child_id
+    assert created["target_payment_id"] is None
+    assert created["payload_json"]["current"]["payment_id"] == child_id
+    assert created["payload_json"]["proposed"]["method"] == "transfer"
+
+
+def test_invalid_new_payment_correction_post_rerenders_with_sticky_values(logged_in_client):
+    patient_id, _, child_id = _seed_patient_with_treatment(with_child=True)
+    page = logged_in_client.get(
+        f"/reception/entries/new-payment-correction?patient_id={patient_id}&payment_id={child_id}"
+    )
+    token = _extract_csrf(page)
+
+    resp = logged_in_client.post(
+        "/reception/entries/new-payment-correction",
+        data={
+            "csrf_token": token,
+            "patient_id": patient_id,
+            "payment_id": child_id,
+            "amount": "",
+            "visit_date": "2026-03-21",
+            "method": "transfer",
+            "doctor_id": "",
+            "note": "sticky correction note",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    body = resp.data.decode("utf-8")
+    assert "Payment amount is required." in body
+    assert "Doctor is required." in body
+    assert 'value="2026-03-21"' in body
+    assert "sticky correction note" in body
+
+
+def test_owner_can_resubmit_returned_payment_correction(client):
+    owner_role_id = _create_role("Reception Payment Correction Owner", ["reception_entries:create", "patients:view"])
+    review_role_id = _create_role("Reception Payment Correction Reviewer", ["reception_entries:review"])
+    owner_user_id = _create_user("payment-correction-owner", "password123", [owner_role_id])
+    _create_user("payment-correction-reviewer", "password123", [review_role_id])
+    patient_id, treatment_id, child_id = _seed_patient_with_treatment(with_child=True)
+
+    conn = raw_db()
+    try:
+        child = conn.execute("SELECT amount_cents, paid_at, method, note FROM payments WHERE id=?", (child_id,)).fetchone()
+    finally:
+        conn.close()
+
+    entry = list_entries(submitted_by_user_id=owner_user_id, limit=1)
+    if entry:
+        assert False, "Expected no pre-existing payment correction drafts"
+
+    from clinic_app.services.reception_entries import create_entry
+
+    created = create_entry(
+        {
+            "draft_type": "edit_payment",
+            "source": "treatment_card",
+            "locked_patient_id": patient_id,
+            "locked_treatment_id": treatment_id,
+            "locked_payment_id": child_id,
+            "doctor_id": ANY_DOCTOR_ID,
+            "doctor_label": ANY_DOCTOR_LABEL,
+            "visit_date": child["paid_at"],
+            "paid_today": "20",
+            "payload_json": {
+                "current": {
+                    "payment_id": child_id,
+                    "treatment_id": treatment_id,
+                    "amount_cents": int(child["amount_cents"] or 0),
+                    "visit_date": child["paid_at"],
+                    "method": child["method"] or "cash",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": child["note"] or "",
+                    "is_initial_payment": 0,
+                },
+                "proposed": {
+                    "amount": "20",
+                    "visit_date": child["paid_at"],
+                    "method": "cash",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "Draft note",
+                },
+            },
+        },
+        actor_user_id=owner_user_id,
+    )
+
+    reviewer_client = client.application.test_client()
+    _login(reviewer_client, "payment-correction-reviewer", "password123")
+    page = reviewer_client.get(f"/reception/entries/{created['id']}")
+    token = _extract_csrf(page)
+    reviewer_client.post(
+        f"/reception/entries/{created['id']}/return",
+        data={"csrf_token": token, "return_reason": "Fix the amount"},
+        follow_redirects=False,
+    )
+
+    owner_client = client.application.test_client()
+    _login(owner_client, "payment-correction-owner", "password123")
+    edit_page = owner_client.get(f"/reception/entries/{created['id']}/edit")
+    assert edit_page.status_code == 200
+    edit_token = _extract_csrf(edit_page)
+    resp = owner_client.post(
+        f"/reception/entries/{created['id']}/edit",
+        data={
+            "csrf_token": edit_token,
+            "amount": "18",
+            "visit_date": "2026-03-23",
+            "method": "card",
+            "doctor_id": ANY_DOCTOR_ID,
+            "note": "Final payment note",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    updated = next(entry for entry in list_entries(submitted_by_user_id=owner_user_id, limit=20) if entry["id"] == created["id"])
+    assert updated["status"] == "edited"
+    assert updated["last_action"] == "edited"
+    assert updated["return_reason"] is None
+    assert updated["locked_payment_id"] == child_id
+    assert updated["paid_today_cents"] == 1800

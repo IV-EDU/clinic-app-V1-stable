@@ -140,6 +140,36 @@ def _seed_patient_with_treatment(*, remaining_cents: int = 14000) -> tuple[str, 
     return patient_id, treatment_id
 
 
+def _seed_child_payment(patient_id: str, treatment_id: str, *, amount_cents: int = 2000) -> str:
+    child_id = f"payment-{uuid4()}"
+    conn = raw_db()
+    try:
+        conn.execute(
+            """
+            INSERT INTO payments(
+                id, patient_id, parent_payment_id, paid_at, amount_cents, method, note, treatment,
+                doctor_id, doctor_label, remaining_cents, total_amount_cents, examination_flag,
+                followup_flag, discount_cents
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, ?, 0, 0, 0, 0, 0)
+            """,
+            (
+                child_id,
+                patient_id,
+                treatment_id,
+                "2026-03-18",
+                amount_cents,
+                "cash",
+                "",
+                ANY_DOCTOR_ID,
+                ANY_DOCTOR_LABEL,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return child_id
+
+
 def _seed_patient_profile(*, full_name: str = "Correction Patient") -> str:
     patient_id = f"patient-{uuid4()}"
     conn = raw_db()
@@ -915,6 +945,269 @@ def test_reapproving_new_payment_draft_is_blocked(client, admin_user):
     )
     assert second.status_code == 400
     assert "Cannot approve a closed draft." in second.data.decode("utf-8")
+
+
+def test_manager_can_open_edit_payment_draft_detail(client, admin_user):
+    review_role_id = _create_role("Reception Review Edit Payment Detail", ["reception_entries:review"])
+    _create_user("review-edit-payment-detail", "password123", [review_role_id])
+    _login(client, "review-edit-payment-detail", "password123")
+    patient_id, treatment_id = _seed_patient_with_treatment()
+    child_id = _seed_child_payment(patient_id, treatment_id)
+    entry = create_entry(
+        {
+            "draft_type": "edit_payment",
+            "source": "treatment_card",
+            "locked_patient_id": patient_id,
+            "locked_treatment_id": treatment_id,
+            "locked_payment_id": child_id,
+            "doctor_id": ANY_DOCTOR_ID,
+            "doctor_label": ANY_DOCTOR_LABEL,
+            "visit_date": "2026-03-22",
+            "paid_today": "18",
+            "payload_json": {
+                "current": {
+                    "payment_id": child_id,
+                    "treatment_id": treatment_id,
+                    "amount_cents": 2000,
+                    "visit_date": "2026-03-18",
+                    "method": "cash",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "",
+                    "is_initial_payment": 0,
+                },
+                "proposed": {
+                    "amount": "18",
+                    "visit_date": "2026-03-22",
+                    "method": "card",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "Payment correction note",
+                },
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    resp = client.get(f"/reception/entries/{entry['id']}")
+    assert resp.status_code == 200
+    body = resp.data.decode("utf-8")
+    assert "Payment correction" in body
+    assert "Current remaining" in body
+
+
+def test_manager_can_approve_initial_payment_correction_draft(client, admin_user):
+    approve_role_id = _create_role("Reception Edit Payment Approver Parent", ["reception_entries:approve"])
+    _create_user("edit-payment-approver-parent", "password123", [approve_role_id])
+    _login(client, "edit-payment-approver-parent", "password123")
+    patient_id, treatment_id = _seed_patient_with_treatment()
+    entry = create_entry(
+        {
+            "draft_type": "edit_payment",
+            "source": "treatment_card",
+            "locked_patient_id": patient_id,
+            "locked_treatment_id": treatment_id,
+            "locked_payment_id": treatment_id,
+            "doctor_id": ANY_DOCTOR_ID,
+            "doctor_label": ANY_DOCTOR_LABEL,
+            "visit_date": "2026-03-23",
+            "paid_today": "60",
+            "payload_json": {
+                "current": {
+                    "payment_id": treatment_id,
+                    "treatment_id": treatment_id,
+                    "amount_cents": 5000,
+                    "visit_date": "2026-03-17",
+                    "method": "cash",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "",
+                    "is_initial_payment": 1,
+                },
+                "proposed": {
+                    "amount": "60",
+                    "visit_date": "2026-03-23",
+                    "method": "card",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "Updated initial payment",
+                },
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    approved = get_entry(entry["id"])
+    assert approved["status"] == "approved"
+    assert approved["target_patient_id"] == patient_id
+    assert approved["target_treatment_id"] == treatment_id
+    assert approved["target_payment_id"] == treatment_id
+
+    conn = raw_db()
+    try:
+        parent = conn.execute(
+            "SELECT amount_cents, paid_at, method, note, treatment, total_amount_cents, remaining_cents FROM payments WHERE id=?",
+            (treatment_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert int(parent["amount_cents"] or 0) == 6000
+    assert parent["paid_at"] == "2026-03-23"
+    assert parent["method"] == "card"
+    assert parent["note"] == "Updated initial payment"
+    assert parent["treatment"] == "Review Payment Treatment"
+    assert int(parent["total_amount_cents"] or 0) == 20000
+    assert int(parent["remaining_cents"] or 0) == 13000
+
+
+def test_manager_can_approve_child_payment_correction_draft(client, admin_user):
+    approve_role_id = _create_role("Reception Edit Payment Approver Child", ["reception_entries:approve"])
+    _create_user("edit-payment-approver-child", "password123", [approve_role_id])
+    _login(client, "edit-payment-approver-child", "password123")
+    patient_id, treatment_id = _seed_patient_with_treatment()
+    child_id = _seed_child_payment(patient_id, treatment_id)
+    entry = create_entry(
+        {
+            "draft_type": "edit_payment",
+            "source": "treatment_card",
+            "locked_patient_id": patient_id,
+            "locked_treatment_id": treatment_id,
+            "locked_payment_id": child_id,
+            "doctor_id": ANY_DOCTOR_ID,
+            "doctor_label": ANY_DOCTOR_LABEL,
+            "visit_date": "2026-03-24",
+            "paid_today": "18",
+            "payload_json": {
+                "current": {
+                    "payment_id": child_id,
+                    "treatment_id": treatment_id,
+                    "amount_cents": 2000,
+                    "visit_date": "2026-03-18",
+                    "method": "cash",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "",
+                    "is_initial_payment": 0,
+                },
+                "proposed": {
+                    "amount": "18",
+                    "visit_date": "2026-03-24",
+                    "method": "transfer",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "Updated child payment",
+                },
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    approved = get_entry(entry["id"])
+    assert approved["status"] == "approved"
+    assert approved["target_payment_id"] == child_id
+
+    conn = raw_db()
+    try:
+        child = conn.execute(
+            "SELECT amount_cents, paid_at, method, note, parent_payment_id FROM payments WHERE id=?",
+            (child_id,),
+        ).fetchone()
+        parent = conn.execute(
+            "SELECT remaining_cents FROM payments WHERE id=?",
+            (treatment_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert int(child["amount_cents"] or 0) == 1800
+    assert child["paid_at"] == "2026-03-24"
+    assert child["method"] == "transfer"
+    assert child["note"] == "Updated child payment"
+    assert child["parent_payment_id"] == treatment_id
+    assert int(parent["remaining_cents"] or 0) == 12200
+
+
+def test_edit_payment_approval_failure_when_live_payment_changes_leaves_draft_pending(client, admin_user):
+    approve_role_id = _create_role("Reception Edit Payment Approver Stale", ["reception_entries:approve"])
+    _create_user("edit-payment-approver-stale", "password123", [approve_role_id])
+    _login(client, "edit-payment-approver-stale", "password123")
+    patient_id, treatment_id = _seed_patient_with_treatment()
+    child_id = _seed_child_payment(patient_id, treatment_id)
+    entry = create_entry(
+        {
+            "draft_type": "edit_payment",
+            "source": "treatment_card",
+            "locked_patient_id": patient_id,
+            "locked_treatment_id": treatment_id,
+            "locked_payment_id": child_id,
+            "doctor_id": ANY_DOCTOR_ID,
+            "doctor_label": ANY_DOCTOR_LABEL,
+            "visit_date": "2026-03-24",
+            "paid_today": "18",
+            "payload_json": {
+                "current": {
+                    "payment_id": child_id,
+                    "treatment_id": treatment_id,
+                    "amount_cents": 2000,
+                    "visit_date": "2026-03-18",
+                    "method": "cash",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "",
+                    "is_initial_payment": 0,
+                },
+                "proposed": {
+                    "amount": "18",
+                    "visit_date": "2026-03-24",
+                    "method": "card",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "Updated child payment",
+                },
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    conn = raw_db()
+    try:
+        conn.execute("UPDATE payments SET amount_cents=? WHERE id=?", (2500, child_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    assert "The live payment changed after this draft was created." in resp.data.decode("utf-8")
+    unchanged = get_entry(entry["id"])
+    assert unchanged["status"] == "new"
+    assert unchanged["target_payment_id"] is None
 
 
 def test_manager_can_open_edit_patient_draft_detail(client, admin_user):

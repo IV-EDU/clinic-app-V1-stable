@@ -291,6 +291,8 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Reception shared draft form partial: `templates/reception/_entry_form.html`
   - Reception locked payment-draft page: `templates/reception/new_payment.html`
   - Reception payment-draft form partial: `templates/reception/_payment_entry_form.html`
+  - Reception payment-correction page: `templates/reception/edit_payment.html`
+  - Reception payment-correction form partial: `templates/reception/_payment_correction_form.html`
   - Reception patient-correction page: `templates/reception/edit_patient.html`
   - Reception patient-correction form partial: `templates/reception/_patient_correction_form.html`
   - Reception treatment-correction page: `templates/reception/edit_treatment.html`
@@ -305,6 +307,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - `/reception` → `reception.index`
   - `/reception/entries` → `reception.create_reception_entry`
   - `/reception/entries/new-payment` → `reception.new_payment_entry` / `reception.create_new_payment_entry`
+  - `/reception/entries/new-payment-correction` → `reception.new_payment_correction_entry` / `reception.create_new_payment_correction_entry`
   - `/reception/entries/new-patient-correction` → `reception.new_patient_correction_entry` / `reception.create_new_patient_correction_entry`
   - `/reception/entries/new-treatment-correction` → `reception.new_treatment_correction_entry` / `reception.create_new_treatment_correction_entry`
   - `/reception/entries/<entry_id>` → `reception.reception_entry_detail`

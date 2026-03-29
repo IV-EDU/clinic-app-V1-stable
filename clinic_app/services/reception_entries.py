@@ -254,6 +254,7 @@ def _require_returned_resubmittable_entry(row, *, actor_user_id: str) -> dict[st
     supports_resubmit = (
         (entry.get("draft_type") == "new_treatment" and entry.get("source") == "reception_desk")
         or (entry.get("draft_type") == "edit_patient" and entry.get("source") == "patient_file")
+        or (entry.get("draft_type") == "edit_payment" and entry.get("source") == "treatment_card")
         or (entry.get("draft_type") == "edit_treatment" and entry.get("source") == "treatment_card")
     )
     if not supports_resubmit:
@@ -314,6 +315,80 @@ def validate_entry_payload(data: dict) -> tuple[list[str], list[str], dict[str, 
             errors.append("Paid today cannot be greater than the amount due.")
         patient_intent = "existing"
         money_received_today = 1
+    elif draft_type == "edit_payment":
+        locked_treatment_id = _nullable_text(data.get("locked_treatment_id"))
+        locked_payment_id = _nullable_text(data.get("locked_payment_id"))
+        if not locked_patient_id:
+            errors.append("Locked patient context is required.")
+        if not locked_treatment_id:
+            errors.append("Locked treatment context is required.")
+        if not locked_payment_id:
+            errors.append("Locked payment context is required.")
+        patient_intent = "existing"
+
+        proposed_raw = payload_dict.get("proposed")
+        if proposed_raw is None:
+            proposed_raw = {}
+        if not isinstance(proposed_raw, dict):
+            errors.append("Malformed payment correction payload.")
+            proposed_raw = {}
+
+        current_payload = payload_dict.get("current")
+        current_snapshot = current_payload if isinstance(current_payload, dict) else None
+        live_context = None
+        if locked_patient_id and locked_payment_id:
+            live_context = get_locked_payment_context(locked_patient_id, locked_payment_id)
+        if not current_snapshot and live_context:
+            current_snapshot = _payment_correction_payload(live_context)
+        if locked_patient_id and locked_payment_id and not current_snapshot:
+            errors.append("Locked payment was not found.")
+            current_snapshot = {}
+
+        doctor_id = _text(proposed_raw.get("doctor_id"))
+        doctor_label = _text(proposed_raw.get("doctor_label"))
+        if not doctor_id or not doctor_label:
+            errors.append("Doctor is required.")
+
+        visit_date = _nullable_text(proposed_raw.get("visit_date"))
+        paid_today_cents = _parse_optional_money(proposed_raw.get("amount"), "payment amount")
+        if paid_today_cents is None:
+            errors.append("Payment amount is required.")
+        elif paid_today_cents <= 0:
+            errors.append("Payment amount must be greater than zero.")
+
+        max_amount_cents = None
+        if live_context:
+            max_amount_cents = int(live_context.get("max_amount_cents") or 0)
+        if max_amount_cents is not None and paid_today_cents is not None and paid_today_cents > max_amount_cents:
+            errors.append("Payment amount cannot be greater than the amount still due on the locked treatment.")
+
+        treatment_context = live_context.get("treatment_context") if isinstance(live_context, dict) else None
+        patient_name = _nullable_text((treatment_context or {}).get("patient_name"))
+        phone = _nullable_text((treatment_context or {}).get("phone"))
+        page_number = _nullable_text((treatment_context or {}).get("page_number"))
+        treatment_text = _nullable_text((treatment_context or {}).get("treatment_text"))
+        money_received_today = 1
+        total_amount_cents = None
+        discount_amount_cents = 0
+        warnings = []
+        if live_context:
+            if not phone:
+                warnings.append("Phone is missing.")
+            if not page_number:
+                warnings.append("Page number is missing.")
+        payload_dict = {
+            "current": current_snapshot or {},
+            "proposed": {
+                "payment_id": locked_payment_id or "",
+                "treatment_id": locked_treatment_id or "",
+                "amount_cents": paid_today_cents,
+                "visit_date": visit_date or "",
+                "method": _text(proposed_raw.get("method")) or "cash",
+                "doctor_id": doctor_id,
+                "doctor_label": doctor_label,
+                "note": _text(proposed_raw.get("note")),
+            },
+        }
     elif draft_type == "edit_treatment":
         locked_treatment_id = _nullable_text(data.get("locked_treatment_id"))
         if not locked_patient_id:
@@ -576,6 +651,71 @@ def get_locked_treatment_context(patient_id: str, treatment_id: str) -> dict[str
         conn.close()
 
 
+def get_locked_payment_context(patient_id: str, payment_id: str) -> dict[str, Any] | None:
+    conn = raw_db()
+    try:
+        payment = conn.execute(
+            """
+            SELECT id, patient_id, parent_payment_id, paid_at, amount_cents, method, note,
+                   doctor_id, doctor_label
+              FROM payments
+             WHERE id=?
+               AND patient_id=?
+            """,
+            (payment_id, patient_id),
+        ).fetchone()
+        if not payment:
+            return None
+
+        parent_payment_id = _text(payment["parent_payment_id"])
+        treatment_id = payment["id"] if not parent_payment_id else parent_payment_id
+        treatment_context = get_locked_treatment_context(patient_id, treatment_id)
+        if not treatment_context:
+            return None
+
+        if treatment_id == payment["id"]:
+            sibling_paid_cents = int(treatment_context.get("total_paid_cents") or 0) - int(payment["amount_cents"] or 0)
+            is_initial_payment = True
+        else:
+            sibling_paid_row = conn.execute(
+                """
+                SELECT COALESCE(SUM(amount_cents), 0) AS sibling_paid
+                  FROM payments
+                 WHERE parent_payment_id=?
+                   AND patient_id=?
+                   AND id<>?
+                """,
+                (treatment_id, patient_id, payment_id),
+            ).fetchone()
+            sibling_paid_cents = int((sibling_paid_row["sibling_paid"] or 0) if sibling_paid_row else 0)
+            sibling_paid_cents += int(treatment_context.get("initial_paid_cents") or 0)
+            is_initial_payment = False
+
+        due_cents = max(
+            int(treatment_context.get("total_amount_cents") or 0) - int(treatment_context.get("discount_amount_cents") or 0),
+            0,
+        )
+        max_amount_cents = max(due_cents - sibling_paid_cents, 0)
+
+        return {
+            "patient_id": patient_id,
+            "payment_id": _text(payment["id"]),
+            "treatment_id": treatment_id,
+            "parent_payment_id": parent_payment_id or None,
+            "is_initial_payment": is_initial_payment,
+            "paid_at": _text(payment["paid_at"]),
+            "amount_cents": int(payment["amount_cents"] or 0),
+            "method": _text(payment["method"]) or "cash",
+            "note": _text(payment["note"]),
+            "doctor_id": _text(payment["doctor_id"]),
+            "doctor_label": _text(payment["doctor_label"]),
+            "max_amount_cents": max_amount_cents,
+            "treatment_context": treatment_context,
+        }
+    finally:
+        conn.close()
+
+
 def get_locked_patient_context(patient_id: str) -> dict[str, Any] | None:
     snapshot = get_patient_profile_snapshot(patient_id)
     if not snapshot:
@@ -707,7 +847,7 @@ def list_entries(
             f"""
             SELECT * FROM reception_entries
             {where}
-            ORDER BY updated_at DESC, submitted_at DESC
+            ORDER BY updated_at DESC, submitted_at DESC, rowid DESC
             LIMIT ?
             """,
             (*params, limit),
@@ -726,7 +866,7 @@ def list_queue_entries(*, limit: int = 50) -> list[dict[str, Any]]:
             f"""
             SELECT * FROM reception_entries
             WHERE status IN ({placeholders})
-            ORDER BY updated_at DESC, submitted_at DESC
+            ORDER BY updated_at DESC, submitted_at DESC, rowid DESC
             LIMIT ?
             """,
             (*QUEUE_STATUSES, limit),
@@ -1087,6 +1227,208 @@ def _treatment_correction_payload(context: dict[str, Any] | None) -> dict[str, A
         "total_paid_cents": int(context.get("total_paid_cents") or 0),
         "remaining_cents": int(context.get("remaining_cents") or 0),
     }
+
+
+def _payment_correction_payload(context: dict[str, Any] | None) -> dict[str, Any]:
+    context = context or {}
+    treatment_context = context.get("treatment_context") if isinstance(context, dict) else {}
+    return {
+        "payment_id": _text(context.get("payment_id")),
+        "treatment_id": _text(context.get("treatment_id")),
+        "is_initial_payment": 1 if context.get("is_initial_payment") else 0,
+        "amount_cents": int(context.get("amount_cents") or 0),
+        "visit_date": _text(context.get("paid_at")),
+        "method": _text(context.get("method")) or "cash",
+        "doctor_id": _text(context.get("doctor_id")),
+        "doctor_label": _text(context.get("doctor_label")),
+        "note": _text(context.get("note")),
+        "treatment_remaining_cents": int((treatment_context or {}).get("remaining_cents") or 0),
+        "treatment_total_paid_cents": int((treatment_context or {}).get("total_paid_cents") or 0),
+    }
+
+
+def _recompute_treatment_remaining(conn, *, treatment_id: str, patient_id: str) -> dict[str, int]:
+    treatment = conn.execute(
+        """
+        SELECT amount_cents, total_amount_cents, discount_cents
+          FROM payments
+         WHERE id=?
+           AND patient_id=?
+           AND (parent_payment_id IS NULL OR parent_payment_id = '')
+        """,
+        (treatment_id, patient_id),
+    ).fetchone()
+    if not treatment:
+        raise ValueError("Locked treatment was not found.")
+    child_sum_row = conn.execute(
+        """
+        SELECT COALESCE(SUM(amount_cents), 0) AS child_paid
+          FROM payments
+         WHERE parent_payment_id=?
+           AND patient_id=?
+        """,
+        (treatment_id, patient_id),
+    ).fetchone()
+    total_cents = int(treatment["total_amount_cents"] or 0)
+    discount_cents = int(treatment["discount_cents"] or 0)
+    initial_cents = int(treatment["amount_cents"] or 0)
+    child_paid_cents = int((child_sum_row["child_paid"] or 0) if child_sum_row else 0)
+    due_cents = max(total_cents - discount_cents, 0)
+    total_paid_cents = initial_cents + child_paid_cents
+    remaining_cents = max(due_cents - total_paid_cents, 0)
+    conn.execute(
+        "UPDATE payments SET remaining_cents=? WHERE id=? AND patient_id=?",
+        (remaining_cents, treatment_id, patient_id),
+    )
+    return {
+        "remaining_cents": remaining_cents,
+        "total_paid_cents": total_paid_cents,
+    }
+
+
+def approve_edit_payment_entry(entry_id: str, *, actor_user_id: str) -> dict[str, Any]:
+    now = _utc_now_iso()
+    locked_patient_id: str | None = None
+    locked_treatment_id: str | None = None
+    locked_payment_id: str | None = None
+    conn = raw_db()
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        entry = _require_active_entry(_fetch_entry(conn, entry_id), action="approve")
+
+        if entry.get("draft_type") != "edit_payment" or entry.get("source") != "treatment_card":
+            raise ValueError("Only treatment-card payment correction drafts can be approved in this slice.")
+        if entry.get("status") not in {"new", "edited", "held"}:
+            raise ValueError("Only pending drafts can be approved.")
+
+        locked_patient_id = _nullable_text(entry.get("locked_patient_id"))
+        locked_treatment_id = _nullable_text(entry.get("locked_treatment_id"))
+        locked_payment_id = _nullable_text(entry.get("locked_payment_id"))
+        if not locked_patient_id or not locked_treatment_id or not locked_payment_id:
+            raise ValueError("Locked payment context is required for approval.")
+        if entry.get("target_patient_id") or entry.get("target_treatment_id") or entry.get("target_payment_id"):
+            raise ValueError("This payment correction draft already has live targets and cannot be approved again.")
+
+        live_context = get_locked_payment_context(locked_patient_id, locked_payment_id)
+        if not live_context or _text(live_context.get("treatment_id")) != locked_treatment_id:
+            raise ValueError("Locked payment was not found.")
+
+        payload = entry.get("payload_json") or {}
+        current_snapshot = payload.get("current")
+        proposed = payload.get("proposed")
+        if not isinstance(current_snapshot, dict) or not isinstance(proposed, dict):
+            raise ValueError("Malformed payment correction payload.")
+
+        latest_snapshot = _payment_correction_payload(live_context)
+        compare_keys = ("amount_cents", "visit_date", "method", "doctor_id", "doctor_label", "note", "is_initial_payment")
+        if any(_text(current_snapshot.get(key)) != _text(latest_snapshot.get(key)) for key in compare_keys):
+            raise ValueError("The live payment changed after this draft was created. Re-open the draft and review it again.")
+
+        amount_cents = int(entry.get("paid_today_cents") or 0)
+        if amount_cents <= 0:
+            raise ValueError("Payment amount must be greater than zero.")
+        max_amount_cents = int(live_context.get("max_amount_cents") or 0)
+        if amount_cents > max_amount_cents:
+            raise ValueError("Payment amount cannot be greater than the amount still due on the locked treatment.")
+
+        conn.execute(
+            """
+            UPDATE payments
+               SET paid_at=?,
+                   amount_cents=?,
+                   method=?,
+                   note=?,
+                   doctor_id=?,
+                   doctor_label=?
+             WHERE id=?
+               AND patient_id=?
+            """,
+            (
+                _text(entry.get("visit_date")) or _text(proposed.get("visit_date")) or latest_snapshot["visit_date"],
+                amount_cents,
+                _text(proposed.get("method")) or "cash",
+                _text(proposed.get("note")),
+                _text(entry.get("doctor_id")) or _text(proposed.get("doctor_id")),
+                _text(entry.get("doctor_label")) or _text(proposed.get("doctor_label")),
+                locked_payment_id,
+                locked_patient_id,
+            ),
+        )
+        if conn.total_changes <= 0:
+            raise ValueError("Locked payment was not found.")
+
+        _recompute_treatment_remaining(conn, treatment_id=locked_treatment_id, patient_id=locked_patient_id)
+
+        conn.execute(
+            """
+            UPDATE reception_entries
+            SET status=?,
+                reviewed_by_user_id=?,
+                updated_at=?,
+                reviewed_at=?,
+                last_action=?,
+                hold_reason=NULL,
+                return_reason=NULL,
+                rejection_reason=NULL,
+                target_patient_id=?,
+                target_treatment_id=?,
+                target_payment_id=?
+            WHERE id=?
+            """,
+            (
+                "approved",
+                actor_user_id,
+                now,
+                now,
+                "approved",
+                locked_patient_id,
+                locked_treatment_id,
+                locked_payment_id,
+                entry_id,
+            ),
+        )
+        _insert_event(
+            conn,
+            entry_id=entry_id,
+            action="approved",
+            actor_user_id=actor_user_id,
+            from_status=entry["status"],
+            to_status="approved",
+            note=None,
+            meta_json={
+                "target_patient_id": locked_patient_id,
+                "target_treatment_id": locked_treatment_id,
+                "target_payment_id": locked_payment_id,
+                "draft_type": "edit_payment",
+                "source": "treatment_card",
+            },
+            created_at=now,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    if locked_payment_id and locked_patient_id and locked_treatment_id:
+        try:
+            write_event(
+                actor_user_id,
+                "payment_update",
+                entity="payment",
+                entity_id=locked_payment_id,
+                meta={
+                    "patient_id": locked_patient_id,
+                    "treatment_id": locked_treatment_id,
+                    "target_patient_id": locked_patient_id,
+                    "target_treatment_id": locked_treatment_id,
+                    "target_payment_id": locked_payment_id,
+                    "source": "reception_approval",
+                    "draft_type": "edit_payment",
+                    "reception_entry_id": entry_id,
+                },
+            )
+        except Exception:
+            pass
+    return get_entry(entry_id)
 
 
 def approve_edit_treatment_entry(entry_id: str, *, actor_user_id: str) -> dict[str, Any]:
@@ -1551,7 +1893,7 @@ def list_entry_events(entry_id: str) -> list[dict[str, Any]]:
             """
             SELECT * FROM reception_entry_events
             WHERE entry_id=?
-            ORDER BY created_at DESC
+            ORDER BY created_at DESC, rowid DESC
             """,
             (entry_id,),
         ).fetchall()

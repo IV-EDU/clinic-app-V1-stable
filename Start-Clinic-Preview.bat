@@ -2,6 +2,11 @@
 setlocal
 cd /d "%~dp0"
 
+if not exist data\logs mkdir data\logs >nul 2>nul
+set "LOG_OUT=data\logs\preview_startup_stdout.log"
+set "LOG_ERR=data\logs\preview_startup_stderr.log"
+set "MIGRATE_LAST_LOG=data\logs\preview_migrate_last.log"
+
 echo [INFO] Using project venv (Python 3.12) for PREVIEW...
 where py >nul 2>nul || goto :no_py
 
@@ -53,14 +58,25 @@ if errorlevel 1 goto :import_fail
 
 echo [INFO] Starting Clinic App in PREVIEW mode...
 echo [INFO] (Close this window and use Start-Clinic.bat to go back to real data.)
+echo [INFO] Preview startup logs:
+echo        OUT: %LOG_OUT%
+echo        ERR: %LOG_ERR%
+echo [INFO] Previous preview startup logs will be overwritten.
+break >"%LOG_OUT%"
+break >"%LOG_ERR%"
 
 rem Auto-open browser ~2s after start (same as normal launcher)
 powershell -NoProfile -Command "Start-Sleep -Seconds 2; Start-Process 'http://127.0.0.1:8080/'" 2>nul
 
-"%VENV_PY%" -m clinic_app.app
+"%VENV_PY%" -m clinic_app.app 1>>"%LOG_OUT%" 2>>"%LOG_ERR%"
 set EXITCODE=%ERRORLEVEL%
 echo.
 echo [INFO] Preview app exited with code %EXITCODE%.
+if not "%EXITCODE%"=="0" (
+  echo [ERROR] Preview startup failed. Review these logs:
+  echo         %LOG_OUT%
+  echo         %LOG_ERR%
+)
 echo Press any key to close...
 pause >nul
 endlocal & exit /b %EXITCODE%
@@ -83,9 +99,11 @@ goto :halt
 :migrate_fail
 if exist "%MIGRATE_LOG%" (
   type "%MIGRATE_LOG%"
+  copy /y "%MIGRATE_LOG%" "%MIGRATE_LAST_LOG%" >nul
   del /q "%MIGRATE_LOG%" >nul 2>&1
 )
 echo [ERROR] Automatic preview database update failed.
+echo [ERROR] Migration log saved to: %MIGRATE_LAST_LOG%
 echo [ERROR] Please run scripts\Run-Migrations.bat and try again.
 goto :halt
 :import_fail

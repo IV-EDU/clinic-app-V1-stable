@@ -12,6 +12,91 @@ def _execute_statements(conn: sqlite3.Connection, statements: Iterable[str]) -> 
         conn.execute(stmt)
 
 
+def _table_exists(conn: sqlite3.Connection, table_name: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=? LIMIT 1",
+        (table_name,),
+    ).fetchone()
+    return row is not None
+
+
+def _column_names(conn: sqlite3.Connection, table_name: str) -> set[str]:
+    rows = conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return {str(row[1]) for row in rows}
+
+
+def _ensure_column(conn: sqlite3.Connection, table_name: str, column_sql: str) -> None:
+    column_name = column_sql.split()[0]
+    if column_name in _column_names(conn, table_name):
+        return
+    conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_sql}")
+
+
+def _ensure_reception_entries_compat(conn: sqlite3.Connection) -> None:
+    if not _table_exists(conn, "reception_entries"):
+        return
+
+    # Older clinic databases may have an early reception_entries shape; keep startup compatible.
+    for column_sql in (
+        "target_patient_id TEXT",
+        "target_treatment_id TEXT",
+        "target_payment_id TEXT",
+        "last_action TEXT NOT NULL DEFAULT 'submitted'",
+        "return_reason TEXT",
+        "hold_reason TEXT",
+        "rejection_reason TEXT",
+        "money_received_today INTEGER NOT NULL DEFAULT 0",
+        "discount_amount_cents INTEGER NOT NULL DEFAULT 0",
+        "payload_json TEXT NOT NULL DEFAULT '{}'",
+        "warnings_json TEXT NOT NULL DEFAULT '[]'",
+        "match_summary_json TEXT NOT NULL DEFAULT '{}'",
+    ):
+        _ensure_column(conn, "reception_entries", column_sql)
+
+
+def _ensure_reception_indexes(conn: sqlite3.Connection) -> None:
+    if _table_exists(conn, "reception_entries"):
+        cols = _column_names(conn, "reception_entries")
+        if {"status", "submitted_at"}.issubset(cols):
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_reception_entries_status_submitted_at
+                ON reception_entries(status, submitted_at DESC)
+                """
+            )
+        if {"submitted_by_user_id", "submitted_at"}.issubset(cols):
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_reception_entries_submitted_by_user_id
+                ON reception_entries(submitted_by_user_id, submitted_at DESC)
+                """
+            )
+        if "locked_patient_id" in cols:
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_reception_entries_locked_patient_id
+                ON reception_entries(locked_patient_id)
+                """
+            )
+        if "target_patient_id" in cols:
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_reception_entries_target_patient_id
+                ON reception_entries(target_patient_id)
+                """
+            )
+
+    if _table_exists(conn, "reception_entry_events"):
+        cols = _column_names(conn, "reception_entry_events")
+        if {"entry_id", "created_at"}.issubset(cols):
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_reception_entry_events_entry_id_created_at
+                ON reception_entry_events(entry_id, created_at DESC)
+                """
+            )
+
+
 def ensure_base_tables(db_path: Path) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
@@ -157,22 +242,6 @@ def ensure_base_tables(db_path: Path) -> None:
                 )
                 """,
                 """
-                CREATE INDEX IF NOT EXISTS idx_reception_entries_status_submitted_at
-                ON reception_entries(status, submitted_at DESC)
-                """,
-                """
-                CREATE INDEX IF NOT EXISTS idx_reception_entries_submitted_by_user_id
-                ON reception_entries(submitted_by_user_id, submitted_at DESC)
-                """,
-                """
-                CREATE INDEX IF NOT EXISTS idx_reception_entries_locked_patient_id
-                ON reception_entries(locked_patient_id)
-                """,
-                """
-                CREATE INDEX IF NOT EXISTS idx_reception_entries_target_patient_id
-                ON reception_entries(target_patient_id)
-                """,
-                """
                 CREATE TABLE IF NOT EXISTS reception_entry_events (
                     id TEXT PRIMARY KEY,
                     entry_id TEXT NOT NULL,
@@ -188,12 +257,10 @@ def ensure_base_tables(db_path: Path) -> None:
                     CHECK(action IN ('submitted','edited','held','returned','rejected','approved'))
                 )
                 """,
-                """
-                CREATE INDEX IF NOT EXISTS idx_reception_entry_events_entry_id_created_at
-                ON reception_entry_events(entry_id, created_at DESC)
-                """,
             ],
         )
+        _ensure_reception_entries_compat(conn)
+        _ensure_reception_indexes(conn)
         conn.commit()
     finally:
         conn.close()

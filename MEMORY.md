@@ -115,6 +115,18 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 
 ## Template for New Entries
 
+### Session: Startup diagnostics hardening
+**Date:** 2026-03-29
+**What was done:**
+- Hardened Windows launch scripts so startup failures are always captured in persistent logs under `data/logs/` instead of only transient console output.
+- Updated `Start-Clinic.bat` to write `startup_stdout.log`, `startup_stderr.log`, and preserve migration failures to `migrate_last.log`.
+- Updated `Start-Clinic-Preview.bat` to write `preview_startup_stdout.log`, `preview_startup_stderr.log`, and preserve migration failures to `preview_migrate_last.log`.
+- Patched bootstrap compatibility in `clinic_app/services/bootstrap.py` to auto-add missing `reception_entries` columns for older databases before creating Reception indexes.
+
+**Key decisions:**
+- Keep app/runtime logic unchanged; only improve operator diagnostics and recovery clarity.
+- Keep startup resilient across mixed schema states so migration commands can run instead of failing early with `sqlite3.OperationalError`.
+
 ### Session: Reception doc sync
 **Date:** 2026-03-11
 **What was done:**

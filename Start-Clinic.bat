@@ -2,6 +2,11 @@
 setlocal
 cd /d "%~dp0"
 
+if not exist data\logs mkdir data\logs >nul 2>nul
+set "LOG_OUT=data\logs\startup_stdout.log"
+set "LOG_ERR=data\logs\startup_stderr.log"
+set "MIGRATE_LAST_LOG=data\logs\migrate_last.log"
+
 echo [INFO] Using project venv (Python 3.12)...
 where py >nul 2>nul || goto :no_py
 
@@ -36,14 +41,25 @@ if errorlevel 1 (
 del /q "%MIGRATE_LOG%" >nul 2>&1
 
 echo [INFO] Starting Clinic App...
+echo [INFO] Startup logs:
+echo        OUT: %LOG_OUT%
+echo        ERR: %LOG_ERR%
+echo [INFO] Previous startup logs will be overwritten.
+break >"%LOG_OUT%"
+break >"%LOG_ERR%"
 
 rem Auto-open browser ~2s after start (no policy issues; single command)
 powershell -NoProfile -Command "Start-Sleep -Seconds 2; Start-Process 'http://127.0.0.1:8080/'" 2>nul
 
-"%VENV_PY%" -m clinic_app.app
+"%VENV_PY%" -m clinic_app.app 1>>"%LOG_OUT%" 2>>"%LOG_ERR%"
 set EXITCODE=%ERRORLEVEL%
 echo.
 echo [INFO] App exited with code %EXITCODE%.
+if not "%EXITCODE%"=="0" (
+  echo [ERROR] Startup failed. Review these logs:
+  echo         %LOG_OUT%
+  echo         %LOG_ERR%
+)
 echo Press any key to close...
 pause >nul
 endlocal & exit /b %EXITCODE%
@@ -66,9 +82,11 @@ goto :halt
 :migrate_fail
 if exist "%MIGRATE_LOG%" (
   type "%MIGRATE_LOG%"
+  copy /y "%MIGRATE_LOG%" "%MIGRATE_LAST_LOG%" >nul
   del /q "%MIGRATE_LOG%" >nul 2>&1
 )
 echo [ERROR] Automatic database update failed.
+echo [ERROR] Migration log saved to: %MIGRATE_LAST_LOG%
 echo [ERROR] Please run scripts\Run-Migrations.bat and try again.
 goto :halt
 :halt

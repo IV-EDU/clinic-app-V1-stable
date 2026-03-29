@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from clinic_app.services.database import db as raw_db
 from clinic_app.services.reception_entries import (
+    approve_edit_treatment_entry,
     approve_edit_patient_entry,
     approve_new_payment_entry,
     create_entry,
@@ -195,6 +196,41 @@ def test_create_entry_stores_locked_patient_correction(app, admin_user):
     assert entry["payload_json"]["proposed"]["full_name"] == "Locked Patient Updated"
 
 
+def test_create_entry_stores_locked_treatment_correction(app, admin_user):
+    _seed_patient("patient-treatment-1", "Locked Treatment Patient")
+    _seed_parent_treatment("patient-treatment-1", "treatment-locked-1")
+
+    entry = create_entry(
+        {
+            "draft_type": "edit_treatment",
+            "source": "treatment_card",
+            "locked_patient_id": "patient-treatment-1",
+            "locked_treatment_id": "treatment-locked-1",
+            "payload_json": {
+                "proposed": {
+                    "treatment_text": "Locked Crown Updated",
+                    "visit_date": "2026-03-20",
+                    "visit_type": "followup",
+                    "doctor_id": "_any_",
+                    "doctor_label": "Any Doctor",
+                    "total_amount": "260",
+                    "discount_amount": "20",
+                    "note": "Updated treatment note",
+                }
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    assert entry["locked_patient_id"] == "patient-treatment-1"
+    assert entry["locked_treatment_id"] == "treatment-locked-1"
+    assert entry["patient_name"] == "Locked Treatment Patient"
+    assert entry["total_amount_cents"] == 26000
+    assert entry["discount_amount_cents"] == 2000
+    assert entry["payload_json"]["current"]["treatment_text"] == "Locked Crown"
+    assert entry["payload_json"]["proposed"]["treatment_text"] == "Locked Crown Updated"
+
+
 def test_validate_requires_patient_name_when_unlocked():
     errors, warnings, normalized = validate_entry_payload(
         {
@@ -269,6 +305,65 @@ def test_blank_discount_normalizes_to_zero():
 
     assert errors == []
     assert normalized["discount_amount_cents"] == 0
+
+
+def test_validate_edit_treatment_blocks_due_below_paid(app, admin_user):
+    _seed_patient("patient-treatment-2", "Paid Treatment Patient")
+    _seed_parent_treatment(
+        "patient-treatment-2",
+        "treatment-locked-2",
+        amount_cents=5000,
+        total_amount_cents=20000,
+        discount_cents=0,
+    )
+    conn = raw_db()
+    try:
+        conn.execute(
+            """
+            INSERT INTO payments(
+                id, patient_id, parent_payment_id, paid_at, amount_cents, method, note, treatment,
+                doctor_id, doctor_label, remaining_cents, total_amount_cents, examination_flag,
+                followup_flag, discount_cents
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, ?, 0, 0, 0, 0, 0)
+            """,
+            (
+                "child-treatment-2",
+                "patient-treatment-2",
+                "treatment-locked-2",
+                "2026-03-18",
+                4000,
+                "cash",
+                "",
+                "_any_",
+                "Any Doctor",
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    errors, _, _ = validate_entry_payload(
+        {
+            "draft_type": "edit_treatment",
+            "source": "treatment_card",
+            "locked_patient_id": "patient-treatment-2",
+            "locked_treatment_id": "treatment-locked-2",
+            "payload_json": {
+                "proposed": {
+                    "treatment_text": "Paid Treatment Patient Updated",
+                    "visit_date": "2026-03-20",
+                    "visit_type": "none",
+                    "doctor_id": "_any_",
+                    "doctor_label": "Any Doctor",
+                    "total_amount": "80",
+                    "discount_amount": "0",
+                    "note": "Too low",
+                }
+            },
+        }
+    )
+
+    assert "Total amount minus discount cannot be less than the amount already paid." in errors
 
 
 def test_list_entries_returns_newest_first(app, admin_user):
@@ -435,7 +530,7 @@ def test_resubmit_returned_entry_rejects_unsupported_draft_type(app, admin_user)
         )
         assert False, "Expected ValueError for unsupported draft type"
     except ValueError as exc:
-        assert "Only returned desk treatment drafts and patient correction drafts can be edited in this slice." in str(exc)
+        assert "Only returned supported draft types can be edited in this slice." in str(exc)
 
 
 def test_get_locked_patient_context_returns_snapshot(app, admin_user):
@@ -543,6 +638,64 @@ def test_resubmit_returned_edit_patient_preserves_locked_context(app, admin_user
     assert list_entry_events(created["id"])[0]["meta_json"] == {"resubmitted": True}
 
 
+def test_resubmit_returned_edit_treatment_preserves_locked_context(app, admin_user):
+    _seed_user("manager-edit-treatment", "manager-edit-treatment")
+    _seed_patient("patient-resubmit-treatment", "Resubmit Treatment Patient")
+    _seed_parent_treatment("patient-resubmit-treatment", "treatment-resubmit")
+    created = create_entry(
+        {
+            "draft_type": "edit_treatment",
+            "source": "treatment_card",
+            "locked_patient_id": "patient-resubmit-treatment",
+            "locked_treatment_id": "treatment-resubmit",
+            "payload_json": {
+                "proposed": {
+                    "treatment_text": "Draft Crown",
+                    "visit_date": "2026-03-20",
+                    "visit_type": "exam",
+                    "doctor_id": "_any_",
+                    "doctor_label": "Any Doctor",
+                    "total_amount": "250",
+                    "discount_amount": "5",
+                    "note": "Draft note",
+                }
+            },
+        },
+        actor_user_id="admin-test",
+    )
+    submitted_at = created["submitted_at"]
+    return_entry(created["id"], actor_user_id="manager-edit-treatment", reason="Fix the totals")
+
+    updated = resubmit_returned_entry(
+        created["id"],
+        {
+            "payload_json": {
+                "proposed": {
+                    "treatment_text": "Final Crown",
+                    "visit_date": "2026-03-21",
+                    "visit_type": "followup",
+                    "doctor_id": "_any_",
+                    "doctor_label": "Any Doctor",
+                    "total_amount": "260",
+                    "discount_amount": "10",
+                    "note": "Final note",
+                }
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    assert updated["locked_patient_id"] == "patient-resubmit-treatment"
+    assert updated["locked_treatment_id"] == "treatment-resubmit"
+    assert updated["submitted_at"] == submitted_at
+    assert updated["return_reason"] is None
+    assert updated["last_action"] == "edited"
+    assert updated["treatment_text"] == "Final Crown"
+    assert updated["visit_date"] == "2026-03-21"
+    assert updated["payload_json"]["proposed"]["note"] == "Final note"
+    assert list_entry_events(created["id"])[0]["meta_json"] == {"resubmitted": True}
+
+
 def test_approve_edit_patient_entry_rejects_unsupported_source(app, admin_user):
     _seed_user("approver-edit-patient", "approver-edit-patient")
     _seed_patient_profile("patient-approve-unsupported", "Unsupported Source Patient")
@@ -577,6 +730,61 @@ def test_approve_edit_patient_entry_rejects_unsupported_source(app, admin_user):
         assert False, "Expected ValueError for unsupported patient correction source"
     except ValueError as exc:
         assert "Only patient-file correction drafts can be approved in this slice." in str(exc)
+
+
+def test_approve_edit_treatment_entry_updates_same_live_treatment(app, admin_user):
+    _seed_user("approver-edit-treatment", "approver-edit-treatment")
+    _seed_patient("patient-treatment-3", "Approve Treatment Patient")
+    _seed_parent_treatment("patient-treatment-3", "treatment-locked-3")
+
+    entry = create_entry(
+        {
+            "draft_type": "edit_treatment",
+            "source": "treatment_card",
+            "locked_patient_id": "patient-treatment-3",
+            "locked_treatment_id": "treatment-locked-3",
+            "payload_json": {
+                "proposed": {
+                    "treatment_text": "Updated Crown",
+                    "visit_date": "2026-03-21",
+                    "visit_type": "followup",
+                    "doctor_id": "_any_",
+                    "doctor_label": "Any Doctor",
+                    "total_amount": "260",
+                    "discount_amount": "10",
+                    "note": "Treatment correction note",
+                }
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    approved = approve_edit_treatment_entry(entry["id"], actor_user_id="approver-edit-treatment")
+    assert approved["status"] == "approved"
+    assert approved["target_patient_id"] == "patient-treatment-3"
+    assert approved["target_treatment_id"] == "treatment-locked-3"
+    assert approved["target_payment_id"] is None
+
+    conn = raw_db()
+    try:
+        treatment = conn.execute(
+            """
+            SELECT treatment, paid_at, doctor_label, total_amount_cents, discount_cents, remaining_cents, followup_flag, note
+            FROM payments WHERE id=?
+            """,
+            ("treatment-locked-3",),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert treatment["treatment"] == "Updated Crown"
+    assert treatment["paid_at"] == "2026-03-21"
+    assert treatment["doctor_label"] == "Any Doctor"
+    assert int(treatment["total_amount_cents"] or 0) == 26000
+    assert int(treatment["discount_cents"] or 0) == 1000
+    assert int(treatment["remaining_cents"] or 0) == 20000
+    assert int(treatment["followup_flag"] or 0) == 1
+    assert treatment["note"] == "Treatment correction note"
 
 
 def test_resubmitted_draft_sorts_by_updated_at_for_desk_and_queue(app, admin_user):

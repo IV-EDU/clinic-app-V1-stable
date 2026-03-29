@@ -135,6 +135,17 @@ def _visit_type_flags(raw_value: str | None) -> tuple[int, int]:
     return (1 if value == "exam" else 0, 1 if value == "followup" else 0)
 
 
+def _visit_type_value(examination_flag: Any, followup_flag: Any, treatment_text: str | None = None) -> str:
+    treatment_label = _text(treatment_text)
+    if treatment_label in {"Consultation visit", "زيارة استشارة"}:
+        return "none"
+    if int(examination_flag or 0) == 1:
+        return "exam"
+    if int(followup_flag or 0) == 1:
+        return "followup"
+    return "none"
+
+
 def _patient_profile_payload(data: dict[str, Any] | None, *, include_short_id: bool = False) -> dict[str, Any]:
     data = data or {}
     phones: list[dict[str, Any]] = []
@@ -243,9 +254,10 @@ def _require_returned_resubmittable_entry(row, *, actor_user_id: str) -> dict[st
     supports_resubmit = (
         (entry.get("draft_type") == "new_treatment" and entry.get("source") == "reception_desk")
         or (entry.get("draft_type") == "edit_patient" and entry.get("source") == "patient_file")
+        or (entry.get("draft_type") == "edit_treatment" and entry.get("source") == "treatment_card")
     )
     if not supports_resubmit:
-        raise ValueError("Only returned desk treatment drafts and patient correction drafts can be edited in this slice.")
+        raise ValueError("Only returned supported draft types can be edited in this slice.")
     if entry.get("status") != "edited" or entry.get("last_action") != "returned":
         raise ValueError("Only returned drafts can be edited and resubmitted.")
     return entry
@@ -273,6 +285,9 @@ def validate_entry_payload(data: dict) -> tuple[list[str], list[str], dict[str, 
     patient_name = _nullable_text(data.get("patient_name"))
     page_number = _nullable_text(data.get("page_number"))
     phone = _nullable_text(data.get("phone"))
+    visit_date = _nullable_text(data.get("visit_date"))
+    visit_type = _nullable_text(data.get("visit_type"))
+    treatment_text = _nullable_text(data.get("treatment_text"))
 
     money_received_today = _bool_flag(data.get("money_received_today"))
     paid_today_cents = _parse_optional_money(data.get("paid_today"), "paid today")
@@ -299,6 +314,85 @@ def validate_entry_payload(data: dict) -> tuple[list[str], list[str], dict[str, 
             errors.append("Paid today cannot be greater than the amount due.")
         patient_intent = "existing"
         money_received_today = 1
+    elif draft_type == "edit_treatment":
+        locked_treatment_id = _nullable_text(data.get("locked_treatment_id"))
+        if not locked_patient_id:
+            errors.append("Locked patient context is required.")
+        if not locked_treatment_id:
+            errors.append("Locked treatment context is required.")
+        patient_intent = "existing"
+
+        proposed_raw = payload_dict.get("proposed")
+        if proposed_raw is None:
+            proposed_raw = {}
+        if not isinstance(proposed_raw, dict):
+            errors.append("Malformed treatment correction payload.")
+            proposed_raw = {}
+
+        current_payload = payload_dict.get("current")
+        current_snapshot = current_payload if isinstance(current_payload, dict) else None
+        live_context = None
+        if locked_patient_id and locked_treatment_id:
+            live_context = get_locked_treatment_context(locked_patient_id, locked_treatment_id)
+        if not current_snapshot and live_context:
+            current_snapshot = _treatment_correction_payload(live_context)
+        if locked_patient_id and locked_treatment_id and not current_snapshot:
+            errors.append("Locked treatment was not found.")
+            current_snapshot = {}
+
+        treatment_text = _nullable_text(proposed_raw.get("treatment_text"))
+        visit_date = _nullable_text(proposed_raw.get("visit_date"))
+        visit_type = _nullable_text(proposed_raw.get("visit_type")) or "none"
+        if visit_type not in {"none", "exam", "followup"}:
+            visit_type = "none"
+        doctor_id = _text(proposed_raw.get("doctor_id"))
+        doctor_label = _text(proposed_raw.get("doctor_label"))
+        if not doctor_id or not doctor_label:
+            errors.append("Doctor is required.")
+
+        total_raw = proposed_raw.get("total_amount")
+        if total_raw in (None, ""):
+            errors.append("Total amount is required.")
+        total_amount_cents = _parse_optional_money(total_raw, "total amount")
+
+        discount_raw = proposed_raw.get("discount_amount")
+        discount_amount_cents = _parse_optional_money(discount_raw, "discount amount")
+        if discount_amount_cents is None:
+            discount_amount_cents = 0
+        discount_amount_cents = max(discount_amount_cents, 0)
+
+        if total_amount_cents is not None and discount_amount_cents > total_amount_cents:
+            errors.append("Discount cannot be greater than the total amount.")
+
+        total_paid_cents = int((live_context or {}).get("total_paid_cents") or 0)
+        if total_amount_cents is not None:
+            due_cents = max(total_amount_cents - discount_amount_cents, 0)
+            if due_cents < total_paid_cents:
+                errors.append("Total amount minus discount cannot be less than the amount already paid.")
+
+        patient_name = _nullable_text((live_context or {}).get("patient_name"))
+        phone = _nullable_text((live_context or {}).get("phone"))
+        page_number = _nullable_text((live_context or {}).get("page_number"))
+        money_received_today = 0
+        paid_today_cents = None
+        warnings = []
+        if not phone:
+            warnings.append("Phone is missing.")
+        if not page_number:
+            warnings.append("Page number is missing.")
+        payload_dict = {
+            "current": current_snapshot or {},
+            "proposed": {
+                "treatment_text": treatment_text or "",
+                "visit_date": visit_date or "",
+                "visit_type": visit_type,
+                "doctor_id": doctor_id,
+                "doctor_label": doctor_label,
+                "total_amount_cents": total_amount_cents,
+                "discount_amount_cents": discount_amount_cents,
+                "note": _text(proposed_raw.get("note")),
+            },
+        }
     elif draft_type == "edit_patient":
         if not locked_patient_id:
             errors.append("Locked patient context is required.")
@@ -386,9 +480,9 @@ def validate_entry_payload(data: dict) -> tuple[list[str], list[str], dict[str, 
         "patient_name": patient_name,
         "page_number": page_number,
         "phone": phone,
-        "visit_date": _nullable_text(data.get("visit_date")),
-        "visit_type": _nullable_text(data.get("visit_type")),
-        "treatment_text": _nullable_text(data.get("treatment_text")),
+        "visit_date": visit_date,
+        "visit_type": visit_type,
+        "treatment_text": treatment_text,
         "doctor_id": doctor_id,
         "doctor_label": doctor_label,
         "money_received_today": money_received_today,
@@ -413,7 +507,8 @@ def get_locked_treatment_context(patient_id: str, treatment_id: str) -> dict[str
         treatment = conn.execute(
             """
             SELECT id, patient_id, paid_at, amount_cents, total_amount_cents, discount_cents,
-                   treatment, doctor_id, doctor_label, parent_payment_id
+                   treatment, doctor_id, doctor_label, parent_payment_id, method, note,
+                   examination_flag, followup_flag
               FROM payments
              WHERE id=?
                AND patient_id=?
@@ -463,6 +558,13 @@ def get_locked_treatment_context(patient_id: str, treatment_id: str) -> dict[str
             "doctor_id": treatment["doctor_id"] or "",
             "doctor_label": treatment["doctor_label"] or "",
             "paid_at": treatment["paid_at"] or "",
+            "method": treatment["method"] or "cash",
+            "note": treatment["note"] or "",
+            "visit_type": _visit_type_value(
+                treatment["examination_flag"] if "examination_flag" in treatment.keys() else 0,
+                treatment["followup_flag"] if "followup_flag" in treatment.keys() else 0,
+                treatment["treatment"] or "",
+            ),
             "initial_paid_cents": initial_cents,
             "child_paid_cents": child_paid_cents,
             "total_paid_cents": total_paid_cents,
@@ -967,6 +1069,174 @@ def _create_live_treatment_from_entry(conn, entry: dict[str, Any], *, patient_id
         ),
     )
     return treatment_id
+
+
+def _treatment_correction_payload(context: dict[str, Any] | None) -> dict[str, Any]:
+    context = context or {}
+    return {
+        "patient_id": _text(context.get("patient_id")),
+        "treatment_id": _text(context.get("treatment_id")),
+        "treatment_text": _text(context.get("treatment_text")),
+        "visit_date": _text(context.get("paid_at")),
+        "visit_type": _text(context.get("visit_type")) or "none",
+        "doctor_id": _text(context.get("doctor_id")),
+        "doctor_label": _text(context.get("doctor_label")),
+        "total_amount_cents": int(context.get("total_amount_cents") or 0),
+        "discount_amount_cents": int(context.get("discount_amount_cents") or 0),
+        "note": _text(context.get("note")),
+        "total_paid_cents": int(context.get("total_paid_cents") or 0),
+        "remaining_cents": int(context.get("remaining_cents") or 0),
+    }
+
+
+def approve_edit_treatment_entry(entry_id: str, *, actor_user_id: str) -> dict[str, Any]:
+    now = _utc_now_iso()
+    locked_patient_id: str | None = None
+    locked_treatment_id: str | None = None
+    conn = raw_db()
+    try:
+        conn.execute("PRAGMA foreign_keys=ON")
+        entry = _require_active_entry(_fetch_entry(conn, entry_id), action="approve")
+
+        if entry.get("draft_type") != "edit_treatment" or entry.get("source") != "treatment_card":
+            raise ValueError("Only treatment-card treatment correction drafts can be approved in this slice.")
+        if entry.get("status") not in {"new", "edited", "held"}:
+            raise ValueError("Only pending drafts can be approved.")
+
+        locked_patient_id = _nullable_text(entry.get("locked_patient_id"))
+        locked_treatment_id = _nullable_text(entry.get("locked_treatment_id"))
+        if not locked_patient_id or not locked_treatment_id:
+            raise ValueError("Locked treatment context is required for approval.")
+        if entry.get("target_patient_id") or entry.get("target_treatment_id") or entry.get("target_payment_id"):
+            raise ValueError("This treatment correction draft already has live targets and cannot be approved again.")
+
+        live_context = get_locked_treatment_context(locked_patient_id, locked_treatment_id)
+        if not live_context:
+            raise ValueError("Locked treatment was not found.")
+
+        payload = entry.get("payload_json") or {}
+        proposed = payload.get("proposed")
+        if not isinstance(proposed, dict):
+            raise ValueError("Malformed treatment correction payload.")
+
+        total_cents = entry.get("total_amount_cents")
+        if total_cents is None:
+            raise ValueError("Total amount is required.")
+        total_cents = int(total_cents)
+        discount_cents = int(entry.get("discount_amount_cents") or 0)
+        if discount_cents > total_cents:
+            raise ValueError("Discount cannot be greater than the total amount.")
+
+        total_paid_cents = int(live_context.get("total_paid_cents") or 0)
+        due_cents = max(total_cents - discount_cents, 0)
+        if due_cents < total_paid_cents:
+            raise ValueError("Total amount minus discount cannot be less than the amount already paid.")
+
+        remaining_cents = due_cents - total_paid_cents
+        exam_flag, followup_flag = _visit_type_flags(proposed.get("visit_type"))
+
+        conn.execute(
+            """
+            UPDATE payments
+               SET paid_at=?,
+                   note=?,
+                   treatment=?,
+                   doctor_id=?,
+                   doctor_label=?,
+                   remaining_cents=?,
+                   total_amount_cents=?,
+                   examination_flag=?,
+                   followup_flag=?,
+                   discount_cents=?
+             WHERE id=?
+               AND patient_id=?
+               AND (parent_payment_id IS NULL OR parent_payment_id = '')
+            """,
+            (
+                _text(entry.get("visit_date")) or live_context.get("paid_at") or datetime.now(timezone.utc).date().isoformat(),
+                _text(proposed.get("note")),
+                _text(entry.get("treatment_text")),
+                _text(entry.get("doctor_id")),
+                _text(entry.get("doctor_label")),
+                remaining_cents,
+                total_cents,
+                exam_flag,
+                followup_flag,
+                discount_cents,
+                locked_treatment_id,
+                locked_patient_id,
+            ),
+        )
+        if conn.total_changes <= 0:
+            raise ValueError("Locked treatment was not found.")
+
+        conn.execute(
+            """
+            UPDATE reception_entries
+            SET status=?,
+                reviewed_by_user_id=?,
+                updated_at=?,
+                reviewed_at=?,
+                last_action=?,
+                hold_reason=NULL,
+                return_reason=NULL,
+                rejection_reason=NULL,
+                target_patient_id=?,
+                target_treatment_id=?,
+                target_payment_id=NULL
+            WHERE id=?
+            """,
+            (
+                "approved",
+                actor_user_id,
+                now,
+                now,
+                "approved",
+                locked_patient_id,
+                locked_treatment_id,
+                entry_id,
+            ),
+        )
+        _insert_event(
+            conn,
+            entry_id=entry_id,
+            action="approved",
+            actor_user_id=actor_user_id,
+            from_status=entry["status"],
+            to_status="approved",
+            note=None,
+            meta_json={
+                "target_patient_id": locked_patient_id,
+                "target_treatment_id": locked_treatment_id,
+                "draft_type": "edit_treatment",
+                "source": "treatment_card",
+            },
+            created_at=now,
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    if locked_patient_id and locked_treatment_id:
+        try:
+            write_event(
+                actor_user_id,
+                "payment_update",
+                entity="payment",
+                entity_id=locked_treatment_id,
+                meta={
+                    "patient_id": locked_patient_id,
+                    "treatment_id": locked_treatment_id,
+                    "target_patient_id": locked_patient_id,
+                    "target_treatment_id": locked_treatment_id,
+                    "source": "reception_approval",
+                    "draft_type": "edit_treatment",
+                    "reception_entry_id": entry_id,
+                },
+            )
+        except Exception:
+            pass
+    return get_entry(entry_id)
 
 
 def approve_new_treatment_entry(entry_id: str, *, actor_user_id: str) -> dict[str, Any]:

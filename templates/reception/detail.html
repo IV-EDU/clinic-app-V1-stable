@@ -48,6 +48,8 @@
       <p class="reception-detail-subtitle">
         {% if entry.draft_type == 'edit_patient' %}
           {{ t('reception_patient_correction_kind') }}
+        {% elif entry.draft_type == 'edit_treatment' %}
+          {{ t('reception_treatment_correction_kind') }}
         {% else %}
           {{ entry.treatment_text or t('reception_no_treatment_text') }}
         {% endif %}
@@ -154,6 +156,76 @@
           <div class="reception-reason">{{ (entry_payload.current.notes if entry_payload.current else '') or '—' }}</div>
           <strong>{{ t('reception_patient_proposed_profile') }}</strong>
           <div class="reception-reason">{{ (entry_payload.proposed.notes if entry_payload.proposed else '') or '—' }}</div>
+        </div>
+        {% elif entry.draft_type == 'edit_treatment' %}
+        <div class="reception-detail-meta">
+          <div>
+            <div class="reception-detail-label">{{ t('submitted_by') }}</div>
+            <div class="reception-detail-value">{{ entry.submitted_by_user_id }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('date') }}</div>
+            <div class="reception-detail-value">{{ entry.submitted_at[:10] if entry.submitted_at else '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('source') }}</div>
+            <div class="reception-detail-value">{{ entry.source or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('doctor') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.proposed.doctor_label if entry_payload.proposed else '') or entry.doctor_label or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('visit_type') }}</div>
+            <div class="reception-detail-value">
+              {% set _visit_type = (entry_payload.proposed.visit_type if entry_payload.proposed else '') or entry.visit_type or 'none' %}
+              {% if _visit_type == 'exam' %}
+                {{ t('vt_exam') }}
+              {% elif _visit_type == 'followup' %}
+                {{ t('vt_follow') }}
+              {% else %}
+                {{ t('vt_none') }}
+              {% endif %}
+            </div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_draft_type_label') }}</div>
+            <div class="reception-detail-value">{{ t('reception_treatment_correction_kind') }}</div>
+          </div>
+        </div>
+        <div class="reception-detail-meta reception-spaced">
+          <div>
+            <div class="reception-detail-label">{{ t('treatment_name') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.current.treatment_text if entry_payload.current else '') or (locked_treatment_context.treatment_text if locked_treatment_context else '') or '—' }} &rarr; {{ (entry_payload.proposed.treatment_text if entry_payload.proposed else '') or entry.treatment_text or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('date') }}</div>
+            <div class="reception-detail-value">{{ (entry_payload.current.visit_date if entry_payload.current else '') or (locked_treatment_context.paid_at if locked_treatment_context else '') or '—' }} &rarr; {{ (entry_payload.proposed.visit_date if entry_payload.proposed else '') or entry.visit_date or '—' }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('total_amount') }}</div>
+            <div class="reception-detail-value">{{ (((entry_payload.current.total_amount_cents if entry_payload.current else 0) or 0) / 100)|round(2) }} &rarr; {{ (((entry_payload.proposed.total_amount_cents if entry_payload.proposed else 0) or 0) / 100)|round(2) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('discount') }}</div>
+            <div class="reception-detail-value">{{ (((entry_payload.current.discount_amount_cents if entry_payload.current else 0) or 0) / 100)|round(2) }} &rarr; {{ (((entry_payload.proposed.discount_amount_cents if entry_payload.proposed else 0) or 0) / 100)|round(2) }}</div>
+          </div>
+          {% if locked_treatment_context %}
+          <div>
+            <div class="reception-detail-label">{{ t('paid') }}</div>
+            <div class="reception-detail-value">{{ ((locked_treatment_context.total_paid_cents or 0) / 100)|round(2) }}</div>
+          </div>
+          <div>
+            <div class="reception-detail-label">{{ t('reception_current_remaining') }}</div>
+            <div class="reception-detail-value">{{ ((locked_treatment_context.remaining_cents or 0) / 100)|round(2) }}</div>
+          </div>
+          {% endif %}
+        </div>
+        <div class="reception-spaced">
+          <strong>{{ t('notes') }}</strong>
+          <div class="reception-reason">{{ (entry_payload.current.note if entry_payload.current else '') or '—' }}</div>
+          <strong>{{ t('reception_treatment_proposed_changes') }}</strong>
+          <div class="reception-reason">{{ (entry_payload.proposed.note if entry_payload.proposed else '') or '—' }}</div>
         </div>
         {% else %}
         <div class="reception-detail-meta">

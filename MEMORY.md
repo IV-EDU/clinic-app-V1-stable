@@ -17,7 +17,7 @@
 ### Fast ramp (don’t re-discover the repo)
 
 - Read `docs/AGENT_HANDOFF.md` for the app map + the locked Reception Desk decisions.
-- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, a narrow approval path for Desk-origin `new_treatment`, a locked treatment-card `new_payment` draft/approval path, and the first same-record `edit_patient` correction path.
+- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, a narrow approval path for Desk-origin `new_treatment`, a locked treatment-card `new_payment` draft/approval path, and same-record `edit_patient` plus `edit_treatment` correction paths.
 - Older historical session notes were archived into `MEMORY_ARCHIVE.md`.
 
 ---
@@ -114,6 +114,26 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 ---
 
 ## Template for New Entries
+
+### Session: Reception same-record treatment correction
+**Date:** 2026-03-29
+**What was done:**
+- Added the first same-record Reception treatment-correction flow for `edit_treatment`.
+- Treatment cards now expose a separate Reception draft action that launches a locked treatment-correction form instead of the live edit modal.
+- Managers can review current-vs-proposed treatment values, approve the correction onto the same live treatment, and returned treatment corrections can be edited/resubmitted by the original receptionist.
+- Added focused service/route coverage for the new `edit_treatment` path and reran the Reception regression subset successfully.
+
+**Current state:**
+- Supported live approval paths are now:
+  - Desk-origin `new_treatment`
+  - Treatment-card locked `new_payment`
+  - Patient-file locked `edit_patient`
+  - Treatment-card locked `edit_treatment`
+- Focused Reception regression subset now passes with 75 tests.
+
+**Key decisions:**
+- `edit_treatment` stays locked to the same live treatment and same live patient only.
+- Approval updates the existing treatment row directly and blocks corrections where `total - discount` would fall below the amount already paid.
 
 ### Session: Startup diagnostics hardening
 **Date:** 2026-03-29

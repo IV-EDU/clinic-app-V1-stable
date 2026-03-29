@@ -127,6 +127,38 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 - Keep app/runtime logic unchanged; only improve operator diagnostics and recovery clarity.
 - Keep startup resilient across mixed schema states so migration commands can run instead of failing early with `sqlite3.OperationalError`.
 
+### Session: AI system blueprint and instruction hardening
+**Date:** 2026-03-29
+**What was done:**
+- Added `AI_SYSTEM_BLUEPRINT.md` to define the recommended AI operating model for this repo before building plugins or Obsidian automation.
+- Strengthened `agents/clinic-lead-developer.md` so the main agent behaves more like a critical mentor and lead developer, not an agreeable assistant.
+- Lightly updated `AGENTS.md` to require better consequence analysis, stronger option comparison, and clearer pushback on weak ideas.
+
+**Key decisions:**
+- Keep `clinic-lead-developer.md` as the main AI brain for this project.
+- Delay plugin creation until the strengthened behavior is tested in real work.
+- Treat Obsidian integration as a later phase after behavior and note structure are stable.
+
+### Session: Portable AI startup file
+**Date:** 2026-03-29
+**What was done:**
+- Added `START_HERE_AI.md` as a compact startup guide for new chats and different models.
+- Documented the required file read order, expected mentor-style behavior, plan-before-edit standard, and what must be updated after meaningful work.
+
+**Key decisions:**
+- Cross-chat consistency should come from repo files, not chat memory.
+- `START_HERE_AI.md` should stay short and portable, while deeper rules remain in `AGENTS.md`, `agents/clinic-lead-developer.md`, and `AI_SYSTEM_BLUEPRINT.md`.
+
+### Session: Skill search for agent creation
+**Date:** 2026-03-29
+**What was done:**
+- Read the repo handoff files and the `skill-installer` instructions before checking installable skills.
+- Queried the curated OpenAI skills catalog and confirmed there is no direct installable skill specifically for creating agents.
+- Checked the experimental catalog path as well; the helper reported that `skills/.experimental` was not found upstream.
+
+**Key decisions:**
+- For agent work in this environment, prefer the already available `microsoft-foundry` skill for Foundry agents rather than trying to install a missing generic agent-builder skill.
+
 ### Session: Reception doc sync
 **Date:** 2026-03-11
 **What was done:**

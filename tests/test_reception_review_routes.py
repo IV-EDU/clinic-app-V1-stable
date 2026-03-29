@@ -170,7 +170,13 @@ def _seed_child_payment(patient_id: str, treatment_id: str, *, amount_cents: int
     return child_id
 
 
-def _seed_patient_profile(*, full_name: str = "Correction Patient") -> str:
+def _seed_patient_profile(
+    *,
+    full_name: str = "Correction Patient",
+    phone: str = "01012121212",
+    page_number: str = "18",
+    short_id: str | None = None,
+) -> str:
     patient_id = f"patient-{uuid4()}"
     conn = raw_db()
     try:
@@ -179,21 +185,21 @@ def _seed_patient_profile(*, full_name: str = "Correction Patient") -> str:
             INSERT INTO patients(id, short_id, full_name, phone, notes, primary_page_number, created_at)
             VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
             """,
-            (patient_id, f"P-{uuid4().hex[:6]}", full_name, "01012121212", "Original note", "18"),
+            (patient_id, short_id or f"P-{uuid4().hex[:6]}", full_name, phone, "Original note", page_number),
         )
         conn.execute(
             """
             INSERT INTO patient_phones(id, patient_id, phone, phone_normalized, label, is_primary)
             VALUES (?, ?, ?, ?, ?, 1)
             """,
-            (f"phone-{uuid4()}", patient_id, "01012121212", "01012121212", None),
+            (f"phone-{uuid4()}", patient_id, phone, phone, None),
         )
         conn.execute(
             """
             INSERT INTO patient_pages(id, patient_id, page_number, notebook_name)
             VALUES (?, ?, ?, ?)
             """,
-            (f"page-{uuid4()}", patient_id, "18", "Notebook A"),
+            (f"page-{uuid4()}", patient_id, page_number, "Notebook A"),
         )
         conn.commit()
     finally:
@@ -606,6 +612,68 @@ def test_approve_requires_final_confirmation(client, admin_user):
     assert unchanged["status"] == "new"
 
 
+def test_manager_detail_shows_existing_patient_routing_options(client, admin_user):
+    approve_role_id = _create_role("Reception Approver Routing Detail", ["reception_entries:approve"])
+    _create_user("approver-routing-detail", "password123", [approve_role_id])
+    _login(client, "approver-routing-detail", "password123")
+    _seed_patient_profile(
+        full_name="Routing Candidate",
+        phone="01022233344",
+        page_number="88",
+        short_id="P-ROUTE1",
+    )
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Routing Candidate",
+            "phone": "01022233344",
+            "page_number": "88",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-17",
+            "treatment_text": "Routing Review Treatment",
+            "total_amount": "300",
+        },
+        actor_user_id="admin-test",
+    )
+
+    resp = client.get(f"/reception/entries/{entry['id']}")
+    assert resp.status_code == 200
+    body = resp.data.decode("utf-8")
+    assert "Approval route" in body
+    assert "Create new patient" in body
+    assert "Attach to existing patient" in body
+    assert "Possible existing patients" in body
+    assert "Routing Candidate" in body
+    assert "/reception/api/patients/search" in body
+
+
+def test_reception_patient_search_returns_matches_for_manager_review(client, admin_user):
+    review_role_id = _create_role("Reception Review Search", ["reception_entries:review"])
+    _create_user("review-search-user", "password123", [review_role_id])
+    _login(client, "review-search-user", "password123")
+    patient_id = _seed_patient_profile(
+        full_name="Search Match",
+        phone="01055577788",
+        page_number="909",
+        short_id="P-SEARCH",
+    )
+
+    resp = client.get("/reception/api/patients/search?q=01055577788")
+    assert resp.status_code == 200
+    payload = resp.get_json()
+    assert payload
+    match = next(item for item in payload if item["id"] == patient_id)
+    assert match == {
+        "id": patient_id,
+        "full_name": "Search Match",
+        "short_id": "P-SEARCH",
+        "phone": "01055577788",
+        "page_number": "909",
+    }
+
+
 def test_approve_posts_new_patient_and_treatment(client, admin_user):
     approve_role_id = _create_role("Reception Approver Full", ["reception_entries:approve"])
     _create_user("approver-full", "password123", [approve_role_id])
@@ -680,6 +748,183 @@ def test_approve_posts_new_patient_and_treatment(client, admin_user):
     assert int(payment["discount_cents"] or 0) == 5000
     assert int(payment["remaining_cents"] or 0) == 15000
     assert payment["doctor_label"] == "Any Doctor"
+
+
+def test_approve_can_attach_new_treatment_to_existing_patient(client, admin_user):
+    approve_role_id = _create_role("Reception Approver Attach Existing", ["reception_entries:approve"])
+    _create_user("approver-attach-existing", "password123", [approve_role_id])
+    _login(client, "approver-attach-existing", "password123")
+    existing_patient_id = _seed_patient_profile(
+        full_name="Existing Routing Patient",
+        phone="01077788899",
+        page_number="501",
+        short_id="P-EXIST1",
+    )
+
+    before_patients = _count_patients()
+    before_payments = _count_payments()
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Existing Routing Patient",
+            "phone": "01077788899",
+            "page_number": "501",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-17",
+            "visit_type": "exam",
+            "treatment_text": "Attach Existing Treatment",
+            "total_amount": "300",
+            "discount_amount": "25",
+            "paid_today": "50",
+            "money_received_today": True,
+            "payload_json": {"note": "Do not edit patient profile"},
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={
+            "csrf_token": token,
+            "approval_route": "attach_existing",
+            "target_patient_id": existing_patient_id,
+            "confirm_approve": "1",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    assert _count_patients() == before_patients
+    assert _count_payments() == before_payments + 1
+
+    approved = get_entry(entry["id"])
+    assert approved["status"] == "approved"
+    assert approved["target_patient_id"] == existing_patient_id
+    assert approved["target_treatment_id"]
+
+    conn = raw_db()
+    try:
+        patient = conn.execute(
+            "SELECT full_name, phone, primary_page_number FROM patients WHERE id=?",
+            (existing_patient_id,),
+        ).fetchone()
+        payment = conn.execute(
+            """
+            SELECT patient_id, treatment, amount_cents, total_amount_cents, discount_cents, remaining_cents
+            FROM payments WHERE id=?
+            """,
+            (approved["target_treatment_id"],),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert patient["full_name"] == "Existing Routing Patient"
+    assert patient["phone"] == "01077788899"
+    assert patient["primary_page_number"] == "501"
+    assert payment["patient_id"] == existing_patient_id
+    assert payment["treatment"] == "Attach Existing Treatment"
+    assert int(payment["amount_cents"] or 0) == 5000
+    assert int(payment["total_amount_cents"] or 0) == 30000
+    assert int(payment["discount_cents"] or 0) == 2500
+    assert int(payment["remaining_cents"] or 0) == 22500
+
+
+def test_attach_existing_requires_target_patient_id(client, admin_user):
+    approve_role_id = _create_role("Reception Approver Attach Missing", ["reception_entries:approve"])
+    _create_user("approver-attach-missing", "password123", [approve_role_id])
+    _login(client, "approver-attach-missing", "password123")
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Attach Missing",
+            "phone": "01010101010",
+            "page_number": "41",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-17",
+            "treatment_text": "Attach Missing Treatment",
+            "total_amount": "200",
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={
+            "csrf_token": token,
+            "approval_route": "attach_existing",
+            "confirm_approve": "1",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    assert "Choose an existing patient before approval." in resp.data.decode("utf-8")
+    unchanged = get_entry(entry["id"])
+    assert unchanged["status"] == "new"
+    assert unchanged["target_patient_id"] is None
+
+
+def test_attach_existing_blocks_when_selected_patient_is_deleted(client, admin_user):
+    approve_role_id = _create_role("Reception Approver Attach Stale", ["reception_entries:approve"])
+    _create_user("approver-attach-stale", "password123", [approve_role_id])
+    _login(client, "approver-attach-stale", "password123")
+    existing_patient_id = _seed_patient_profile(
+        full_name="Deleted Routing Patient",
+        phone="01033344455",
+        page_number="63",
+        short_id="P-DELETE",
+    )
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Deleted Routing Patient",
+            "phone": "01033344455",
+            "page_number": "63",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-17",
+            "treatment_text": "Deleted Patient Treatment",
+            "total_amount": "220",
+        },
+        actor_user_id="admin-test",
+    )
+
+    conn = raw_db()
+    try:
+        conn.execute("DELETE FROM patient_phones WHERE patient_id=?", (existing_patient_id,))
+        conn.execute("DELETE FROM patient_pages WHERE patient_id=?", (existing_patient_id,))
+        conn.execute("DELETE FROM patients WHERE id=?", (existing_patient_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={
+            "csrf_token": token,
+            "approval_route": "attach_existing",
+            "target_patient_id": existing_patient_id,
+            "confirm_approve": "1",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    assert "The selected live patient no longer exists. Review the draft again before approving." in resp.data.decode("utf-8")
+    unchanged = get_entry(entry["id"])
+    assert unchanged["status"] == "new"
+    assert unchanged["target_patient_id"] is None
 
 
 def test_approve_blocks_draft_without_total_amount(client, admin_user):

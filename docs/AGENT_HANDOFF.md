@@ -123,15 +123,22 @@ Reception does daily entry work as drafts; manager/admin reviews; the system pos
   - Hold / Return / Reject review actions exist
   - Returned Desk-origin `new_treatment` drafts can be edited and resubmitted by the original receptionist
   - Patient-file `edit_patient` drafts can now be created, reviewed, returned, edited/resubmitted, and approved onto the same live patient
+  - Treatment-card `edit_payment` drafts can now be created, reviewed, returned, edited/resubmitted, and approved onto the same live payment
+  - Treatment-card `edit_treatment` drafts can now be created, reviewed, returned, edited/resubmitted, and approved onto the same live treatment
   - Narrow approval exists for:
     - Desk-origin `new_treatment` drafts
     - Treatment-card locked `new_payment` drafts
     - Patient-file locked `edit_patient` drafts
+    - Treatment-card locked `edit_payment` drafts
+    - Treatment-card locked `edit_treatment` drafts
 - Approval currently supports only:
   - creating a new live patient + treatment for Desk-origin `new_treatment`
+  - attaching a Desk-origin `new_treatment` draft to one manager-chosen existing patient without editing that patient profile
   - posting one live child payment onto the locked treatment for treatment-card `new_payment`
+  - updating the locked live payment for treatment-card `edit_payment`
+  - updating the locked live treatment for treatment-card `edit_treatment`
   - updating the locked live patient profile for patient-file `edit_patient`
 - Treatment-card payment drafts now use the shared `clinic_app/services/payments.py:add_payment_to_treatment(...)` helper, which also recomputes and persists parent `remaining_cents`.
 - Live patient edit and Reception patient-correction approval now share `clinic_app/services/patients.py` profile normalization/update helpers, so phone/page sync logic is not duplicated.
 - Desk and queue ordering now uses `updated_at DESC` so resubmitted drafts return to the top.
-- Do not casually widen approval to desk-origin payment drafts, payment/treatment corrections, patient reassignment, or duplicate-resolution flows without updating the Reception planning docs first.
+- Do not casually widen approval to desk-origin payment drafts, patient reassignment beyond manager-chosen existing-patient treatment routing, or duplicate-resolution flows without updating the Reception planning docs first.

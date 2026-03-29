@@ -33,6 +33,25 @@
 .reception-checkline{display:flex;align-items:flex-start;gap:10px}
 .reception-live-links{display:grid;gap:10px}
 .reception-link-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:10px;border:1px solid var(--ring, rgba(148,163,184,.35));background:transparent;color:var(--text-primary, inherit);text-decoration:none;font-weight:600;width:max-content}
+.reception-route-box{display:grid;gap:14px;padding:16px;border:1px solid var(--ring, rgba(148,163,184,.35));border-radius:14px;background:var(--card, #fff)}
+.reception-route-title{margin:0;font-size:1rem}
+.reception-route-options{display:grid;gap:10px}
+.reception-route-option{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--ring, rgba(148,163,184,.35));border-radius:12px;background:var(--card, #fff)}
+.reception-route-option input{margin-top:3px}
+.reception-route-option strong{display:block}
+.reception-route-option span{display:block;margin-top:4px;color:var(--muted, #6b7280);font-size:.92rem}
+.reception-patient-picker{display:grid;gap:12px}
+.reception-picker-list{display:grid;gap:10px}
+.reception-picker-card{display:flex;gap:12px;align-items:flex-start;padding:12px;border:1px solid var(--ring, rgba(148,163,184,.35));border-radius:12px;background:var(--card, #fff)}
+.reception-picker-card input{margin-top:4px}
+.reception-picker-card.selected{border-color:color-mix(in srgb, var(--accent-color, #b98939) 42%, transparent)}
+.reception-picker-body{display:grid;gap:4px}
+.reception-picker-title{font-weight:700}
+.reception-picker-meta{color:var(--muted, #6b7280);font-size:.92rem}
+.reception-picker-empty{padding:12px;border:1px dashed var(--ring, rgba(148,163,184,.35));border-radius:12px;color:var(--muted, #6b7280)}
+.reception-search-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.reception-search-row .form-control{flex:1 1 240px}
+.reception-search-results{display:grid;gap:10px}
 @media (max-width: 980px){
   .reception-detail-grid{grid-template-columns:1fr}
 }
@@ -430,6 +449,80 @@
         {% if can_approve_reception and entry.status != 'approved' and entry.status != 'rejected' %}
         <form class="reception-action-form" method="post" action="{{ url_for('reception.approve_reception_entry', entry_id=entry.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          {% if entry.draft_type == 'new_treatment' and entry.source == 'reception_desk' %}
+          <section class="reception-route-box">
+            <h3 class="reception-route-title">{{ t('reception_approval_route_title') }}</h3>
+            <div class="reception-route-options">
+              <label class="reception-route-option">
+                <input type="radio" name="approval_route" value="create_new" {{ 'checked' if action_form.approval_route != 'attach_existing' else '' }}>
+                <div>
+                  <strong>{{ t('reception_approval_route_create_new') }}</strong>
+                  <span>{{ t('reception_approval_route_create_new_help') }}</span>
+                </div>
+              </label>
+              <label class="reception-route-option">
+                <input type="radio" name="approval_route" value="attach_existing" {{ 'checked' if action_form.approval_route == 'attach_existing' else '' }}>
+                <div>
+                  <strong>{{ t('reception_approval_route_attach_existing') }}</strong>
+                  <span>{{ t('reception_approval_route_attach_existing_help') }}</span>
+                </div>
+              </label>
+            </div>
+
+            <div class="reception-patient-picker" data-reception-patient-picker data-search-url="{{ url_for('reception.reception_patient_search') }}">
+              <div>
+                <strong>{{ t('reception_existing_patient_candidates_title') }}</strong>
+                {% if approval_patient_candidates %}
+                <div class="reception-picker-list reception-spaced">
+                  {% for patient in approval_patient_candidates %}
+                  <label class="reception-picker-card {{ 'selected' if action_form.target_patient_id == patient.id else '' }}">
+                    <input type="radio" name="target_patient_id" value="{{ patient.id }}" {{ 'checked' if action_form.target_patient_id == patient.id else '' }}>
+                    <div class="reception-picker-body">
+                      <span class="reception-picker-title">{{ patient.full_name or t('reception_unknown_patient') }}</span>
+                      <span class="reception-picker-meta">{{ t('file_no') }}: {{ patient.short_id or '—' }}</span>
+                      <span class="reception-picker-meta">{{ t('phone') }}: {{ patient.phone or '—' }} | {{ t('page_number') }}: {{ patient.page_number or '—' }}</span>
+                    </div>
+                  </label>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <div class="reception-picker-empty reception-spaced">{{ t('reception_existing_patient_candidates_empty') }}</div>
+                {% endif %}
+              </div>
+
+              {% if selected_approval_patient and not approval_patient_candidates|selectattr('id', 'equalto', selected_approval_patient.id)|list %}
+              <div>
+                <strong>{{ t('reception_existing_patient_selected_title') }}</strong>
+                <label class="reception-picker-card selected reception-spaced">
+                  <input type="radio" name="target_patient_id" value="{{ selected_approval_patient.id }}" checked>
+                  <div class="reception-picker-body">
+                    <span class="reception-picker-title">{{ selected_approval_patient.full_name or t('reception_unknown_patient') }}</span>
+                    <span class="reception-picker-meta">{{ t('file_no') }}: {{ selected_approval_patient.short_id or '—' }}</span>
+                    <span class="reception-picker-meta">{{ t('phone') }}: {{ selected_approval_patient.phone or '—' }} | {{ t('page_number') }}: {{ selected_approval_patient.page_number or '—' }}</span>
+                  </div>
+                </label>
+              </div>
+              {% endif %}
+
+              <div>
+                <label class="form-label" for="existing_patient_search">{{ t('reception_existing_patient_search_label') }}</label>
+                <div class="reception-search-row">
+                  <input
+                    class="form-control"
+                    id="existing_patient_search"
+                    type="search"
+                    placeholder="{{ t('reception_existing_patient_search_placeholder') }}"
+                    data-search-input
+                    autocomplete="off">
+                  <button class="btn secondary" type="button" data-search-button>{{ t('reception_existing_patient_search_button') }}</button>
+                </div>
+                <div class="reception-search-results reception-spaced" data-search-results></div>
+              </div>
+            </div>
+          </section>
+          {% else %}
+          <input type="hidden" name="approval_route" value="create_new">
+          {% endif %}
           <label class="reception-checkline" for="confirm_approve">
             <input id="confirm_approve" type="checkbox" name="confirm_approve" value="1" {{ 'checked' if action_form.confirm_approve else '' }}>
             <span>{{ t(approval_confirmation_key) }}</span>
@@ -463,4 +556,102 @@
     {% endif %}
   </section>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  var picker = document.querySelector('[data-reception-patient-picker]');
+  if (!picker) return;
+
+  var searchUrl = picker.getAttribute('data-search-url');
+  var input = picker.querySelector('[data-search-input]');
+  var button = picker.querySelector('[data-search-button]');
+  var results = picker.querySelector('[data-search-results]');
+  if (!searchUrl || !input || !button || !results) return;
+
+  function selectedPatientId() {
+    var checked = picker.querySelector('input[name="target_patient_id"]:checked');
+    return checked ? checked.value : '';
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function(char) {
+      return {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char];
+    });
+  }
+
+  function renderResults(items) {
+    if (!items.length) {
+      results.innerHTML = '<div class="reception-picker-empty">{{ t("reception_existing_patient_search_empty")|e }}</div>';
+      return;
+    }
+    var currentValue = selectedPatientId();
+    results.innerHTML = items.map(function(patient) {
+      var checked = currentValue && currentValue === patient.id ? ' checked' : '';
+      var selectedClass = checked ? ' selected' : '';
+      return (
+        '<label class="reception-picker-card' + selectedClass + '">' +
+          '<input type="radio" name="target_patient_id" value="' + escapeHtml(patient.id) + '"' + checked + '>' +
+          '<div class="reception-picker-body">' +
+            '<span class="reception-picker-title">' + escapeHtml(patient.full_name || '{{ t("reception_unknown_patient")|e }}') + '</span>' +
+            '<span class="reception-picker-meta">{{ t("file_no")|e }}: ' + escapeHtml(patient.short_id || '—') + '</span>' +
+            '<span class="reception-picker-meta">{{ t("phone")|e }}: ' + escapeHtml(patient.phone || '—') + ' | {{ t("page_number")|e }}: ' + escapeHtml(patient.page_number || '—') + '</span>' +
+          '</div>' +
+        '</label>'
+      );
+    }).join('');
+  }
+
+  function updateSelectedCards() {
+    picker.querySelectorAll('.reception-picker-card').forEach(function(card) {
+      var inputEl = card.querySelector('input[name="target_patient_id"]');
+      card.classList.toggle('selected', !!(inputEl && inputEl.checked));
+    });
+  }
+
+  async function runSearch() {
+    var query = input.value.trim();
+    if (!query) {
+      results.innerHTML = '';
+      return;
+    }
+    button.disabled = true;
+    try {
+      var response = await fetch(searchUrl + '?q=' + encodeURIComponent(query), {
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      });
+      if (!response.ok) {
+        throw new Error('search failed');
+      }
+      renderResults(await response.json());
+      updateSelectedCards();
+    } catch (error) {
+      results.innerHTML = '<div class="reception-picker-empty">{{ t("reception_existing_patient_search_error")|e }}</div>';
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  button.addEventListener('click', runSearch);
+  input.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      runSearch();
+    }
+  });
+  picker.addEventListener('change', function(event) {
+    if (event.target && event.target.name === 'target_patient_id') {
+      updateSelectedCards();
+    }
+  });
+})();
+</script>
 {% endblock %}

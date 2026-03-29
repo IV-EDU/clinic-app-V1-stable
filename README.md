@@ -34,12 +34,12 @@ It includes:
 - Returned treatment-correction drafts can now be opened, edited, and resubmitted by the original receptionist.
 - Managers can now open the same area to review pending drafts and mark them as held, returned, rejected, or approved.
 - Current approval is still intentionally narrow:
-  - Desk-origin `new_treatment` drafts can create a new live patient file and treatment row.
+  - Desk-origin `new_treatment` drafts can either create a new live patient file or attach the new treatment to one manager-chosen existing patient.
   - Treatment-card `new_payment` drafts can add one live payment onto the locked existing treatment.
   - Treatment-card `edit_payment` drafts can update the locked live payment only.
   - Patient-file `edit_patient` drafts can update the locked live patient profile only.
   - Treatment-card `edit_treatment` drafts can update the locked live treatment only.
-- Matching overrides and desk-origin payment drafts are still deferred to later Reception slices.
+- Automatic match-strength polish, broader matching overrides, and desk-origin payment drafts are still deferred to later Reception slices.
 
 This folder "Clinic-App-Local" is the main project folder.
 

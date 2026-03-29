@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from flask import Blueprint, abort, flash, redirect, request, url_for
+from flask import Blueprint, abort, flash, jsonify, redirect, request, url_for
 from flask_login import current_user, login_required
 
 from clinic_app.services.doctor_colors import ANY_DOCTOR_ID, ANY_DOCTOR_LABEL, get_active_doctor_options
@@ -15,10 +15,12 @@ from clinic_app.services.reception_entries import (
     approve_new_payment_entry,
     approve_new_treatment_entry,
     create_entry,
+    get_reception_review_patient,
     get_entry,
     get_locked_patient_context,
     get_locked_payment_context,
     get_locked_treatment_context,
+    list_reception_candidate_patients,
     hold_entry,
     list_entries,
     list_entry_events,
@@ -26,6 +28,7 @@ from clinic_app.services.reception_entries import (
     reject_entry,
     resubmit_returned_entry,
     return_entry,
+    search_reception_review_patients,
     validate_entry_payload,
 )
 from clinic_app.services.ui import render_page
@@ -610,6 +613,23 @@ def _detail_context(
         )
     if entry.get("draft_type") == "edit_patient" and entry.get("locked_patient_id"):
         locked_patient_context = get_locked_patient_context(entry["locked_patient_id"])
+    base_action_form = {
+        "hold_note": "",
+        "return_reason": "",
+        "reject_reason": "",
+        "confirm_approve": "",
+        "approval_route": "create_new",
+        "target_patient_id": "",
+    }
+    if action_form:
+        base_action_form.update(action_form)
+    approval_patient_candidates: list[dict] = []
+    selected_approval_patient = None
+    if entry.get("draft_type") == "new_treatment" and entry.get("source") == "reception_desk":
+        approval_patient_candidates = list_reception_candidate_patients(entry)
+        selected_patient_id = (base_action_form.get("target_patient_id") or "").strip()
+        if selected_patient_id:
+            selected_approval_patient = get_reception_review_patient(selected_patient_id)
     return {
         "show_back": False,
         "entry": entry,
@@ -622,8 +642,10 @@ def _detail_context(
         "can_approve_reception": _can_approve(),
         "can_create_reception": _can_create(),
         "action_errors": action_errors or [],
-        "action_form": action_form or {"hold_note": "", "return_reason": "", "reject_reason": "", "confirm_approve": ""},
+        "action_form": base_action_form,
         "approval_confirmation_key": _approval_confirmation_key(entry),
+        "approval_patient_candidates": approval_patient_candidates,
+        "selected_approval_patient": selected_approval_patient,
     }
 
 
@@ -1300,6 +1322,17 @@ def reception_entry_detail(entry_id: str):
     )
 
 
+@bp.route("/reception/api/patients/search", methods=["GET"])
+@login_required
+def reception_patient_search():
+    if not _has_manager_visibility():
+        abort(403)
+    query = (request.args.get("q") or "").strip()
+    if not query:
+        return jsonify([])
+    return jsonify(search_reception_review_patients(query, limit=8))
+
+
 @bp.route("/reception/entries/<entry_id>/edit", methods=["GET"])
 @login_required
 def edit_reception_entry(entry_id: str):
@@ -1619,12 +1652,21 @@ def approve_reception_entry(entry_id: str):
     if not _can_approve():
         abort(403)
     entry = _find_entry_or_404(entry_id)
+    approval_route = (request.form.get("approval_route") or "").strip().lower()
+    target_patient_id = (request.form.get("target_patient_id") or "").strip()
     confirm_approve = (request.form.get("confirm_approve") or "").strip().lower()
     if confirm_approve not in {"1", "true", "yes", "on"}:
         return _render_detail(
             entry,
             action_errors=[T("reception_approve_confirmation_required")],
-            action_form={"hold_note": "", "return_reason": "", "reject_reason": "", "confirm_approve": ""},
+            action_form={
+                "hold_note": "",
+                "return_reason": "",
+                "reject_reason": "",
+                "confirm_approve": "",
+                "approval_route": approval_route or "create_new",
+                "target_patient_id": target_patient_id,
+            },
             status_code=400,
         )
     try:
@@ -1641,14 +1683,26 @@ def approve_reception_entry(entry_id: str):
             approve_edit_treatment_entry(entry_id, actor_user_id=current_user.id)
             success_key = "reception_treatment_draft_approved"
         else:
-            approve_new_treatment_entry(entry_id, actor_user_id=current_user.id)
+            approve_new_treatment_entry(
+                entry_id,
+                actor_user_id=current_user.id,
+                approval_route=approval_route or "create_new",
+                target_patient_id=target_patient_id or None,
+            )
             success_key = "reception_draft_approved"
     except ValueError as exc:
         refreshed_entry = _find_entry_or_404(entry_id)
         return _render_detail(
             refreshed_entry,
             action_errors=[str(exc)],
-            action_form={"hold_note": "", "return_reason": "", "reject_reason": "", "confirm_approve": "1"},
+            action_form={
+                "hold_note": "",
+                "return_reason": "",
+                "reject_reason": "",
+                "confirm_approve": "1",
+                "approval_route": approval_route or "create_new",
+                "target_patient_id": target_patient_id,
+            },
             status_code=400,
         )
     flash(T(success_key), "ok")

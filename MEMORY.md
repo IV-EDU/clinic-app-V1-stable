@@ -115,6 +115,22 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 
 ## Template for New Entries
 
+### Session: Reception existing-patient routing for desk-origin treatment drafts
+**Date:** 2026-03-29
+**What was done:**
+- Extended manager approval for desk-origin `new_treatment` drafts so approvers can either create a new patient or attach the new treatment to one chosen existing patient.
+- Added inline existing-patient candidate cards plus a Reception-scoped patient search endpoint on the draft detail page for manager review.
+- Kept the routing choice read-only until final approval; no manager patient choice is persisted onto the draft before posting.
+- Added focused Reception review tests for candidate rendering, patient search, existing-patient approval, missing target validation, and stale selected-patient failure.
+
+**Current state:**
+- Desk-origin `new_treatment` approval now supports both new-patient creation and manager-chosen existing-patient attachment.
+- Focused Reception review/service suite passes: 65 tests (`python -m pytest tests/test_reception_review_routes.py tests/test_reception_entries_service.py -q`).
+
+**Key decisions:**
+- Existing-patient routing updates only the live treatment posting target; it does not edit the chosen patient profile in this slice.
+- Matching polish is still intentionally limited to inline candidates plus manual search; no auto-selection or broader override logic was added.
+
 ### Session: Reception same-record treatment correction
 **Date:** 2026-03-29
 **What was done:**

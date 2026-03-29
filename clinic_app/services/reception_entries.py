@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
+from clinic_app.services.arabic_search import normalize_arabic
 from clinic_app.services.audit import write_event
 from clinic_app.services.database import db as raw_db
 from clinic_app.services.patients import (
@@ -126,6 +127,26 @@ def _column_exists(conn, table_name: str, column_name: str) -> bool:
 
 def _normalize_phone_digits(value: str | None) -> str:
     return "".join(ch for ch in str(value or "") if ch.isdigit())
+
+
+def _patient_page_expr(conn, *, alias: str = "p") -> str:
+    has_primary_page = _column_exists(conn, "patients", "primary_page_number")
+    has_pages_table = _table_exists(conn, "patient_pages")
+    primary_expr = f"{alias}.primary_page_number" if has_primary_page else "NULL"
+    if not has_pages_table:
+        return primary_expr
+    fallback_expr = (
+        "(\n"
+        "                SELECT pp.page_number\n"
+        "                FROM patient_pages pp\n"
+        f"                WHERE pp.patient_id = {alias}.id\n"
+        "                ORDER BY pp.rowid DESC\n"
+        "                LIMIT 1\n"
+        "            )"
+    )
+    if has_primary_page:
+        return f"COALESCE({primary_expr}, {fallback_expr})"
+    return fallback_expr
 
 
 def _visit_type_flags(raw_value: str | None) -> tuple[int, int]:
@@ -1211,6 +1232,178 @@ def _create_live_treatment_from_entry(conn, entry: dict[str, Any], *, patient_id
     return treatment_id
 
 
+def _get_review_patient_row(conn, patient_id: str):
+    page_expr = _patient_page_expr(conn)
+    return conn.execute(
+        f"""
+        SELECT p.id, p.full_name, p.short_id, p.phone, {page_expr} AS page_number
+        FROM patients p
+        WHERE p.id=?
+        LIMIT 1
+        """,
+        (patient_id,),
+    ).fetchone()
+
+
+def _search_review_patient_rows(conn, query: str, *, limit: int = 25) -> list[dict[str, Any]]:
+    query_text = _text(query)
+    if not query_text:
+        return []
+
+    norm_query = normalize_arabic(query_text) or query_text
+    text_like = f"%{query_text}%"
+    norm_like = f"%{norm_query}%"
+    digits = _normalize_phone_digits(query_text)
+    digits_like = f"%{digits}%" if digits else None
+    page_expr = _patient_page_expr(conn)
+    has_patient_phones = _table_exists(conn, "patient_phones")
+
+    conditions = [
+        "normalize_arabic(p.full_name) LIKE ?",
+        "p.short_id LIKE ?",
+        f"{page_expr} LIKE ?",
+    ]
+    params: list[Any] = [norm_like, text_like, text_like]
+    if digits_like:
+        conditions.extend(
+            [
+                "p.phone LIKE ?",
+                "replace(replace(replace(replace(replace(p.phone,' ',''),'-',''),'+',''),'(',''),')','') LIKE ?",
+            ]
+        )
+        params.extend([text_like, digits_like])
+        if has_patient_phones:
+            conditions.append(
+                """
+                EXISTS (
+                    SELECT 1
+                    FROM patient_phones ph
+                    WHERE ph.patient_id = p.id
+                      AND (
+                          ph.phone LIKE ?
+                          OR ph.phone_normalized LIKE ?
+                          OR replace(replace(replace(replace(replace(ph.phone,' ',''),'-',''),'+',''),'(',''),')','') LIKE ?
+                      )
+                )
+                """
+            )
+            params.extend([text_like, digits_like, digits_like])
+
+    rows = conn.execute(
+        f"""
+        SELECT p.id, p.full_name, p.short_id, p.phone, {page_expr} AS page_number
+        FROM patients p
+        WHERE {' OR '.join(conditions)}
+        ORDER BY p.rowid DESC
+        LIMIT ?
+        """,
+        (*params, max(limit, 1)),
+    ).fetchall()
+
+    scored_rows: list[tuple[int, int, dict[str, Any]]] = []
+    lowered_query = query_text.lower()
+    for index, row in enumerate(rows):
+        patient = {
+            "id": row["id"],
+            "full_name": row["full_name"] or "",
+            "short_id": row["short_id"] or "",
+            "phone": row["phone"] or "",
+            "page_number": row["page_number"] or "",
+        }
+        score = 0
+        normalized_name = normalize_arabic(patient["full_name"]) or patient["full_name"]
+        if normalized_name == norm_query:
+            score += 80
+        elif norm_query in normalized_name:
+            score += 30
+        if patient["short_id"].lower() == lowered_query:
+            score += 70
+        elif lowered_query and lowered_query in patient["short_id"].lower():
+            score += 20
+        if patient["page_number"].lower() == lowered_query:
+            score += 65
+        elif lowered_query and lowered_query in patient["page_number"].lower():
+            score += 20
+        if digits:
+            phone_digits = _normalize_phone_digits(patient["phone"])
+            if phone_digits == digits:
+                score += 75
+            elif digits in phone_digits:
+                score += 25
+        scored_rows.append((score, index, patient))
+
+    scored_rows.sort(key=lambda item: (-item[0], item[1]))
+    return [patient for _, _, patient in scored_rows[:limit]]
+
+
+def search_reception_review_patients(
+    query: str,
+    *,
+    limit: int = 8,
+    conn=None,
+) -> list[dict[str, Any]]:
+    owns_connection = conn is None
+    conn = conn or raw_db()
+    try:
+        return _search_review_patient_rows(conn, query, limit=limit)
+    finally:
+        if owns_connection:
+            conn.close()
+
+
+def list_reception_candidate_patients(
+    entry: dict[str, Any],
+    *,
+    limit: int = 5,
+    conn=None,
+) -> list[dict[str, Any]]:
+    owns_connection = conn is None
+    conn = conn or raw_db()
+    try:
+        seen_ids: set[str] = set()
+        candidates: list[dict[str, Any]] = []
+        for clue in (
+            _text(entry.get("phone")),
+            _text(entry.get("page_number")),
+            _text(entry.get("patient_name")),
+        ):
+            if not clue:
+                continue
+            for patient in _search_review_patient_rows(conn, clue, limit=max(limit * 2, 6)):
+                if patient["id"] in seen_ids:
+                    continue
+                seen_ids.add(patient["id"])
+                candidates.append(patient)
+                if len(candidates) >= limit:
+                    return candidates
+        return candidates
+    finally:
+        if owns_connection:
+            conn.close()
+
+
+def get_reception_review_patient(patient_id: str, *, conn=None) -> dict[str, Any] | None:
+    patient_id = _text(patient_id)
+    if not patient_id:
+        return None
+    owns_connection = conn is None
+    conn = conn or raw_db()
+    try:
+        row = _get_review_patient_row(conn, patient_id)
+        if not row:
+            return None
+        return {
+            "id": row["id"],
+            "full_name": row["full_name"] or "",
+            "short_id": row["short_id"] or "",
+            "phone": row["phone"] or "",
+            "page_number": row["page_number"] or "",
+        }
+    finally:
+        if owns_connection:
+            conn.close()
+
+
 def _treatment_correction_payload(context: dict[str, Any] | None) -> dict[str, Any]:
     context = context or {}
     return {
@@ -1581,11 +1774,18 @@ def approve_edit_treatment_entry(entry_id: str, *, actor_user_id: str) -> dict[s
     return get_entry(entry_id)
 
 
-def approve_new_treatment_entry(entry_id: str, *, actor_user_id: str) -> dict[str, Any]:
+def approve_new_treatment_entry(
+    entry_id: str,
+    *,
+    actor_user_id: str,
+    approval_route: str = "create_new",
+    target_patient_id: str | None = None,
+) -> dict[str, Any]:
     now = _utc_now_iso()
     conn = raw_db()
-    created_patient_id: str | None = None
+    live_patient_id: str | None = None
     created_treatment_id: str | None = None
+    route_value = _text(approval_route).lower() or "create_new"
     try:
         conn.execute("PRAGMA foreign_keys=ON")
         entry = _require_active_entry(_fetch_entry(conn, entry_id), action="approve")
@@ -1596,13 +1796,21 @@ def approve_new_treatment_entry(entry_id: str, *, actor_user_id: str) -> dict[st
             raise ValueError("Locked-context drafts are not supported by this approval step.")
         if entry.get("target_patient_id") or entry.get("target_treatment_id") or entry.get("target_payment_id"):
             raise ValueError("This draft already has live targets and cannot be approved again.")
-        if entry.get("patient_intent") not in {None, "", "unknown", "new_patient"}:
-            raise ValueError("Only new-patient desk drafts can be approved in this slice.")
         if entry.get("status") not in {"new", "edited", "held"}:
             raise ValueError("Only pending drafts can be approved.")
+        if route_value not in {"create_new", "attach_existing"}:
+            raise ValueError("Choose how this draft should be posted before approval.")
 
-        created_patient_id = _create_live_patient_from_entry(conn, entry)
-        created_treatment_id = _create_live_treatment_from_entry(conn, entry, patient_id=created_patient_id)
+        if route_value == "attach_existing":
+            live_patient_id = _nullable_text(target_patient_id)
+            if not live_patient_id:
+                raise ValueError("Choose an existing patient before approval.")
+            if not get_reception_review_patient(live_patient_id, conn=conn):
+                raise ValueError("The selected live patient no longer exists. Review the draft again before approving.")
+        else:
+            live_patient_id = _create_live_patient_from_entry(conn, entry)
+
+        created_treatment_id = _create_live_treatment_from_entry(conn, entry, patient_id=live_patient_id)
 
         conn.execute(
             """
@@ -1626,7 +1834,7 @@ def approve_new_treatment_entry(entry_id: str, *, actor_user_id: str) -> dict[st
                 now,
                 now,
                 "approved",
-                created_patient_id,
+                live_patient_id,
                 created_treatment_id,
                 created_treatment_id,
                 entry_id,
@@ -1641,17 +1849,19 @@ def approve_new_treatment_entry(entry_id: str, *, actor_user_id: str) -> dict[st
             to_status="approved",
             note=None,
             meta_json={
-                "target_patient_id": created_patient_id,
+                "target_patient_id": live_patient_id,
                 "target_treatment_id": created_treatment_id,
+                "approval_route": route_value,
             },
             created_at=now,
         )
         conn.commit()
-        migrate_patients_drop_unique_short_id(conn)
+        if route_value == "create_new":
+            migrate_patients_drop_unique_short_id(conn)
     finally:
         conn.close()
 
-    if created_treatment_id and created_patient_id:
+    if created_treatment_id and live_patient_id:
         try:
             write_event(
                 actor_user_id,
@@ -1659,9 +1869,10 @@ def approve_new_treatment_entry(entry_id: str, *, actor_user_id: str) -> dict[st
                 entity="payment",
                 entity_id=created_treatment_id,
                 meta={
-                    "patient_id": created_patient_id,
+                    "patient_id": live_patient_id,
                     "source": "reception_approval",
                     "reception_entry_id": entry_id,
+                    "approval_route": route_value,
                 },
             )
         except Exception:

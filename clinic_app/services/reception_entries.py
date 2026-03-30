@@ -273,7 +273,7 @@ def _require_returned_resubmittable_entry(row, *, actor_user_id: str) -> dict[st
     if entry.get("submitted_by_user_id") != actor_user_id:
         raise ValueError("You can only edit your own returned drafts.")
     supports_resubmit = (
-        (entry.get("draft_type") == "new_treatment" and entry.get("source") == "reception_desk")
+        (entry.get("draft_type") == "new_treatment" and entry.get("source") in {"reception_desk", "patient_file"})
         or (entry.get("draft_type") == "edit_patient" and entry.get("source") == "patient_file")
         or (entry.get("draft_type") == "edit_payment" and entry.get("source") == "treatment_card")
         or (entry.get("draft_type") == "edit_treatment" and entry.get("source") == "treatment_card")
@@ -290,7 +290,7 @@ def _require_manager_editable_entry(row) -> dict[str, Any]:
         raise ValueError("Reception draft was not found.")
     entry = _decode_row(row)
     supports_manager_edit = (
-        (entry.get("draft_type") == "new_treatment" and entry.get("source") == "reception_desk")
+        (entry.get("draft_type") == "new_treatment" and entry.get("source") in {"reception_desk", "patient_file"})
         or (entry.get("draft_type") == "new_payment" and entry.get("source") == "treatment_card")
         or (entry.get("draft_type") == "edit_patient" and entry.get("source") == "patient_file")
         or (entry.get("draft_type") == "edit_payment" and entry.get("source") == "treatment_card")
@@ -1827,9 +1827,9 @@ def approve_new_treatment_entry(
         conn.execute("PRAGMA foreign_keys=ON")
         entry = _require_active_entry(_fetch_entry(conn, entry_id), action="approve")
 
-        if entry.get("draft_type") != "new_treatment" or entry.get("source") != "reception_desk":
-            raise ValueError("Only desk-origin treatment drafts can be approved in this slice.")
-        if entry.get("locked_patient_id") or entry.get("locked_treatment_id") or entry.get("locked_payment_id"):
+        if entry.get("draft_type") != "new_treatment" or entry.get("source") not in {"reception_desk", "patient_file"}:
+            raise ValueError("Only supported new treatment drafts can be approved in this slice.")
+        if entry.get("locked_treatment_id") or entry.get("locked_payment_id"):
             raise ValueError("Locked-context drafts are not supported by this approval step.")
         if entry.get("target_patient_id") or entry.get("target_treatment_id") or entry.get("target_payment_id"):
             raise ValueError("This draft already has live targets and cannot be approved again.")
@@ -1838,7 +1838,14 @@ def approve_new_treatment_entry(
         if route_value not in {"create_new", "attach_existing"}:
             raise ValueError("Choose how this draft should be posted before approval.")
 
-        if route_value == "attach_existing":
+        if entry.get("source") == "patient_file":
+            live_patient_id = _nullable_text(entry.get("locked_patient_id"))
+            if not live_patient_id:
+                raise ValueError("Locked patient context is required for this treatment draft.")
+            if not get_reception_review_patient(live_patient_id, conn=conn):
+                raise ValueError("The locked live patient no longer exists. Review the draft again before approving.")
+            route_value = "locked_patient"
+        elif route_value == "attach_existing":
             live_patient_id = _nullable_text(target_patient_id)
             if not live_patient_id:
                 raise ValueError("Choose an existing patient before approval.")

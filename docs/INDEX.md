@@ -300,13 +300,14 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 - **Services**
   - Reception permission/bootstrap: `clinic_app/services/reception_bootstrap.py`
-  - Reception draft storage/service, shared workflow-history query, manager-side patient search, and desk-origin treatment approval routing: `clinic_app/services/reception_entries.py`
+  - Reception draft storage/service, shared workflow-history query, manager-side patient search, and new-treatment approval routing for both desk-origin and patient-file locked drafts: `clinic_app/services/reception_entries.py`
   - Shared live payment posting + balance recompute: `clinic_app/services/payments.py`
 
 - **Key routes**
   - `/reception` → `reception.index` (`view=desk`, `view=queue`, `view=history`)
   - `/reception/api/patients/search` → `reception.reception_patient_search`
   - `/reception/entries` → `reception.create_reception_entry`
+  - `/reception/entries/new-treatment` → `reception.new_treatment_entry` / `reception.create_new_treatment_entry`
   - `/reception/entries/new-payment` → `reception.new_payment_entry` / `reception.create_new_payment_entry`
   - `/reception/entries/new-payment-correction` → `reception.new_payment_correction_entry` / `reception.create_new_payment_correction_entry`
   - `/reception/entries/new-patient-correction` → `reception.new_patient_correction_entry` / `reception.create_new_patient_correction_entry`
@@ -378,7 +379,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - Auth / security: `test_auth_bootstrap.py`, `test_bypass_csrf.py`, `test_security_features.py`, `test_admin_csrf_diagnostic.py`, `test_admin_roles.py`, `test_admin_users.py`
   - Patients: `test_medical_save.py`, `test_import_dates.py`, `test_diag_set.py`
   - Payments: `test_add_payment_route.py`, `test_payments_delete_treatment_cascade.py`, `test_payments_modal_validation_doctor_required.py`, `test_payments_overall_remaining_grouped.py`, `test_payments_remove_initial_keeps_children.py`, `test_admin_audit_payments.py`
-  - Reception + locked payment/patient/treatment-correction drafts: `test_reception_routes.py`, `test_reception_review_routes.py`, `test_reception_payment_routes.py`, `test_reception_patient_correction_routes.py`, `test_reception_treatment_correction_routes.py`, `test_reception_entries_service.py`, `test_payments_add_to_treatment.py`
+  - Reception + locked payment/patient/treatment-correction drafts: `test_reception_routes.py`, `test_reception_review_routes.py`, `test_reception_patient_treatment_routes.py`, `test_reception_payment_routes.py`, `test_reception_patient_correction_routes.py`, `test_reception_treatment_correction_routes.py`, `test_reception_entries_service.py`, `test_payments_add_to_treatment.py`
   - Live patient profile edit regression: `test_patients_edit_profile.py`
   - Appointments: `test_vanilla.py`, `test_vanilla_route.py`, `test_appointments_receipts.py`
   - Reports: `test_reports_pagination.py`

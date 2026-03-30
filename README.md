@@ -24,11 +24,13 @@ It includes:
 ### Reception Workflow
 - The new Reception area lives at `/reception`.
 - Reception staff can submit treatment drafts there without touching the live patient file.
+- Reception staff can now also open a locked treatment-draft page from a patient file and send that treatment for manager review without retyping patient identity.
 - Reception staff can now also open a locked payment-draft page from a specific treatment card and send that payment for manager review.
 - Reception staff can now also open a locked payment-correction draft from either the initial treatment payment row or a later child payment row and send same-record payment changes for manager review.
 - Reception staff can now also open a locked patient-correction draft from a patient file and send same-record profile changes for manager review.
 - Reception staff can now also open a locked treatment-correction draft from a treatment card and send same-record treatment changes for manager review.
 - Returned Desk-origin treatment drafts can now be opened, edited, and resubmitted from the same Reception area.
+- Returned patient-file treatment drafts can now be opened, edited, and resubmitted by the original receptionist.
 - Returned patient-correction drafts can now be opened, edited, and resubmitted by the original receptionist.
 - Returned payment-correction drafts can now be opened, edited, and resubmitted by the original receptionist.
 - Returned treatment-correction drafts can now be opened, edited, and resubmitted by the original receptionist.
@@ -36,6 +38,7 @@ It includes:
 - The same `/reception` area now includes a shared History tab with grouped workflow events; receptionists see their own activity there, while managers/reviewers can see all Reception workflow activity.
 - Current approval is still intentionally narrow:
   - Desk-origin `new_treatment` drafts can either create a new live patient file or attach the new treatment to one manager-chosen existing patient.
+  - Patient-file `new_treatment` drafts can create one new live treatment on the same locked patient only.
   - Treatment-card `new_payment` drafts can add one live payment onto the locked existing treatment.
   - Treatment-card `edit_payment` drafts can update the locked live payment only.
   - Patient-file `edit_patient` drafts can update the locked live patient profile only.

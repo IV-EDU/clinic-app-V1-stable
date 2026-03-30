@@ -46,7 +46,7 @@
   {% endif %}
 
   <article class="card reception-edit-card">
-    {% set form_action = url_for('reception.submit_reception_entry_edit', entry_id=entry.id) %}
+    {% set form_action = form_action if form_action else url_for('reception.submit_reception_entry_edit', entry_id=entry.id) %}
     {% include 'reception/_entry_form.html' %}
   </article>
 </div>

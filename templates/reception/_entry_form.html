@@ -9,7 +9,23 @@
 {% endif %}
 <form method="post" action="{{ form_action }}">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if locked_patient %}
+  <input type="hidden" name="patient_id" value="{{ locked_patient.patient_id }}">
+  {% endif %}
   <div class="reception-form-grid">
+    {% if locked_patient %}
+    <div class="full">
+      <div class="reception-return-card">
+        <div class="reception-return-label">{{ t('reception_locked_patient_summary') }}</div>
+        <div class="reception-return-text">{{ locked_patient.patient_name or locked_patient.full_name or '—' }}</div>
+        <div class="reception-note">
+          {{ t('file_no') }}: {{ locked_patient.short_id or '—' }}
+          • {{ t('phone') }}: {{ locked_patient.primary_phone or '—' }}
+          • {{ t('page_number') }}: {{ locked_patient.primary_page_number or '—' }}
+        </div>
+      </div>
+    </div>
+    {% else %}
     <div>
       <label class="form-label">{{ t('patient_name') }}</label>
       <input class="form-control" type="text" name="patient_name" value="{{ reception_form.patient_name }}">
@@ -22,6 +38,7 @@
       <label class="form-label">{{ t('page_number') }}</label>
       <input class="form-control" type="text" name="page_number" value="{{ reception_form.page_number }}">
     </div>
+    {% endif %}
     <div>
       <label class="form-label">{{ t('date') }}</label>
       <input class="form-control" type="date" name="visit_date" value="{{ reception_form.visit_date }}">

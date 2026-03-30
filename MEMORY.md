@@ -12,12 +12,12 @@
 **Branch:** `main`
 **Data:** Production use (do not break).
 **Login:** `admin` / `admin` (NEVER change this)
-**Tests:** Last known Reception/patient-profile/RBAC regression subset: 80 passing (verified March 17, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
+**Tests:** Last known focused Reception subset for patient-file `new_treatment` + review/service regressions: 83 passing (verified March 30, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
 
 ### Fast ramp (don’t re-discover the repo)
 
 - Read `docs/AGENT_HANDOFF.md` for the app map + the locked Reception Desk decisions.
-- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, a narrow approval path for Desk-origin `new_treatment`, a locked treatment-card `new_payment` draft/approval path, and same-record `edit_patient` plus `edit_treatment` correction paths.
+- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, approval for Desk-origin and patient-file locked `new_treatment`, a locked treatment-card `new_payment` draft/approval path, and same-record `edit_patient`, `edit_payment`, and `edit_treatment` correction paths.
 - Older historical session notes were archived into `MEMORY_ARCHIVE.md`.
 
 ---
@@ -114,6 +114,23 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 ---
 
 ## Template for New Entries
+
+### Session: Reception patient-file new treatment drafts
+**Date:** 2026-03-30
+**What was done:**
+- Added a locked patient-file `new_treatment` draft route pair at `/reception/entries/new-treatment` so reception can launch a treatment draft directly from the patient file without retyping patient identity.
+- Reused the shared Reception treatment form with a locked-patient summary state, plus a new patient-detail launcher button for `reception_entries:create` users.
+- Extended Reception manager edit, returned-draft resubmit, and approval handling so patient-file `new_treatment` drafts stay locked to the same live patient and never show the desk-origin patient chooser.
+- Added focused route/review coverage for launcher visibility, create validation, manager detail/edit, same-patient approval, stale locked-patient blocking, and returned-draft resubmission.
+
+**Current state:**
+- Reception now supports `new_treatment` from both `reception_desk` and `patient_file`.
+- Patient-file `new_treatment` approval always posts onto the same locked patient; it does not create a new patient or attach to a searched patient.
+- Focused Reception subset passes: 83 tests across `test_reception_patient_treatment_routes`, `test_reception_review_routes`, and `test_reception_entries_service`.
+
+**Key decisions:**
+- Reused the existing shared treatment-draft form instead of creating a second patient-file-only form; the patient context is now rendered as read-only/locked.
+- Kept desk-origin `new_treatment` routing unchanged; only patient-file drafts bypass the existing-patient chooser and use the locked live patient.
 
 ### Session: Reception shared history view
 **Date:** 2026-03-30

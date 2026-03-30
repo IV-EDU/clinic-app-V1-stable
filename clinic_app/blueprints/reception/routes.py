@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import OrderedDict
 from datetime import date
 
 from flask import Blueprint, abort, flash, jsonify, redirect, request, url_for
@@ -21,6 +22,7 @@ from clinic_app.services.reception_entries import (
     get_locked_payment_context,
     get_locked_treatment_context,
     list_reception_candidate_patients,
+    list_history_events,
     hold_entry,
     list_entries,
     list_entry_events,
@@ -472,6 +474,67 @@ def _decorate_entry(entry: dict) -> dict:
     return entry
 
 
+def _draft_type_label(entry: dict) -> str:
+    draft_type = (entry.get("draft_type") or "").strip().lower()
+    if draft_type == "new_payment":
+        return T("reception_history_kind_new_payment")
+    if draft_type == "edit_payment":
+        return T("reception_payment_correction_kind")
+    if draft_type == "edit_patient":
+        return T("reception_patient_correction_kind")
+    if draft_type == "edit_treatment":
+        return T("reception_treatment_correction_kind")
+    if draft_type == "new_visit_only":
+        return T("reception_history_kind_visit_only")
+    return T("reception_history_kind_new_treatment")
+
+
+def _source_label(entry: dict) -> str:
+    source = (entry.get("source") or "").strip().lower()
+    if source == "patient_file":
+        return T("reception_history_source_patient_file")
+    if source == "treatment_card":
+        return T("reception_history_source_treatment_card")
+    return T("reception_history_source_desk")
+
+
+def _history_action_label(event: dict) -> str:
+    action = (event.get("action") or "").strip().lower()
+    return T(f"reception_history_action_{action}") if action in {
+        "submitted",
+        "edited",
+        "returned",
+        "held",
+        "rejected",
+        "approved",
+    } else action.replace("_", " ").title()
+
+
+def _decorate_history_event(event: dict) -> dict:
+    event["action_label"] = _history_action_label(event)
+    event["draft_type_label"] = _draft_type_label(event)
+    event["source_label"] = _source_label(event)
+    event["actor_label"] = (event.get("actor_username") or event.get("actor_user_id") or "").strip()
+    event["patient_label"] = (event.get("patient_name") or "").strip() or T("reception_unknown_patient")
+    event["summary_label"] = event.get("draft_type_label") or T("reception_history_kind_new_treatment")
+    treatment_text = (event.get("treatment_text") or "").strip()
+    if treatment_text and event.get("draft_type") not in {"edit_patient", "edit_payment", "edit_treatment"}:
+        event["summary_label"] = treatment_text
+    event["date_group"] = (event.get("created_at") or "")[:10] or ""
+    event["can_open_detail"] = _can_access_entry(event)
+    return event
+
+
+def _group_history_events(events: list[dict]) -> list[dict]:
+    groups: OrderedDict[str, list[dict]] = OrderedDict()
+    for event in events:
+        groups.setdefault(event.get("date_group") or "", []).append(event)
+    return [
+        {"date": date_label, "events": grouped_events}
+        for date_label, grouped_events in groups.items()
+    ]
+
+
 def _approval_confirmation_key(entry: dict) -> str:
     if entry.get("draft_type") == "new_payment":
         return "reception_payment_approve_confirmation_label"
@@ -532,6 +595,28 @@ def _build_queue_context() -> dict:
         "reception_entries": _recent_entries_for_current_user() if _can_create() else [],
         "reception_summary": _build_summary(_recent_entries_for_current_user()) if _can_create() else {"open_drafts": 0, "returned": 0, "waiting_review": 0},
         "queue_entries": queue_entries,
+    }
+
+
+def _build_history_context() -> dict:
+    history_events = list_history_events(
+        submitted_by_user_id=None if _can_review() else current_user.id,
+        limit=200,
+    )
+    for event in history_events:
+        _decorate_history_event(event)
+    return {
+        "show_back": False,
+        "reception_view": "history",
+        "can_create_reception": _can_create(),
+        "can_review_reception": _can_review(),
+        "doctor_options": _doctor_options(),
+        "reception_form": _default_form_data(),
+        "reception_errors": [],
+        "reception_entries": _recent_entries_for_current_user() if _can_create() else [],
+        "reception_summary": _build_summary(_recent_entries_for_current_user()) if _can_create() else {"open_drafts": 0, "returned": 0, "waiting_review": 0},
+        "queue_entries": [],
+        "history_groups": _group_history_events(history_events),
     }
 
 
@@ -1149,6 +1234,8 @@ def index():
     view = (request.args.get("view") or "").strip().lower()
     if view == "queue":
         context = _build_queue_context()
+    elif view == "history":
+        context = _build_history_context()
     elif view == "desk":
         context = _build_desk_context()
     elif _can_create():

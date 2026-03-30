@@ -2148,3 +2148,43 @@ def list_entry_events(entry_id: str) -> list[dict[str, Any]]:
         return [_decode_row(row) for row in rows]
     finally:
         conn.close()
+
+
+def list_history_events(
+    *,
+    submitted_by_user_id: str | None = None,
+    limit: int = 200,
+) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit or 200), 500))
+    clauses: list[str] = []
+    params: list[Any] = []
+    if submitted_by_user_id:
+        clauses.append("re.submitted_by_user_id = ?")
+        params.append(submitted_by_user_id)
+    where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    conn = raw_db()
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT
+                ev.*,
+                re.draft_type,
+                re.source,
+                re.status,
+                re.last_action,
+                re.patient_name,
+                re.treatment_text,
+                re.submitted_by_user_id,
+                u.username AS actor_username
+            FROM reception_entry_events ev
+            JOIN reception_entries re ON re.id = ev.entry_id
+            LEFT JOIN users u ON u.id = ev.actor_user_id
+            {where}
+            ORDER BY ev.created_at DESC, ev.rowid DESC
+            LIMIT ?
+            """,
+            (*params, limit),
+        ).fetchall()
+        return [_decode_row(row) for row in rows]
+    finally:
+        conn.close()

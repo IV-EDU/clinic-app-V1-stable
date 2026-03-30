@@ -285,7 +285,7 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
   - `clinic_app/blueprints/reception/routes.py`
 
 - **Templates**
-  - Reception Desk: `templates/reception/index.html`
+  - Reception Desk + Manager Queue + History feed: `templates/reception/index.html`
   - Reception draft detail / manager review: `templates/reception/detail.html`
   - Reception returned-draft edit page: `templates/reception/edit.html`
   - Reception shared draft form partial: `templates/reception/_entry_form.html`
@@ -300,11 +300,11 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 - **Services**
   - Reception permission/bootstrap: `clinic_app/services/reception_bootstrap.py`
-  - Reception draft storage/service, manager-side patient search, and desk-origin treatment approval routing: `clinic_app/services/reception_entries.py`
+  - Reception draft storage/service, shared workflow-history query, manager-side patient search, and desk-origin treatment approval routing: `clinic_app/services/reception_entries.py`
   - Shared live payment posting + balance recompute: `clinic_app/services/payments.py`
 
 - **Key routes**
-  - `/reception` → `reception.index`
+  - `/reception` → `reception.index` (`view=desk`, `view=queue`, `view=history`)
   - `/reception/api/patients/search` → `reception.reception_patient_search`
   - `/reception/entries` → `reception.create_reception_entry`
   - `/reception/entries/new-payment` → `reception.new_payment_entry` / `reception.create_new_payment_entry`

@@ -44,6 +44,17 @@
 .reception-queue-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px}
 .reception-queue-label{font-size:.8rem;color:var(--muted, #6b7280);text-transform:uppercase;letter-spacing:.04em}
 .reception-queue-value{margin-top:4px;font-weight:600}
+.reception-history-groups{display:grid;gap:20px}
+.reception-history-group{display:grid;gap:12px}
+.reception-history-date{margin:0;font-size:1rem;font-weight:700}
+.reception-history-list{display:grid;gap:12px}
+.reception-history-item{padding:16px;border:1px solid var(--ring, rgba(148,163,184,.35));border-radius:14px;background:var(--card, #fff)}
+.reception-history-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.reception-history-title{margin:0;font-weight:700}
+.reception-history-time{color:var(--muted, #6b7280);font-size:.92rem;white-space:nowrap}
+.reception-history-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px}
+.reception-history-label{font-size:.8rem;color:var(--muted, #6b7280);text-transform:uppercase;letter-spacing:.04em}
+.reception-history-value{margin-top:4px;font-weight:600;word-break:break-word}
 @media (max-width: 980px){
   .reception-grid{grid-template-columns:1fr}
   .reception-form-grid{grid-template-columns:1fr}
@@ -65,6 +76,7 @@
       {% if can_review_reception %}
       <a class="reception-nav-link {{ 'active' if reception_view == 'queue' else '' }}" href="{{ url_for('reception.index', view='queue') }}">{{ t('reception_nav_queue') }}</a>
       {% endif %}
+      <a class="reception-nav-link {{ 'active' if reception_view == 'history' else '' }}" href="{{ url_for('reception.index', view='history') }}">{{ t('reception_nav_history') }}</a>
     </nav>
   </section>
 
@@ -159,7 +171,7 @@
       {% endif %}
     </div>
   </section>
-  {% else %}
+  {% elif reception_view == 'queue' %}
   <section class="reception-queue-grid">
     <article class="card reception-card">
       <h2>{{ t('reception_manager_queue_title') }}</h2>
@@ -210,6 +222,58 @@
       </div>
       {% else %}
       <p class="reception-empty">{{ t('reception_manager_queue_empty') }}</p>
+      {% endif %}
+    </article>
+  </section>
+  {% else %}
+  <section class="reception-queue-grid">
+    <article class="card reception-card">
+      <h2>{{ t('reception_history_feed_title') }}</h2>
+      {% if history_groups %}
+      <div class="reception-history-groups">
+        {% for group in history_groups %}
+        <section class="reception-history-group">
+          <h3 class="reception-history-date">{{ group.date }}</h3>
+          <div class="reception-history-list">
+            {% for event in group.events %}
+            <div class="reception-history-item">
+              <div class="reception-history-top">
+                <div>
+                  <p class="reception-history-title">{{ event.action_label }}</p>
+                  <div class="reception-draft-meta">{{ event.patient_label }}</div>
+                </div>
+                <span class="reception-history-time">{{ event.created_at[11:16] if event.created_at else '—' }}</span>
+              </div>
+              <div class="reception-history-meta">
+                <div>
+                  <div class="reception-history-label">{{ t('reception_draft_type_label') }}</div>
+                  <div class="reception-history-value">{{ event.summary_label }}</div>
+                </div>
+                <div>
+                  <div class="reception-history-label">{{ t('source') }}</div>
+                  <div class="reception-history-value">{{ event.source_label }}</div>
+                </div>
+                <div>
+                  <div class="reception-history-label">{{ t('reception_history_actor_label') }}</div>
+                  <div class="reception-history-value">{{ event.actor_label or '—' }}</div>
+                </div>
+              </div>
+              {% if event.note %}
+              <div class="reception-reason">{{ event.note }}</div>
+              {% endif %}
+              {% if event.can_open_detail %}
+              <div class="reception-row-actions">
+                <a class="reception-link-btn" href="{{ url_for('reception.reception_entry_detail', entry_id=event.entry_id) }}">{{ t('reception_open_draft') }}</a>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        </section>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="reception-empty">{{ t('reception_history_feed_empty') }}</p>
       {% endif %}
     </article>
   </section>

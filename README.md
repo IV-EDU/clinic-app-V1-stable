@@ -33,6 +33,7 @@ It includes:
 - Returned payment-correction drafts can now be opened, edited, and resubmitted by the original receptionist.
 - Returned treatment-correction drafts can now be opened, edited, and resubmitted by the original receptionist.
 - Managers can now open the same area to review pending drafts and mark them as held, returned, rejected, or approved.
+- The same `/reception` area now includes a shared History tab with grouped workflow events; receptionists see their own activity there, while managers/reviewers can see all Reception workflow activity.
 - Current approval is still intentionally narrow:
   - Desk-origin `new_treatment` drafts can either create a new live patient file or attach the new treatment to one manager-chosen existing patient.
   - Treatment-card `new_payment` drafts can add one live payment onto the locked existing treatment.

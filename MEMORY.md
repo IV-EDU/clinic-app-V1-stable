@@ -115,6 +115,23 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 
 ## Template for New Entries
 
+### Session: Reception shared history view
+**Date:** 2026-03-30
+**What was done:**
+- Added the missing `History` tab inside `/reception` using the existing index page instead of adding a new route or page.
+- Added a joined Reception history query so the page can show workflow events with draft metadata plus actor usernames when available.
+- Implemented a grouped-by-date workflow feed where receptionists see only their own draft activity while managers/reviewers can see all Reception activity.
+- Added focused route coverage for history visibility, date grouping/order, reason notes, and closed-draft events.
+
+**Current state:**
+- `/reception` now supports `view=desk`, `view=queue`, and `view=history`.
+- Shared History is a simple workflow event feed, not a full audit view.
+- Focused Reception review route suite passes: 42 tests in `tests/test_reception_review_routes.py`.
+
+**Key decisions:**
+- Keep receptionist history ownership-scoped to match existing draft-detail access instead of exposing other users’ workflow items.
+- Keep the History surface event-based rather than one-row-per-draft so Returned/Held/Approved steps stay visible without expanding into full audit tooling.
+
 ### Session: Reception manager draft editing
 **Date:** 2026-03-30
 **What was done:**

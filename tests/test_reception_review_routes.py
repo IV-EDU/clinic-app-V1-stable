@@ -83,6 +83,66 @@ def _create_draft(*, patient_name: str, actor_user_id: str) -> dict:
     )
 
 
+def _insert_reception_event(
+    *,
+    entry_id: str,
+    action: str,
+    actor_user_id: str,
+    created_at: str,
+    note: str | None = None,
+    to_status: str | None = None,
+):
+    conn = raw_db()
+    try:
+        conn.execute(
+            """
+            INSERT INTO reception_entry_events (
+                id, entry_id, action, actor_user_id,
+                from_status, to_status, note, meta_json, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(uuid4()),
+                entry_id,
+                action,
+                actor_user_id,
+                None,
+                to_status,
+                note,
+                "{}",
+                created_at,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _set_entry_status(
+    entry_id: str,
+    *,
+    status: str,
+    last_action: str,
+    reason_field: str | None = None,
+    reason: str | None = None,
+):
+    conn = raw_db()
+    try:
+        if reason_field:
+            conn.execute(
+                f"UPDATE reception_entries SET status=?, last_action=?, {reason_field}=? WHERE id=?",
+                (status, last_action, reason, entry_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE reception_entries SET status=?, last_action=? WHERE id=?",
+                (status, last_action, entry_id),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _count_patients() -> int:
     conn = raw_db()
     try:
@@ -2112,3 +2172,111 @@ def test_non_owner_cannot_edit_returned_edit_patient_draft_and_held_is_blocked(c
     _login(owner_client, "patient-correction-owner-2", "password123")
     held_resp = owner_client.get(f"/reception/entries/{entry['id']}/edit")
     assert held_resp.status_code == 403
+
+
+def test_create_only_user_history_shows_only_own_workflow_events(client):
+    create_role_id = _create_role("Reception History Create", ["reception_entries:create"])
+    reviewer_role_id = _create_role("Reception History Reviewer", ["reception_entries:review"])
+    owner_user_id = _create_user("history-owner", "password123", [create_role_id])
+    other_user_id = _create_user("history-other", "password123", [create_role_id])
+    reviewer_user_id = _create_user("history-reviewer", "password123", [reviewer_role_id])
+
+    own_entry = _create_draft(patient_name="History Own Draft", actor_user_id=owner_user_id)
+    other_entry = _create_draft(patient_name="History Other Draft", actor_user_id=other_user_id)
+
+    return_entry(own_entry["id"], actor_user_id=reviewer_user_id, reason="Fix own draft")
+    _insert_reception_event(
+        entry_id=other_entry["id"],
+        action="rejected",
+        actor_user_id=reviewer_user_id,
+        created_at="2026-03-29T08:00:00+00:00",
+        note="Other rejected",
+        to_status="rejected",
+    )
+    _set_entry_status(
+        other_entry["id"],
+        status="rejected",
+        last_action="rejected",
+        reason_field="rejection_reason",
+        reason="Other rejected",
+    )
+
+    owner_client = client.application.test_client()
+    _login(owner_client, "history-owner", "password123")
+    resp = owner_client.get("/reception?view=history")
+
+    assert resp.status_code == 200
+    body = resp.data.decode("utf-8")
+    assert "Reception history" in body
+    assert "History Own Draft" in body
+    assert "Fix own draft" in body
+    assert "History Other Draft" not in body
+    assert "Other rejected" not in body
+
+
+def test_review_user_history_shows_grouped_events_notes_and_closed_drafts(client):
+    create_role_id = _create_role("Reception History Create 2", ["reception_entries:create"])
+    reviewer_role_id = _create_role("Reception History Reviewer 2", ["reception_entries:review"])
+    first_user_id = _create_user("history-user-a", "password123", [create_role_id])
+    second_user_id = _create_user("history-user-b", "password123", [create_role_id])
+    reviewer_user_id = _create_user("history-reviewer-2", "password123", [reviewer_role_id])
+
+    returned_entry = _create_draft(patient_name="Returned History Draft", actor_user_id=first_user_id)
+    held_entry = _create_draft(patient_name="Held History Draft", actor_user_id=second_user_id)
+    approved_entry = _create_draft(patient_name="Approved History Draft", actor_user_id=second_user_id)
+
+    return_entry(returned_entry["id"], actor_user_id=reviewer_user_id, reason="Fix total")
+    _set_entry_status(
+        held_entry["id"],
+        status="held",
+        last_action="held",
+        reason_field="hold_reason",
+        reason="Need callback",
+    )
+    _insert_reception_event(
+        entry_id=held_entry["id"],
+        action="held",
+        actor_user_id=reviewer_user_id,
+        created_at="2026-03-29T10:00:00+00:00",
+        note="Need callback",
+        to_status="held",
+    )
+    _set_entry_status(approved_entry["id"], status="approved", last_action="approved")
+    _insert_reception_event(
+        entry_id=approved_entry["id"],
+        action="approved",
+        actor_user_id=reviewer_user_id,
+        created_at="2026-03-29T12:00:00+00:00",
+        to_status="approved",
+    )
+
+    conn = raw_db()
+    try:
+        conn.execute(
+            "UPDATE reception_entry_events SET created_at=? WHERE entry_id=? AND action='returned'",
+            ("2026-03-30T11:30:00+00:00", returned_entry["id"]),
+        )
+        conn.execute(
+            "UPDATE reception_entry_events SET created_at=? WHERE entry_id=? AND action='submitted'",
+            ("2026-03-28T08:00:00+00:00", approved_entry["id"]),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    _login(client, "history-reviewer-2", "password123")
+    resp = client.get("/reception?view=history")
+
+    assert resp.status_code == 200
+    body = resp.data.decode("utf-8")
+    assert "Returned History Draft" in body
+    assert "Held History Draft" in body
+    assert "Approved History Draft" in body
+    assert "Fix total" in body
+    assert "Need callback" in body
+    assert "Approved" in body
+    assert "history-reviewer-2" in body
+    assert "2026-03-30" in body
+    assert "2026-03-29" in body
+    assert body.index("2026-03-30") < body.index("2026-03-29")
+    assert body.index("Returned History Draft") < body.index("Approved History Draft")

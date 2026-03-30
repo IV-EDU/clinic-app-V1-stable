@@ -12,12 +12,12 @@
 **Branch:** `main`
 **Data:** Production use (do not break).
 **Login:** `admin` / `admin` (NEVER change this)
-**Tests:** Last known focused Reception subset for patient-file `new_treatment` + review/service regressions: 83 passing (verified March 30, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
+**Tests:** Last known focused Reception subset for desk/patient-file `new_treatment`, desk/patient-file `new_visit_only`, and review/service regressions: 101 passing (verified March 30, 2026). Last broader suite before Reception work: 107 passing, 2 skipped (verified March 8, 2026).
 
 ### Fast ramp (don’t re-discover the repo)
 
 - Read `docs/AGENT_HANDOFF.md` for the app map + the locked Reception Desk decisions.
-- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, approval for Desk-origin and patient-file locked `new_treatment`, a locked treatment-card `new_payment` draft/approval path, and same-record `edit_patient`, `edit_payment`, and `edit_treatment` correction paths.
+- Reception now has a live Desk page, manager queue, draft detail page, hold/return/reject actions, returned-draft edit/resubmit, approval for Desk-origin and patient-file locked `new_treatment`, desk-origin and patient-file locked `new_visit_only`, a locked treatment-card `new_payment` draft/approval path, and same-record `edit_patient`, `edit_payment`, and `edit_treatment` correction paths.
 - Older historical session notes were archived into `MEMORY_ARCHIVE.md`.
 
 ---
@@ -131,6 +131,23 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 **Key decisions:**
 - Reused the existing shared treatment-draft form instead of creating a second patient-file-only form; the patient context is now rendered as read-only/locked.
 - Kept desk-origin `new_treatment` routing unchanged; only patient-file drafts bypass the existing-patient chooser and use the locked live patient.
+
+### Session: Reception visit-only drafts
+**Date:** 2026-03-30
+**What was done:**
+- Wired the missing Reception `new_visit_only` draft type end-to-end for both desk-origin and patient-file locked flows.
+- Extended the shared Reception entry form so desk users can switch between `new_treatment` and `new_visit_only`, while patient-file visit-only drafts reuse the same shell in locked mode.
+- Added the patient-file visit-only launcher at `/reception/entries/new-visit`, manager detail/edit/resubmit coverage, and approval routing that reuses treatment approval rules while keeping locked patient-file drafts non-reroutable.
+- Added zero-balance live posting for approved visit-only drafts and focused route/review regression tests for desk create, locked create, approval, stale locked-patient blocking, and returned-draft resubmission.
+
+**Current state:**
+- Reception now supports `new_visit_only` from both `reception_desk` and `patient_file`.
+- Approved visit-only drafts create a single live parent payment row with zero total, zero paid, zero remaining, and the standard consultation label.
+- Focused Reception subset passes: 101 tests across `test_reception_routes`, `test_reception_patient_treatment_routes`, `test_reception_review_routes`, and `test_reception_entries_service`.
+
+**Key decisions:**
+- Visit-only drafts reuse the existing Reception form and review pages instead of adding separate templates; the form hides treatment/payment fields when `draft_type == new_visit_only`.
+- Service-layer visit-only normalization now avoids relying on Flask request context so direct service tests and non-request entry creation stay safe.
 
 ### Session: Reception shared history view
 **Date:** 2026-03-30

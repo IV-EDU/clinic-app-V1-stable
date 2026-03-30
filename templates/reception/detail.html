@@ -71,6 +71,8 @@
           {{ t('reception_payment_correction_kind') }}
         {% elif entry.draft_type == 'edit_treatment' %}
           {{ t('reception_treatment_correction_kind') }}
+        {% elif entry.draft_type == 'new_visit_only' %}
+          {{ t('reception_history_kind_visit_only') }}
         {% else %}
           {{ entry.treatment_text or t('reception_no_treatment_text') }}
         {% endif %}
@@ -327,7 +329,19 @@
           </div>
           <div>
             <div class="reception-detail-label">{{ t('visit_type') }}</div>
-            <div class="reception-detail-value">{{ entry.visit_type or '—' }}</div>
+            <div class="reception-detail-value">
+              {% if entry.draft_type == 'new_visit_only' %}
+                —
+              {% elif entry.visit_type == 'exam' %}
+                {{ t('vt_exam') }}
+              {% elif entry.visit_type == 'followup' %}
+                {{ t('vt_follow') }}
+              {% elif entry.visit_type == 'none' %}
+                {{ t('vt_none') }}
+              {% else %}
+                {{ entry.visit_type or '—' }}
+              {% endif %}
+            </div>
           </div>
           <div>
             <div class="reception-detail-label">{{ t('page_number') }}</div>
@@ -337,6 +351,7 @@
             <div class="reception-detail-label">{{ t('phone') }}</div>
             <div class="reception-detail-value">{{ entry.phone or '—' }}</div>
           </div>
+          {% if entry.draft_type != 'new_visit_only' %}
           <div>
             <div class="reception-detail-label">{{ t('amount') }}</div>
             <div class="reception-detail-value">{{ ((entry.paid_today_cents or 0) / 100)|round(2) if entry.paid_today_cents is not none else '—' }}</div>
@@ -345,6 +360,7 @@
             <div class="reception-detail-label">{{ t('total_amount') }}</div>
             <div class="reception-detail-value">{{ ((entry.total_amount_cents or 0) / 100)|round(2) if entry.total_amount_cents is not none else '—' }}</div>
           </div>
+          {% endif %}
           {% if entry.draft_type == 'new_payment' %}
           <div>
             <div class="reception-detail-label">{{ t('source') }}</div>
@@ -453,7 +469,7 @@
         {% if can_approve_reception and entry.status != 'approved' and entry.status != 'rejected' %}
         <form class="reception-action-form" method="post" action="{{ url_for('reception.approve_reception_entry', entry_id=entry.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          {% if entry.draft_type == 'new_treatment' and entry.source == 'reception_desk' %}
+          {% if entry.draft_type in ['new_treatment', 'new_visit_only'] and entry.source == 'reception_desk' %}
           <section class="reception-route-box">
             <h3 class="reception-route-title">{{ t('reception_approval_route_title') }}</h3>
             <div class="reception-route-options">

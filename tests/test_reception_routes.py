@@ -6,7 +6,7 @@ from uuid import uuid4
 from werkzeug.security import generate_password_hash
 
 from clinic_app.services.database import db as raw_db
-from clinic_app.services.reception_entries import create_entry
+from clinic_app.services.reception_entries import create_entry, list_entries
 
 
 def _extract_csrf(response) -> str:
@@ -146,6 +146,36 @@ def test_valid_reception_post_creates_entry_and_event(logged_in_client):
     assert _count_reception_events() == before_events + 1
 
 
+def test_valid_visit_only_reception_post_creates_visit_only_entry(logged_in_client):
+    before_entries = _count_reception_entries()
+    page = logged_in_client.get("/reception")
+    token = _extract_csrf(page)
+
+    resp = logged_in_client.post(
+        "/reception/entries",
+        data={
+            "csrf_token": token,
+            "draft_type": "new_visit_only",
+            "patient_name": "Visit Only Route Patient",
+            "phone": "01012345679",
+            "page_number": "23",
+            "visit_date": "2026-03-31",
+            "doctor_id": "any-doctor",
+            "note": "Visit-only route note",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    assert _count_reception_entries() == before_entries + 1
+    created = list_entries(submitted_by_user_id="admin-test", limit=5)[0]
+    assert created["draft_type"] == "new_visit_only"
+    assert created["treatment_text"] == "Consultation visit"
+    assert created["paid_today_cents"] is None
+    assert created["total_amount_cents"] is None
+    assert created["payload_json"]["note"] == "Visit-only route note"
+
+
 def test_invalid_reception_post_rerenders_with_errors_and_sticky_values(logged_in_client):
     before_entries = _count_reception_entries()
     page = logged_in_client.get("/reception")
@@ -169,6 +199,31 @@ def test_invalid_reception_post_rerenders_with_errors_and_sticky_values(logged_i
     assert "Doctor is required." in body
     assert "Paid today is required when money was received today." in body
     assert 'value="Sticky Patient"' in body
+    assert _count_reception_entries() == before_entries
+
+
+def test_visit_only_reception_post_rejects_payment_details(logged_in_client):
+    before_entries = _count_reception_entries()
+    page = logged_in_client.get("/reception")
+    token = _extract_csrf(page)
+    resp = logged_in_client.post(
+        "/reception/entries",
+        data={
+            "csrf_token": token,
+            "draft_type": "new_visit_only",
+            "patient_name": "Visit Only Sticky Patient",
+            "doctor_id": "any-doctor",
+            "money_received_today": "1",
+            "paid_today": "50",
+            "total_amount": "100",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 200
+    body = resp.data.decode("utf-8")
+    assert "Visit-only drafts cannot include payment details." in body
+    assert 'value="Visit Only Sticky Patient"' in body
     assert _count_reception_entries() == before_entries
 
 

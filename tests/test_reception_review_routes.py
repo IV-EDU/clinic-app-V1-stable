@@ -893,6 +893,59 @@ def test_approve_can_attach_new_treatment_to_existing_patient(client, admin_user
     assert int(payment["remaining_cents"] or 0) == 22500
 
 
+def test_approve_can_create_new_visit_only_patient_from_desk(client, admin_user):
+    approve_role_id = _create_role("Reception Approver Visit Create", ["reception_entries:approve"])
+    _create_user("approver-visit-create", "password123", [approve_role_id])
+    _login(client, "approver-visit-create", "password123")
+
+    before_patients = _count_patients()
+    before_payments = _count_payments()
+    entry = create_entry(
+        {
+            "draft_type": "new_visit_only",
+            "source": "reception_desk",
+            "patient_name": "Visit Create Patient",
+            "phone": "01031313131",
+            "page_number": "131",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-31",
+            "treatment_text": "Consultation visit",
+            "payload_json": {"note": "Desk visit-only create"},
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    assert _count_patients() == before_patients + 1
+    assert _count_payments() == before_payments + 1
+
+    approved = get_entry(entry["id"])
+    conn = raw_db()
+    try:
+        payment = conn.execute(
+            "SELECT treatment, amount_cents, total_amount_cents, discount_cents, remaining_cents FROM payments WHERE id=?",
+            (approved["target_treatment_id"],),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert approved["status"] == "approved"
+    assert payment["treatment"] == "Consultation visit"
+    assert int(payment["amount_cents"] or 0) == 0
+    assert int(payment["total_amount_cents"] or 0) == 0
+    assert int(payment["discount_cents"] or 0) == 0
+    assert int(payment["remaining_cents"] or 0) == 0
+
+
 def test_attach_existing_requires_target_patient_id(client, admin_user):
     approve_role_id = _create_role("Reception Approver Attach Missing", ["reception_entries:approve"])
     _create_user("approver-attach-missing", "password123", [approve_role_id])
@@ -930,6 +983,72 @@ def test_attach_existing_requires_target_patient_id(client, admin_user):
     unchanged = get_entry(entry["id"])
     assert unchanged["status"] == "new"
     assert unchanged["target_patient_id"] is None
+
+
+def test_attach_existing_visit_only_posts_zero_balance_row(client, admin_user):
+    approve_role_id = _create_role("Reception Approver Visit Attach", ["reception_entries:approve"])
+    _create_user("approver-visit-attach", "password123", [approve_role_id])
+    _login(client, "approver-visit-attach", "password123")
+    existing_patient_id = _seed_patient_profile(
+        full_name="Existing Visit Patient",
+        phone="01081818181",
+        page_number="181",
+        short_id="P-VISIT1",
+    )
+
+    before_patients = _count_patients()
+    before_payments = _count_payments()
+    entry = create_entry(
+        {
+            "draft_type": "new_visit_only",
+            "source": "reception_desk",
+            "patient_name": "Existing Visit Patient",
+            "phone": "01081818181",
+            "page_number": "181",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-31",
+            "treatment_text": "Consultation visit",
+            "payload_json": {"note": "Attach existing visit only"},
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={
+            "csrf_token": token,
+            "approval_route": "attach_existing",
+            "target_patient_id": existing_patient_id,
+            "confirm_approve": "1",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    assert _count_patients() == before_patients
+    assert _count_payments() == before_payments + 1
+
+    approved = get_entry(entry["id"])
+    conn = raw_db()
+    try:
+        payment = conn.execute(
+            "SELECT patient_id, treatment, amount_cents, total_amount_cents, discount_cents, remaining_cents FROM payments WHERE id=?",
+            (approved["target_treatment_id"],),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert approved["status"] == "approved"
+    assert approved["target_patient_id"] == existing_patient_id
+    assert payment["patient_id"] == existing_patient_id
+    assert payment["treatment"] == "Consultation visit"
+    assert int(payment["amount_cents"] or 0) == 0
+    assert int(payment["total_amount_cents"] or 0) == 0
+    assert int(payment["discount_cents"] or 0) == 0
+    assert int(payment["remaining_cents"] or 0) == 0
 
 
 def test_attach_existing_blocks_when_selected_patient_is_deleted(client, admin_user):
@@ -1952,6 +2071,43 @@ def test_manager_can_open_patient_file_new_treatment_detail_and_edit_page(client
     assert 'name="patient_name"' not in body
 
 
+def test_manager_can_open_patient_file_new_visit_detail_and_edit_page(client, admin_user):
+    review_role_id = _create_role("Reception Review Patient File Visit", ["reception_entries:review"])
+    _create_user("review-patient-file-visit", "password123", [review_role_id])
+    _login(client, "review-patient-file-visit", "password123")
+    patient_id = _seed_patient_profile(full_name="Patient File Visit Source")
+    entry = create_entry(
+        {
+            "draft_type": "new_visit_only",
+            "source": "patient_file",
+            "patient_intent": "existing",
+            "locked_patient_id": patient_id,
+            "patient_name": "Patient File Visit Source",
+            "phone": "01012121212",
+            "page_number": "18",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-31",
+            "treatment_text": "Consultation visit",
+            "payload_json": {"note": "Locked patient-file visit draft"},
+        },
+        actor_user_id="admin-test",
+    )
+
+    detail = client.get(f"/reception/entries/{entry['id']}")
+    assert detail.status_code == 200
+    detail_body = detail.data.decode("utf-8")
+    assert "Visit-only draft" in detail_body
+    assert "Approval route" not in detail_body
+
+    edit_page = client.get(f"/reception/entries/{entry['id']}/edit")
+    assert edit_page.status_code == 200
+    body = edit_page.data.decode("utf-8")
+    assert "Edit pending visit-only draft" in body
+    assert "Locked patient summary" in body
+    assert 'name="patient_name"' not in body
+
+
 def test_manager_can_approve_patient_file_new_treatment_draft(client, admin_user):
     approve_role_id = _create_role("Reception Approver Patient File Treatment", ["reception_entries:approve"])
     _create_user("approver-patient-file-treatment", "password123", [approve_role_id])
@@ -2027,6 +2183,64 @@ def test_manager_can_approve_patient_file_new_treatment_draft(client, admin_user
     assert int(payment["remaining_cents"] or 0) == 17500
 
 
+def test_manager_can_approve_patient_file_new_visit_only_draft(client, admin_user):
+    approve_role_id = _create_role("Reception Approver Patient File Visit", ["reception_entries:approve"])
+    _create_user("approver-patient-file-visit", "password123", [approve_role_id])
+    _login(client, "approver-patient-file-visit", "password123")
+    patient_id = _seed_patient_profile(full_name="Locked Visit Patient", phone="01018181818", page_number="81")
+
+    before_patients = _count_patients()
+    before_payments = _count_payments()
+    entry = create_entry(
+        {
+            "draft_type": "new_visit_only",
+            "source": "patient_file",
+            "patient_intent": "existing",
+            "locked_patient_id": patient_id,
+            "patient_name": "Locked Visit Patient",
+            "phone": "01018181818",
+            "page_number": "81",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-31",
+            "treatment_text": "Consultation visit",
+            "payload_json": {"note": "Approve locked visit only"},
+        },
+        actor_user_id="admin-test",
+    )
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    assert _count_patients() == before_patients
+    assert _count_payments() == before_payments + 1
+
+    approved = get_entry(entry["id"])
+    conn = raw_db()
+    try:
+        payment = conn.execute(
+            "SELECT patient_id, treatment, amount_cents, total_amount_cents, discount_cents, remaining_cents FROM payments WHERE id=?",
+            (approved["target_treatment_id"],),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    assert approved["status"] == "approved"
+    assert approved["target_patient_id"] == patient_id
+    assert payment["patient_id"] == patient_id
+    assert payment["treatment"] == "Consultation visit"
+    assert int(payment["amount_cents"] or 0) == 0
+    assert int(payment["total_amount_cents"] or 0) == 0
+    assert int(payment["discount_cents"] or 0) == 0
+    assert int(payment["remaining_cents"] or 0) == 0
+
+
 def test_patient_file_new_treatment_approval_failure_when_locked_patient_is_deleted(client, admin_user):
     approve_role_id = _create_role("Reception Approver Patient File Treatment Stale", ["reception_entries:approve"])
     _create_user("approver-patient-file-treatment-stale", "password123", [approve_role_id])
@@ -2046,6 +2260,52 @@ def test_patient_file_new_treatment_approval_failure_when_locked_patient_is_dele
             "visit_date": "2026-03-30",
             "treatment_text": "Deleted Locked Approval Crown",
             "total_amount": "220",
+        },
+        actor_user_id="admin-test",
+    )
+
+    conn = raw_db()
+    try:
+        conn.execute("DELETE FROM patient_phones WHERE patient_id=?", (patient_id,))
+        conn.execute("DELETE FROM patient_pages WHERE patient_id=?", (patient_id,))
+        conn.execute("DELETE FROM patients WHERE id=?", (patient_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+    page = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/approve",
+        data={"csrf_token": token, "confirm_approve": "1"},
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    assert "Review actions" in resp.data.decode("utf-8")
+    unchanged = get_entry(entry["id"])
+    assert unchanged["status"] == "new"
+    assert unchanged["target_patient_id"] is None
+
+
+def test_patient_file_new_visit_approval_failure_when_locked_patient_is_deleted(client, admin_user):
+    approve_role_id = _create_role("Reception Approver Patient File Visit Stale", ["reception_entries:approve"])
+    _create_user("approver-patient-file-visit-stale", "password123", [approve_role_id])
+    _login(client, "approver-patient-file-visit-stale", "password123")
+    patient_id = _seed_patient_profile(full_name="Deleted Locked Visit Patient", phone="01019191919", page_number="91")
+    entry = create_entry(
+        {
+            "draft_type": "new_visit_only",
+            "source": "patient_file",
+            "patient_intent": "existing",
+            "locked_patient_id": patient_id,
+            "patient_name": "Deleted Locked Visit Patient",
+            "phone": "01019191919",
+            "page_number": "91",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-31",
+            "treatment_text": "Consultation visit",
         },
         actor_user_id="admin-test",
     )
@@ -2350,6 +2610,72 @@ def test_returned_patient_file_new_treatment_draft_can_be_opened_and_resubmitted
     assert updated["patient_name"] == "Returned Patient File Treatment"
     assert updated["treatment_text"] == "Final Returned Crown"
     assert updated["paid_today_cents"] == 6000
+
+
+def test_returned_patient_file_new_visit_draft_can_be_opened_and_resubmitted_by_owner(client, admin_user):
+    owner_role_id = _create_role("Reception Patient File Visit Owner", ["reception_entries:create"])
+    review_role_id = _create_role("Reception Patient File Visit Reviewer", ["reception_entries:review"])
+    owner_user_id = _create_user("patient-file-visit-owner", "password123", [owner_role_id])
+    _create_user("patient-file-visit-reviewer", "password123", [review_role_id])
+    patient_id = _seed_patient_profile(full_name="Returned Patient File Visit", phone="01020202020", page_number="202")
+    entry = create_entry(
+        {
+            "draft_type": "new_visit_only",
+            "source": "patient_file",
+            "patient_intent": "existing",
+            "locked_patient_id": patient_id,
+            "patient_name": "Returned Patient File Visit",
+            "phone": "01020202020",
+            "page_number": "202",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-31",
+            "treatment_text": "Consultation visit",
+            "payload_json": {"note": "First visit-only note"},
+        },
+        actor_user_id=owner_user_id,
+    )
+
+    reviewer_client = client.application.test_client()
+    _login(reviewer_client, "patient-file-visit-reviewer", "password123")
+    page = reviewer_client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(page)
+    reviewer_client.post(
+        f"/reception/entries/{entry['id']}/return",
+        data={"csrf_token": token, "return_reason": "Update the note"},
+        follow_redirects=False,
+    )
+
+    owner_client = client.application.test_client()
+    _login(owner_client, "patient-file-visit-owner", "password123")
+    edit_page = owner_client.get(f"/reception/entries/{entry['id']}/edit")
+    assert edit_page.status_code == 200
+    body = edit_page.data.decode("utf-8")
+    assert "Edit returned visit-only draft" in body
+    assert "Locked patient summary" in body
+
+    edit_token = _extract_csrf(edit_page)
+    resp = owner_client.post(
+        f"/reception/entries/{entry['id']}/edit",
+        data={
+            "csrf_token": edit_token,
+            "draft_type": "new_visit_only",
+            "visit_date": "2026-04-01",
+            "doctor_id": "any-doctor",
+            "note": "Updated visit-only note",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    updated = get_entry(entry["id"])
+    assert updated["status"] == "edited"
+    assert updated["last_action"] == "edited"
+    assert updated["return_reason"] is None
+    assert updated["locked_patient_id"] == patient_id
+    assert updated["patient_name"] == "Returned Patient File Visit"
+    assert updated["treatment_text"] == "Consultation visit"
+    assert updated["payload_json"]["note"] == "Updated visit-only note"
 
 
 def test_non_owner_cannot_edit_returned_edit_patient_draft_and_held_is_blocked(client, admin_user):

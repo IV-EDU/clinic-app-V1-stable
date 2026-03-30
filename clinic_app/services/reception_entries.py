@@ -10,6 +10,7 @@ from uuid import uuid4
 from clinic_app.services.arabic_search import normalize_arabic
 from clinic_app.services.audit import write_event
 from clinic_app.services.database import db as raw_db
+from clinic_app.services.i18n import T, translate_text
 from clinic_app.services.patients import (
     apply_patient_profile_update,
     get_patient_profile_snapshot,
@@ -85,6 +86,13 @@ def _payload_dict(value: Any) -> dict[str, Any]:
             return {}
         return parsed if isinstance(parsed, dict) else {}
     return {}
+
+
+def _consultation_visit_name() -> str:
+    try:
+        return T("consultation_visit_name")
+    except RuntimeError:
+        return translate_text("en", "consultation_visit_name")
 
 
 def _decode_row(row) -> dict[str, Any]:
@@ -273,7 +281,7 @@ def _require_returned_resubmittable_entry(row, *, actor_user_id: str) -> dict[st
     if entry.get("submitted_by_user_id") != actor_user_id:
         raise ValueError("You can only edit your own returned drafts.")
     supports_resubmit = (
-        (entry.get("draft_type") == "new_treatment" and entry.get("source") in {"reception_desk", "patient_file"})
+        (entry.get("draft_type") in {"new_treatment", "new_visit_only"} and entry.get("source") in {"reception_desk", "patient_file"})
         or (entry.get("draft_type") == "edit_patient" and entry.get("source") == "patient_file")
         or (entry.get("draft_type") == "edit_payment" and entry.get("source") == "treatment_card")
         or (entry.get("draft_type") == "edit_treatment" and entry.get("source") == "treatment_card")
@@ -290,7 +298,7 @@ def _require_manager_editable_entry(row) -> dict[str, Any]:
         raise ValueError("Reception draft was not found.")
     entry = _decode_row(row)
     supports_manager_edit = (
-        (entry.get("draft_type") == "new_treatment" and entry.get("source") in {"reception_desk", "patient_file"})
+        (entry.get("draft_type") in {"new_treatment", "new_visit_only"} and entry.get("source") in {"reception_desk", "patient_file"})
         or (entry.get("draft_type") == "new_payment" and entry.get("source") == "treatment_card")
         or (entry.get("draft_type") == "edit_patient" and entry.get("source") == "patient_file")
         or (entry.get("draft_type") == "edit_payment" and entry.get("source") == "treatment_card")
@@ -562,6 +570,28 @@ def validate_entry_payload(data: dict) -> tuple[list[str], list[str], dict[str, 
             "proposed": _patient_profile_payload(normalized_profile),
             "note": _text(payload_dict.get("note")),
         }
+    elif draft_type == "new_visit_only":
+        if source == "patient_file" and not locked_patient_id:
+            errors.append("Locked patient context is required.")
+        if not locked_patient_id and not patient_name:
+            errors.append("Patient name is required when patient context is not locked.")
+        if not doctor_id or not doctor_label:
+            errors.append("Doctor is required.")
+        if money_received_today or paid_today_cents is not None or total_amount_cents is not None or discount_amount_cents:
+            errors.append("Visit-only drafts cannot include payment details.")
+
+        patient_intent = "existing" if source == "patient_file" else "unknown"
+        visit_type = "none"
+        treatment_text = _consultation_visit_name()
+        money_received_today = 0
+        paid_today_cents = None
+        total_amount_cents = None
+        discount_amount_cents = 0
+        warnings = []
+        if not phone:
+            warnings.append("Phone is missing.")
+        if not page_number:
+            warnings.append("Page number is missing.")
     else:
         if not locked_patient_id and not patient_name:
             errors.append("Patient name is required when patient context is not locked.")
@@ -1224,17 +1254,27 @@ def _create_live_patient_from_entry(conn, entry: dict[str, Any]) -> str:
 
 def _create_live_treatment_from_entry(conn, entry: dict[str, Any], *, patient_id: str) -> str:
     treatment_id = str(uuid4())
-    total_cents = entry.get("total_amount_cents")
-    if total_cents is None:
-        raise ValueError("Total amount is required before approval.")
+    is_visit_only = entry.get("draft_type") == "new_visit_only"
+    if is_visit_only:
+        total_cents = 0
+        discount_cents = 0
+        paid_today_cents = 0
+        due_cents = 0
+        exam_flag, followup_flag = (0, 0)
+        treatment_label = _consultation_visit_name()
+    else:
+        total_cents = entry.get("total_amount_cents")
+        if total_cents is None:
+            raise ValueError("Total amount is required before approval.")
 
-    discount_cents = int(entry.get("discount_amount_cents") or 0)
-    paid_today_cents = int(entry.get("paid_today_cents") or 0)
-    due_cents = max(int(total_cents) - discount_cents, 0)
-    if paid_today_cents > due_cents:
-        raise ValueError("Paid today cannot be greater than the amount due.")
+        discount_cents = int(entry.get("discount_amount_cents") or 0)
+        paid_today_cents = int(entry.get("paid_today_cents") or 0)
+        due_cents = max(int(total_cents) - discount_cents, 0)
+        if paid_today_cents > due_cents:
+            raise ValueError("Paid today cannot be greater than the amount due.")
+        exam_flag, followup_flag = _visit_type_flags(entry.get("visit_type"))
+        treatment_label = _text(entry.get("treatment_text"))
 
-    exam_flag, followup_flag = _visit_type_flags(entry.get("visit_type"))
     payload = entry.get("payload_json") or {}
     notes = ""
     if isinstance(payload, dict):
@@ -1256,7 +1296,7 @@ def _create_live_treatment_from_entry(conn, entry: dict[str, Any], *, patient_id
             paid_today_cents,
             "cash",
             notes,
-            _text(entry.get("treatment_text")),
+            treatment_label,
             _text(entry.get("doctor_id")),
             _text(entry.get("doctor_label")),
             max(due_cents - paid_today_cents, 0),
@@ -1827,7 +1867,7 @@ def approve_new_treatment_entry(
         conn.execute("PRAGMA foreign_keys=ON")
         entry = _require_active_entry(_fetch_entry(conn, entry_id), action="approve")
 
-        if entry.get("draft_type") != "new_treatment" or entry.get("source") not in {"reception_desk", "patient_file"}:
+        if entry.get("draft_type") not in {"new_treatment", "new_visit_only"} or entry.get("source") not in {"reception_desk", "patient_file"}:
             raise ValueError("Only supported new treatment drafts can be approved in this slice.")
         if entry.get("locked_treatment_id") or entry.get("locked_payment_id"):
             raise ValueError("Locked-context drafts are not supported by this approval step.")

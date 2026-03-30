@@ -116,6 +116,14 @@ def test_patient_detail_shows_send_treatment_draft_button_for_create_capable_use
     assert "Send Treatment Draft" in resp.data.decode("utf-8")
 
 
+def test_patient_detail_shows_send_visit_only_draft_button_for_create_capable_user(logged_in_client):
+    patient_id = _seed_patient_profile(full_name="Visit Button Patient")
+
+    resp = logged_in_client.get(f"/patients/{patient_id}")
+    assert resp.status_code == 200
+    assert "Send Visit-Only Draft" in resp.data.decode("utf-8")
+
+
 def test_patient_detail_hides_send_treatment_draft_button_without_reception_create_permission(client):
     role_id = _create_role("Patient Viewer No Treatment Draft", ["patients:view"])
     _create_user("patient-viewer-treatment-draft", "password123", [role_id])
@@ -125,6 +133,7 @@ def test_patient_detail_hides_send_treatment_draft_button_without_reception_crea
     resp = client.get(f"/patients/{patient_id}")
     assert resp.status_code == 200
     assert "Send Treatment Draft" not in resp.data.decode("utf-8")
+    assert "Send Visit-Only Draft" not in resp.data.decode("utf-8")
 
 
 def test_new_treatment_get_requires_create_and_patient_visibility(client):
@@ -218,3 +227,78 @@ def test_invalid_new_treatment_post_rerenders_with_sticky_values(logged_in_clien
     assert "Locked patient summary" in body
     assert 'value="Sticky Locked Treatment"' in body
     assert "sticky treatment note" in body
+
+
+def test_new_visit_get_requires_create_and_patient_visibility(client):
+    patient_id = _seed_patient_profile(full_name="Visit Route Patient")
+    resp = client.get(f"/reception/entries/new-visit?patient_id={patient_id}")
+    assert resp.status_code in (302, 401)
+
+    role_id = _create_role("Reception Create Only Visit Draft", ["reception_entries:create"])
+    _create_user("reception-create-only-visit", "password123", [role_id])
+    _login(client, "reception-create-only-visit", "password123")
+    blocked = client.get(f"/reception/entries/new-visit?patient_id={patient_id}")
+    assert blocked.status_code == 403
+
+
+def test_valid_new_visit_post_creates_locked_patient_file_visit_only_draft(logged_in_client):
+    patient_id = _seed_patient_profile(full_name="Visit Draft Create Patient")
+    before_payments = _count_payments()
+    page = logged_in_client.get(f"/reception/entries/new-visit?patient_id={patient_id}")
+    token = _extract_csrf(page)
+
+    resp = logged_in_client.post(
+        "/reception/entries/new-visit",
+        data={
+            "csrf_token": token,
+            "patient_id": patient_id,
+            "draft_type": "new_visit_only",
+            "visit_date": "2026-03-31",
+            "doctor_id": "any-doctor",
+            "note": "Patient-file visit-only note",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    assert resp.headers["Location"].endswith("/reception?view=desk")
+    assert _count_payments() == before_payments
+
+    entries = list_entries(submitted_by_user_id="admin-test", limit=20)
+    created = next(
+        entry for entry in entries if entry["draft_type"] == "new_visit_only" and entry["source"] == "patient_file"
+    )
+    assert created["locked_patient_id"] == patient_id
+    assert created["patient_intent"] == "existing"
+    assert created["patient_name"] == "Visit Draft Create Patient"
+    assert created["treatment_text"] == "Consultation visit"
+    assert created["paid_today_cents"] is None
+    assert created["total_amount_cents"] is None
+    assert created["payload_json"]["note"] == "Patient-file visit-only note"
+
+
+def test_new_visit_post_blocks_payment_details_and_rerenders(logged_in_client):
+    patient_id = _seed_patient_profile(full_name="Visit Draft Invalid Patient")
+    page = logged_in_client.get(f"/reception/entries/new-visit?patient_id={patient_id}")
+    token = _extract_csrf(page)
+
+    resp = logged_in_client.post(
+        "/reception/entries/new-visit",
+        data={
+            "csrf_token": token,
+            "patient_id": patient_id,
+            "draft_type": "new_visit_only",
+            "visit_date": "2026-03-31",
+            "doctor_id": "any-doctor",
+            "money_received_today": "1",
+            "paid_today": "40",
+            "note": "visit sticky note",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    body = resp.data.decode("utf-8")
+    assert "Visit-only drafts cannot include payment details." in body
+    assert "Locked patient summary" in body
+    assert "visit sticky note" in body

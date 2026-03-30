@@ -81,6 +81,9 @@
         <a class="btn secondary" href="{{ url_for('reception.new_treatment_entry', patient_id=p['id']) }}">{{ t('reception_send_treatment_draft') }}</a>
         {% endif %}
         {% if can_create_reception_entry %}
+        <a class="btn secondary" href="{{ url_for('reception.new_visit_entry', patient_id=p['id']) }}">{{ t('reception_send_visit_draft') }}</a>
+        {% endif %}
+        {% if can_create_reception_entry %}
         <a class="btn secondary" href="{{ url_for('reception.new_patient_correction_entry', patient_id=p['id']) }}">{{ t('reception_send_patient_correction') }}</a>
         {% endif %}
         {% if can_edit_patient %}

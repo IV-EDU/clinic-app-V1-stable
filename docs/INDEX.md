@@ -287,8 +287,8 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 - **Templates**
   - Reception Desk + Manager Queue + History feed: `templates/reception/index.html`
   - Reception draft detail / manager review: `templates/reception/detail.html`
-  - Reception returned-draft edit page: `templates/reception/edit.html`
-  - Reception shared draft form partial: `templates/reception/_entry_form.html`
+  - Reception returned-draft edit page for desk and patient-file `new_treatment` / `new_visit_only`: `templates/reception/edit.html`
+  - Reception shared draft form partial with draft-type switch for desk-origin `new_treatment` vs `new_visit_only`, plus locked patient-file visit-only mode: `templates/reception/_entry_form.html`
   - Reception locked payment-draft page: `templates/reception/new_payment.html`
   - Reception payment-draft form partial: `templates/reception/_payment_entry_form.html`
   - Reception payment-correction page: `templates/reception/edit_payment.html`
@@ -300,14 +300,15 @@ Whenever you add, move, or remove routes, templates, services, or CSS/JS, update
 
 - **Services**
   - Reception permission/bootstrap: `clinic_app/services/reception_bootstrap.py`
-  - Reception draft storage/service, shared workflow-history query, manager-side patient search, and new-treatment approval routing for both desk-origin and patient-file locked drafts: `clinic_app/services/reception_entries.py`
+  - Reception draft storage/service, shared workflow-history query, manager-side patient search, and approval routing for desk-origin / patient-file `new_treatment` plus desk-origin / patient-file `new_visit_only`: `clinic_app/services/reception_entries.py`
   - Shared live payment posting + balance recompute: `clinic_app/services/payments.py`
 
 - **Key routes**
   - `/reception` → `reception.index` (`view=desk`, `view=queue`, `view=history`)
   - `/reception/api/patients/search` → `reception.reception_patient_search`
-  - `/reception/entries` → `reception.create_reception_entry`
+  - `/reception/entries` → `reception.create_reception_entry` (desk-origin `new_treatment` and `new_visit_only`)
   - `/reception/entries/new-treatment` → `reception.new_treatment_entry` / `reception.create_new_treatment_entry`
+  - `/reception/entries/new-visit` → `reception.new_visit_entry` / `reception.create_new_visit_entry`
   - `/reception/entries/new-payment` → `reception.new_payment_entry` / `reception.create_new_payment_entry`
   - `/reception/entries/new-payment-correction` → `reception.new_payment_correction_entry` / `reception.create_new_payment_correction_entry`
   - `/reception/entries/new-patient-correction` → `reception.new_patient_correction_entry` / `reception.create_new_patient_correction_entry`

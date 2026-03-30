@@ -12,7 +12,26 @@
   {% if locked_patient %}
   <input type="hidden" name="patient_id" value="{{ locked_patient.patient_id }}">
   {% endif %}
+  {% set draft_type_value = reception_form.draft_type or 'new_treatment' %}
   <div class="reception-form-grid">
+    {% if allow_draft_type_switch %}
+    <div class="full">
+      <label class="form-label">{{ t('reception_entry_kind_label') }}</label>
+      <div class="reception-kind-switch">
+        <label class="reception-kind-option">
+          <input type="radio" name="draft_type" value="new_treatment" {{ 'checked' if draft_type_value != 'new_visit_only' else '' }}>
+          <span>{{ t('reception_entry_kind_treatment') }}</span>
+        </label>
+        <label class="reception-kind-option">
+          <input type="radio" name="draft_type" value="new_visit_only" {{ 'checked' if draft_type_value == 'new_visit_only' else '' }}>
+          <span>{{ t('reception_entry_kind_visit_only') }}</span>
+        </label>
+      </div>
+    </div>
+    {% else %}
+    <input type="hidden" name="draft_type" value="{{ draft_type_value }}">
+    {% endif %}
+
     {% if locked_patient %}
     <div class="full">
       <div class="reception-return-card">
@@ -39,11 +58,12 @@
       <input class="form-control" type="text" name="page_number" value="{{ reception_form.page_number }}">
     </div>
     {% endif %}
+
     <div>
       <label class="form-label">{{ t('date') }}</label>
       <input class="form-control" type="date" name="visit_date" value="{{ reception_form.visit_date }}">
     </div>
-    <div>
+    <div {% if draft_type_value == 'new_visit_only' %}hidden{% endif %} data-visit-only-hidden>
       <label class="form-label">{{ t('visit_type') }}</label>
       <select class="form-control" name="visit_type">
         <option value="exam" {{ 'selected' if reception_form.visit_type == 'exam' else '' }}>{{ t('vt_exam') }}</option>
@@ -59,24 +79,24 @@
         {% endfor %}
       </select>
     </div>
-    <div class="full">
+    <div class="full" {% if draft_type_value == 'new_visit_only' %}hidden{% endif %} data-visit-only-hidden>
       <label class="form-label">{{ t('treatment_name') }}</label>
       <input class="form-control" type="text" name="treatment_text" value="{{ reception_form.treatment_text }}">
     </div>
-    <div class="reception-checkbox">
+    <div class="reception-checkbox" {% if draft_type_value == 'new_visit_only' %}hidden{% endif %} data-visit-only-hidden>
       <input id="money_received_today" type="checkbox" name="money_received_today" value="1" {{ 'checked' if reception_form.money_received_today else '' }}>
       <label for="money_received_today">{{ t('reception_money_received_today') }}</label>
     </div>
-    <div></div>
-    <div>
+    <div {% if draft_type_value == 'new_visit_only' %}hidden{% endif %} data-visit-only-hidden></div>
+    <div {% if draft_type_value == 'new_visit_only' %}hidden{% endif %} data-visit-only-hidden>
       <label class="form-label">{{ t('amount') }}</label>
       <input class="form-control" type="text" name="paid_today" value="{{ reception_form.paid_today }}">
     </div>
-    <div>
+    <div {% if draft_type_value == 'new_visit_only' %}hidden{% endif %} data-visit-only-hidden>
       <label class="form-label">{{ t('total_amount') }}</label>
       <input class="form-control" type="text" name="total_amount" value="{{ reception_form.total_amount }}">
     </div>
-    <div>
+    <div {% if draft_type_value == 'new_visit_only' %}hidden{% endif %} data-visit-only-hidden>
       <label class="form-label">{{ t('discount') }}</label>
       <input class="form-control" type="text" name="discount_amount" value="{{ reception_form.discount_amount }}">
     </div>
@@ -89,3 +109,41 @@
     </div>
   </div>
 </form>
+<script>
+(function() {
+  var script = document.currentScript;
+  var form = script && script.previousElementSibling;
+  if (!form) return;
+
+  var radios = form.querySelectorAll('input[name="draft_type"]');
+  var visitOnlyFields = form.querySelectorAll('[data-visit-only-hidden]');
+  if (!radios.length || !visitOnlyFields.length) return;
+
+  function syncDraftType() {
+    var checked = form.querySelector('input[name="draft_type"]:checked');
+    var isVisitOnly = !!checked && checked.value === 'new_visit_only';
+    visitOnlyFields.forEach(function(node) {
+      node.hidden = isVisitOnly;
+    });
+    if (isVisitOnly) {
+      var money = form.querySelector('input[name="money_received_today"]');
+      var paid = form.querySelector('input[name="paid_today"]');
+      var total = form.querySelector('input[name="total_amount"]');
+      var discount = form.querySelector('input[name="discount_amount"]');
+      var visitType = form.querySelector('select[name="visit_type"]');
+      var treatmentText = form.querySelector('input[name="treatment_text"]');
+      if (money) money.checked = false;
+      if (paid) paid.value = '';
+      if (total) total.value = '';
+      if (discount) discount.value = '';
+      if (visitType) visitType.value = 'none';
+      if (treatmentText) treatmentText.value = '';
+    }
+  }
+
+  radios.forEach(function(radio) {
+    radio.addEventListener('change', syncDraftType);
+  });
+  syncDraftType();
+})();
+</script>

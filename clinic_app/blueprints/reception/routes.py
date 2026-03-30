@@ -91,6 +91,7 @@ def _doctor_label_for(doctor_id: str) -> str:
 
 def _default_form_data() -> dict[str, str]:
     return {
+        "draft_type": "new_treatment",
         "patient_name": "",
         "phone": "",
         "page_number": "",
@@ -121,6 +122,7 @@ def _entry_form_data(entry: dict | None = None) -> dict[str, str]:
         return _default_form_data()
     payload = entry.get("payload_json") or {}
     note = payload.get("note") if isinstance(payload, dict) else ""
+    draft_type = entry.get("draft_type") or "new_treatment"
     paid_today = ""
     if entry.get("paid_today_cents") is not None:
         paid_today = f"{(entry['paid_today_cents'] or 0) / 100:.2f}".rstrip("0").rstrip(".")
@@ -131,12 +133,13 @@ def _entry_form_data(entry: dict | None = None) -> dict[str, str]:
     if entry.get("discount_amount_cents") is not None:
         discount_amount = f"{(entry['discount_amount_cents'] or 0) / 100:.2f}".rstrip("0").rstrip(".")
     return {
+        "draft_type": draft_type,
         "patient_name": entry.get("patient_name") or "",
         "phone": entry.get("phone") or "",
         "page_number": entry.get("page_number") or "",
         "visit_date": entry.get("visit_date") or "",
-        "visit_type": entry.get("visit_type") or "exam",
-        "treatment_text": entry.get("treatment_text") or "",
+        "visit_type": entry.get("visit_type") or ("none" if draft_type == "new_visit_only" else "exam"),
+        "treatment_text": "" if draft_type == "new_visit_only" else (entry.get("treatment_text") or ""),
         "doctor_id": entry.get("doctor_id") or ANY_DOCTOR_ID,
         "money_received_today": "1" if entry.get("money_received_today") else "",
         "paid_today": paid_today,
@@ -351,6 +354,7 @@ def _patient_file_treatment_entry_payload_from_form_data(
     current_patient: dict,
     *,
     locked_patient_id: str,
+    draft_type: str = "new_treatment",
 ) -> dict:
     primary_phone = str(current_patient.get("primary_phone") or "").strip()
     if not primary_phone:
@@ -364,8 +368,9 @@ def _patient_file_treatment_entry_payload_from_form_data(
         if pages:
             primary_page = str((pages[0] or {}).get("page_number") or "").strip()
 
+    is_visit_only = draft_type == "new_visit_only"
     return {
-        "draft_type": "new_treatment",
+        "draft_type": draft_type,
         "source": "patient_file",
         "patient_intent": "existing",
         "locked_patient_id": locked_patient_id,
@@ -373,6 +378,8 @@ def _patient_file_treatment_entry_payload_from_form_data(
         "patient_name": str(current_patient.get("patient_name") or current_patient.get("full_name") or "").strip(),
         "phone": primary_phone,
         "page_number": primary_page,
+        "visit_type": "none" if is_visit_only else (form_data.get("visit_type") or ""),
+        "treatment_text": T("consultation_visit_name") if is_visit_only else (form_data.get("treatment_text") or ""),
         "doctor_label": _doctor_label_for(form_data["doctor_id"]),
         "payload_json": {"note": form_data["note"]} if form_data["note"] else {},
     }
@@ -380,6 +387,7 @@ def _patient_file_treatment_entry_payload_from_form_data(
 
 def _read_form_data() -> dict[str, str]:
     return {
+        "draft_type": (request.form.get("draft_type") or "").strip(),
         "patient_name": (request.form.get("patient_name") or "").strip(),
         "phone": (request.form.get("phone") or "").strip(),
         "page_number": (request.form.get("page_number") or "").strip(),
@@ -406,11 +414,15 @@ def _read_payment_form_data() -> dict[str, str]:
 
 
 def _entry_payload_from_form_data(form_data: dict[str, str]) -> dict:
+    draft_type = (form_data.get("draft_type") or "new_treatment").strip() or "new_treatment"
+    is_visit_only = draft_type == "new_visit_only"
     return {
-        "draft_type": "new_treatment",
+        "draft_type": draft_type,
         "source": "reception_desk",
         "patient_intent": "unknown",
         **form_data,
+        "visit_type": "none" if is_visit_only else (form_data.get("visit_type") or ""),
+        "treatment_text": T("consultation_visit_name") if is_visit_only else (form_data.get("treatment_text") or ""),
         "doctor_label": _doctor_label_for(form_data["doctor_id"]),
         "payload_json": {"note": form_data["note"]} if form_data["note"] else {},
     }
@@ -568,6 +580,8 @@ def _group_history_events(events: list[dict]) -> list[dict]:
 
 
 def _approval_confirmation_key(entry: dict) -> str:
+    if entry.get("draft_type") == "new_visit_only":
+        return "reception_visit_approve_confirmation_label"
     if entry.get("draft_type") == "new_payment":
         return "reception_payment_approve_confirmation_label"
     if entry.get("draft_type") == "edit_payment":
@@ -603,6 +617,7 @@ def _build_desk_context(
         "can_review_reception": can_review,
         "doctor_options": _doctor_options(),
         "reception_form": form_data,
+        "allow_draft_type_switch": True,
         "reception_errors": errors or [],
         "reception_entries": entries,
         "reception_summary": summary,
@@ -623,6 +638,7 @@ def _build_queue_context() -> dict:
         "can_review_reception": True,
         "doctor_options": _doctor_options(),
         "reception_form": _default_form_data(),
+        "allow_draft_type_switch": False,
         "reception_errors": [],
         "reception_entries": _recent_entries_for_current_user() if _can_create() else [],
         "reception_summary": _build_summary(_recent_entries_for_current_user()) if _can_create() else {"open_drafts": 0, "returned": 0, "waiting_review": 0},
@@ -644,6 +660,7 @@ def _build_history_context() -> dict:
         "can_review_reception": _can_review(),
         "doctor_options": _doctor_options(),
         "reception_form": _default_form_data(),
+        "allow_draft_type_switch": False,
         "reception_errors": [],
         "reception_entries": _recent_entries_for_current_user() if _can_create() else [],
         "reception_summary": _build_summary(_recent_entries_for_current_user()) if _can_create() else {"open_drafts": 0, "returned": 0, "waiting_review": 0},
@@ -669,7 +686,7 @@ def _can_edit_returned_entry(entry: dict) -> bool:
     is_returned_treatment = (
         _can_create()
         and entry.get("submitted_by_user_id") == current_user.id
-        and entry.get("draft_type") == "new_treatment"
+        and entry.get("draft_type") in {"new_treatment", "new_visit_only"}
         and entry.get("source") in {"reception_desk", "patient_file"}
         and entry.get("status") == "edited"
         and entry.get("last_action") == "returned"
@@ -710,7 +727,7 @@ def _can_manager_edit_entry(entry: dict) -> bool:
     if not _can_review():
         return False
     supports_manager_edit = (
-        (entry.get("draft_type") == "new_treatment" and entry.get("source") in {"reception_desk", "patient_file"})
+        (entry.get("draft_type") in {"new_treatment", "new_visit_only"} and entry.get("source") in {"reception_desk", "patient_file"})
         or (entry.get("draft_type") == "new_payment" and entry.get("source") == "treatment_card")
         or (entry.get("draft_type") == "edit_patient" and entry.get("source") == "patient_file")
         or (entry.get("draft_type") == "edit_payment" and entry.get("source") == "treatment_card")
@@ -728,6 +745,11 @@ def _edit_mode(entry: dict) -> str | None:
 
 
 def _manager_edit_page_copy(entry: dict) -> dict[str, str]:
+    if entry.get("draft_type") == "new_visit_only":
+        return {
+            "page_title_key": "reception_manager_edit_visit_title",
+            "page_subtitle_key": "reception_manager_edit_visit_subtitle",
+        }
     if entry.get("draft_type") == "new_payment":
         return {
             "page_title_key": "reception_manager_edit_new_payment_title",
@@ -777,7 +799,7 @@ def _detail_context(
             entry["locked_patient_id"],
             entry["locked_payment_id"],
         )
-    if entry.get("draft_type") in {"edit_patient", "new_treatment"} and entry.get("source") == "patient_file" and entry.get("locked_patient_id"):
+    if entry.get("draft_type") in {"edit_patient", "new_treatment", "new_visit_only"} and entry.get("source") == "patient_file" and entry.get("locked_patient_id"):
         locked_patient_context = get_locked_patient_context(entry["locked_patient_id"])
     base_action_form = {
         "hold_note": "",
@@ -791,7 +813,7 @@ def _detail_context(
         base_action_form.update(action_form)
     approval_patient_candidates: list[dict] = []
     selected_approval_patient = None
-    if entry.get("draft_type") == "new_treatment" and entry.get("source") == "reception_desk":
+    if entry.get("draft_type") in {"new_treatment", "new_visit_only"} and entry.get("source") == "reception_desk":
         approval_patient_candidates = list_reception_candidate_patients(entry)
         selected_patient_id = (base_action_form.get("target_patient_id") or "").strip()
         if selected_patient_id:
@@ -833,6 +855,7 @@ def _edit_context(
         "entry": entry,
         "doctor_options": _doctor_options(),
         "reception_form": form_data or _entry_form_data(entry),
+        "allow_draft_type_switch": not entry and not locked_patient,
         "reception_errors": errors or [],
         "return_reason": entry.get("return_reason") or "",
         "page_title_key": page_title_key,
@@ -1376,6 +1399,74 @@ def create_new_treatment_entry():
     return redirect(url_for("reception.index", view="desk"))
 
 
+@bp.route("/reception/entries/new-visit", methods=["GET"])
+@login_required
+def new_visit_entry():
+    if not _can_create() or not _can_view_patients():
+        abort(403)
+    patient_id = (request.args.get("patient_id") or "").strip()
+    if not patient_id:
+        abort(404)
+    current_patient = _locked_patient_context_or_abort(patient_id)
+    form_data = _default_form_data()
+    form_data["draft_type"] = "new_visit_only"
+    form_data["visit_type"] = "none"
+    return render_page(
+        "reception/edit.html",
+        **_edit_context(
+            {},
+            form_data=form_data,
+            page_title_key="reception_new_visit_title",
+            page_subtitle_key="reception_new_visit_subtitle",
+            submit_label_key="reception_create_visit_draft",
+            back_href=url_for("patients.patient_detail", pid=patient_id),
+            form_action=url_for("reception.create_new_visit_entry"),
+            locked_patient=current_patient,
+        ),
+    )
+
+
+@bp.route("/reception/entries/new-visit", methods=["POST"])
+@login_required
+def create_new_visit_entry():
+    if not _can_create() or not _can_view_patients():
+        abort(403)
+    patient_id = (request.form.get("patient_id") or "").strip()
+    if not patient_id:
+        abort(404)
+    current_patient = _locked_patient_context_or_abort(patient_id)
+    form_data = _read_form_data()
+    form_data["draft_type"] = "new_visit_only"
+    payload = _patient_file_treatment_entry_payload_from_form_data(
+        form_data,
+        current_patient,
+        locked_patient_id=patient_id,
+        draft_type="new_visit_only",
+    )
+    errors, _warnings, _normalized = validate_entry_payload(payload)
+    if errors:
+        return (
+            render_page(
+                "reception/edit.html",
+                **_edit_context(
+                    {},
+                    form_data=form_data,
+                    errors=errors,
+                    page_title_key="reception_new_visit_title",
+                    page_subtitle_key="reception_new_visit_subtitle",
+                    submit_label_key="reception_create_visit_draft",
+                    back_href=url_for("patients.patient_detail", pid=patient_id),
+                    form_action=url_for("reception.create_new_visit_entry"),
+                    locked_patient=current_patient,
+                ),
+            ),
+            400,
+        )
+    create_entry(payload, actor_user_id=current_user.id)
+    flash(T("reception_new_visit_draft_saved"), "ok")
+    return redirect(url_for("reception.index", view="desk"))
+
+
 @bp.route("/reception/entries/new-payment", methods=["GET"])
 @login_required
 def new_payment_entry():
@@ -1605,7 +1696,7 @@ def edit_reception_entry(entry_id: str):
     if not mode:
         abort(403)
     is_manager_edit = mode == "manager_edit"
-    if entry.get("draft_type") == "new_treatment" and entry.get("source") == "patient_file":
+    if entry.get("draft_type") in {"new_treatment", "new_visit_only"} and entry.get("source") == "patient_file":
         current_patient = get_locked_patient_context(entry.get("locked_patient_id") or "") or {
             "patient_id": entry.get("locked_patient_id") or "",
             "patient_name": entry.get("patient_name") or "",
@@ -1617,8 +1708,8 @@ def edit_reception_entry(entry_id: str):
             "notes": "",
         }
         copy = _manager_edit_page_copy(entry) if is_manager_edit else {
-            "page_title_key": "reception_edit_title",
-            "page_subtitle_key": "reception_edit_subtitle",
+            "page_title_key": "reception_edit_visit_title" if entry.get("draft_type") == "new_visit_only" else "reception_edit_title",
+            "page_subtitle_key": "reception_edit_visit_subtitle" if entry.get("draft_type") == "new_visit_only" else "reception_edit_subtitle",
         }
         return render_page(
             "reception/edit.html",
@@ -1739,8 +1830,8 @@ def edit_reception_entry(entry_id: str):
             return_reason=entry.get("return_reason") or "",
         )
     copy = _manager_edit_page_copy(entry) if is_manager_edit else {
-        "page_title_key": "reception_edit_title",
-        "page_subtitle_key": "reception_edit_subtitle",
+        "page_title_key": "reception_edit_visit_title" if entry.get("draft_type") == "new_visit_only" else "reception_edit_title",
+        "page_subtitle_key": "reception_edit_visit_subtitle" if entry.get("draft_type") == "new_visit_only" else "reception_edit_subtitle",
     }
     return render_page(
         "reception/edit.html",
@@ -1764,7 +1855,7 @@ def submit_reception_entry_edit(entry_id: str):
     if not mode:
         abort(403)
     is_manager_edit = mode == "manager_edit"
-    if entry.get("draft_type") == "new_treatment" and entry.get("source") == "patient_file":
+    if entry.get("draft_type") in {"new_treatment", "new_visit_only"} and entry.get("source") == "patient_file":
         current_patient = get_locked_patient_context(entry.get("locked_patient_id") or "") or {
             "patient_id": entry.get("locked_patient_id") or "",
             "patient_name": entry.get("patient_name") or "",
@@ -1776,15 +1867,17 @@ def submit_reception_entry_edit(entry_id: str):
             "notes": "",
         }
         form_data = _read_form_data()
+        form_data["draft_type"] = entry.get("draft_type") or "new_treatment"
         payload = _patient_file_treatment_entry_payload_from_form_data(
             form_data,
             current_patient,
             locked_patient_id=entry.get("locked_patient_id") or "",
+            draft_type=entry.get("draft_type") or "new_treatment",
         )
         errors, _warnings, _normalized = validate_entry_payload(payload)
         copy = _manager_edit_page_copy(entry) if is_manager_edit else {
-            "page_title_key": "reception_edit_title",
-            "page_subtitle_key": "reception_edit_subtitle",
+            "page_title_key": "reception_edit_visit_title" if entry.get("draft_type") == "new_visit_only" else "reception_edit_title",
+            "page_subtitle_key": "reception_edit_visit_subtitle" if entry.get("draft_type") == "new_visit_only" else "reception_edit_subtitle",
         }
         if errors:
             return _render_edit(
@@ -2027,11 +2120,12 @@ def submit_reception_entry_edit(entry_id: str):
         flash(T("reception_draft_updated"), "ok")
         return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id))
     form_data = _read_form_data()
+    form_data["draft_type"] = entry.get("draft_type") or "new_treatment"
     payload = _entry_payload_from_form_data(form_data)
     errors, _warnings, _normalized = validate_entry_payload(payload)
     copy = _manager_edit_page_copy(entry) if is_manager_edit else {
-        "page_title_key": "reception_edit_title",
-        "page_subtitle_key": "reception_edit_subtitle",
+        "page_title_key": "reception_edit_visit_title" if entry.get("draft_type") == "new_visit_only" else "reception_edit_title",
+        "page_subtitle_key": "reception_edit_visit_subtitle" if entry.get("draft_type") == "new_visit_only" else "reception_edit_subtitle",
     }
     if errors:
         return _render_edit(
@@ -2148,6 +2242,14 @@ def approve_reception_entry(entry_id: str):
         elif entry.get("draft_type") == "edit_treatment":
             approve_edit_treatment_entry(entry_id, actor_user_id=current_user.id)
             success_key = "reception_treatment_draft_approved"
+        elif entry.get("draft_type") == "new_visit_only":
+            approve_new_treatment_entry(
+                entry_id,
+                actor_user_id=current_user.id,
+                approval_route=approval_route or "create_new",
+                target_patient_id=target_patient_id or None,
+            )
+            success_key = "reception_visit_draft_approved"
         else:
             approve_new_treatment_entry(
                 entry_id,

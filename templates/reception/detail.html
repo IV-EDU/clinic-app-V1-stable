@@ -446,6 +446,10 @@
       {% endif %}
 
       <div class="reception-detail-stack">
+        {% if can_edit_reception_entry %}
+        <a class="btn secondary" href="{{ url_for('reception.edit_reception_entry', entry_id=entry.id) }}">{{ t('reception_action_edit') }}</a>
+        {% endif %}
+
         {% if can_approve_reception and entry.status != 'approved' and entry.status != 'rejected' %}
         <form class="reception-action-form" method="post" action="{{ url_for('reception.approve_reception_entry', entry_id=entry.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

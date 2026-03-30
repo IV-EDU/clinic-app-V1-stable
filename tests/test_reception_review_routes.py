@@ -1002,6 +1002,231 @@ def test_manager_can_open_new_payment_draft_detail(client, admin_user):
     assert "Current remaining" in body
 
 
+def test_manager_sees_edit_action_and_can_open_pending_new_treatment_edit_page(client, admin_user):
+    review_role_id = _create_role("Reception Review Pending Treatment Edit", ["reception_entries:review"])
+    _create_user("review-pending-treatment-edit", "password123", [review_role_id])
+    _login(client, "review-pending-treatment-edit", "password123")
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Manager Editable Treatment",
+            "phone": "01099911122",
+            "page_number": "84",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-19",
+            "visit_type": "exam",
+            "treatment_text": "Pending Crown",
+            "total_amount": "300",
+            "discount_amount": "20",
+            "paid_today": "50",
+            "money_received_today": True,
+        },
+        actor_user_id="admin-test",
+    )
+
+    detail = client.get(f"/reception/entries/{entry['id']}")
+    assert detail.status_code == 200
+    detail_body = detail.data.decode("utf-8")
+    assert "Edit draft" in detail_body
+
+    edit_page = client.get(f"/reception/entries/{entry['id']}/edit")
+    assert edit_page.status_code == 200
+    body = edit_page.data.decode("utf-8")
+    assert "Edit pending treatment draft" in body
+    assert 'value="Manager Editable Treatment"' in body
+
+
+def test_manager_can_open_edit_pages_for_all_supported_pending_locked_drafts(client, admin_user):
+    review_role_id = _create_role("Reception Review All Pending Edit", ["reception_entries:review"])
+    _create_user("review-all-pending-edit", "password123", [review_role_id])
+    _login(client, "review-all-pending-edit", "password123")
+    patient_id, treatment_id = _seed_patient_with_treatment()
+    child_id = _seed_child_payment(patient_id, treatment_id)
+    patient_profile_id = _seed_patient_profile(full_name="Manager Edit Patient")
+
+    new_payment = create_entry(
+        {
+            "draft_type": "new_payment",
+            "source": "treatment_card",
+            "locked_patient_id": patient_id,
+            "locked_treatment_id": treatment_id,
+            "patient_name": "Review Payment Patient",
+            "phone": "01044444444",
+            "page_number": "73",
+            "treatment_text": "Review Payment Treatment",
+            "doctor_id": ANY_DOCTOR_ID,
+            "doctor_label": ANY_DOCTOR_LABEL,
+            "visit_date": "2026-03-18",
+            "paid_today": "40",
+            "total_amount": "200",
+            "discount_amount": "10",
+            "payload_json": {
+                "submitted_amount_cents": 4000,
+                "treatment_remaining_cents_at_submit": 14000,
+                "treatment_total_paid_cents_at_submit": 5000,
+                "method": "card",
+            },
+        },
+        actor_user_id="admin-test",
+    )
+    edit_payment = create_entry(
+        {
+            "draft_type": "edit_payment",
+            "source": "treatment_card",
+            "locked_patient_id": patient_id,
+            "locked_treatment_id": treatment_id,
+            "locked_payment_id": child_id,
+            "doctor_id": ANY_DOCTOR_ID,
+            "doctor_label": ANY_DOCTOR_LABEL,
+            "visit_date": "2026-03-22",
+            "paid_today": "18",
+            "payload_json": {
+                "current": {
+                    "payment_id": child_id,
+                    "treatment_id": treatment_id,
+                    "amount_cents": 2000,
+                    "visit_date": "2026-03-18",
+                    "method": "cash",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "",
+                    "is_initial_payment": 0,
+                },
+                "proposed": {
+                    "amount": "18",
+                    "visit_date": "2026-03-22",
+                    "method": "card",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "note": "Payment correction note",
+                },
+            },
+        },
+        actor_user_id="admin-test",
+    )
+    edit_treatment = create_entry(
+        {
+            "draft_type": "edit_treatment",
+            "source": "treatment_card",
+            "locked_patient_id": patient_id,
+            "locked_treatment_id": treatment_id,
+            "doctor_id": ANY_DOCTOR_ID,
+            "doctor_label": ANY_DOCTOR_LABEL,
+            "payload_json": {
+                "proposed": {
+                    "treatment_text": "Updated Review Treatment",
+                    "visit_date": "2026-03-25",
+                    "visit_type": "followup",
+                    "doctor_id": ANY_DOCTOR_ID,
+                    "doctor_label": ANY_DOCTOR_LABEL,
+                    "total_amount": "260",
+                    "discount_amount": "10",
+                    "note": "Treatment correction note",
+                }
+            },
+        },
+        actor_user_id="admin-test",
+    )
+    edit_patient = create_entry(
+        {
+            "draft_type": "edit_patient",
+            "source": "patient_file",
+            "locked_patient_id": patient_profile_id,
+            "payload_json": {
+                "current": {
+                    "short_id": "P-ORIG",
+                    "full_name": "Manager Edit Patient",
+                    "primary_phone": "01012121212",
+                    "phones": [{"phone": "01012121212", "label": None, "is_primary": 1}],
+                    "primary_page_number": "18",
+                    "pages": [{"page_number": "18", "notebook_name": "Notebook A", "notebook_color": ""}],
+                    "notes": "Original note",
+                },
+                "proposed": {
+                    "full_name": "Manager Edit Patient Updated",
+                    "phones": [{"phone": "01034343434", "label": None, "is_primary": 1}],
+                    "pages": [{"page_number": "44", "notebook_name": "Notebook B", "notebook_color": ""}],
+                    "notes": "Updated note",
+                },
+                "note": "Reception correction note",
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    new_payment_page = client.get(f"/reception/entries/{new_payment['id']}/edit")
+    assert new_payment_page.status_code == 200
+    assert "Edit pending payment draft" in new_payment_page.data.decode("utf-8")
+
+    edit_payment_page = client.get(f"/reception/entries/{edit_payment['id']}/edit")
+    assert edit_payment_page.status_code == 200
+    assert "Edit pending payment correction" in edit_payment_page.data.decode("utf-8")
+
+    edit_treatment_page = client.get(f"/reception/entries/{edit_treatment['id']}/edit")
+    assert edit_treatment_page.status_code == 200
+    assert "Edit pending treatment correction" in edit_treatment_page.data.decode("utf-8")
+
+    edit_patient_page = client.get(f"/reception/entries/{edit_patient['id']}/edit")
+    assert edit_patient_page.status_code == 200
+    assert "Edit pending patient correction" in edit_patient_page.data.decode("utf-8")
+
+
+def test_create_only_user_cannot_edit_someone_elses_normal_pending_draft(client, admin_user):
+    create_role_id = _create_role("Reception Create Pending Edit Blocked", ["reception_entries:create"])
+    other_user_id = _create_user("pending-edit-owner", "password123", [create_role_id])
+    _create_user("pending-edit-viewer", "password123", [create_role_id])
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Other Pending Draft",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "visit_date": "2026-03-20",
+            "treatment_text": "Pending Draft",
+            "total_amount": "180",
+        },
+        actor_user_id=other_user_id,
+    )
+
+    _login(client, "pending-edit-viewer", "password123")
+    resp = client.get(f"/reception/entries/{entry['id']}/edit")
+    assert resp.status_code == 403
+
+
+def test_manager_cannot_edit_closed_draft(client, admin_user):
+    review_role_id = _create_role("Reception Review Closed Edit", ["reception_entries:review"])
+    _create_user("review-closed-edit", "password123", [review_role_id])
+    _login(client, "review-closed-edit", "password123")
+    entry = create_entry(
+        {
+            "draft_type": "new_treatment",
+            "source": "reception_desk",
+            "patient_name": "Closed Draft",
+            "doctor_id": "any-doctor",
+            "doctor_label": "Any Doctor",
+            "treatment_text": "Closed Crown",
+            "total_amount": "200",
+        },
+        actor_user_id="admin-test",
+    )
+
+    conn = raw_db()
+    try:
+        conn.execute(
+            "UPDATE reception_entries SET status='approved', last_action='approved' WHERE id=?",
+            (entry["id"],),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    resp = client.get(f"/reception/entries/{entry['id']}/edit")
+    assert resp.status_code == 403
+
+
 def test_manager_can_approve_locked_new_payment_draft(client, admin_user):
     approve_role_id = _create_role("Reception Payment Approver", ["reception_entries:approve"])
     _create_user("payment-approver", "password123", [approve_role_id])
@@ -1190,6 +1415,134 @@ def test_reapproving_new_payment_draft_is_blocked(client, admin_user):
     )
     assert second.status_code == 400
     assert "Cannot approve a closed draft." in second.data.decode("utf-8")
+
+
+def test_manager_can_edit_held_new_payment_draft_without_live_write(client, admin_user):
+    review_role_id = _create_role("Reception Review Edit Held Payment", ["reception_entries:review"])
+    _create_user("review-edit-held-payment", "password123", [review_role_id])
+    _login(client, "review-edit-held-payment", "password123")
+    patient_id, treatment_id = _seed_patient_with_treatment()
+    before_payments = _count_payments()
+    entry = create_entry(
+        {
+            "draft_type": "new_payment",
+            "source": "treatment_card",
+            "locked_patient_id": patient_id,
+            "locked_treatment_id": treatment_id,
+            "patient_name": "Review Payment Patient",
+            "phone": "01044444444",
+            "page_number": "73",
+            "treatment_text": "Review Payment Treatment",
+            "doctor_id": ANY_DOCTOR_ID,
+            "doctor_label": ANY_DOCTOR_LABEL,
+            "visit_date": "2026-03-18",
+            "paid_today": "40",
+            "total_amount": "200",
+            "discount_amount": "10",
+            "payload_json": {
+                "submitted_amount_cents": 4000,
+                "treatment_remaining_cents_at_submit": 14000,
+                "treatment_total_paid_cents_at_submit": 5000,
+                "method": "cash",
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    detail = client.get(f"/reception/entries/{entry['id']}")
+    token = _extract_csrf(detail)
+    hold = client.post(
+        f"/reception/entries/{entry['id']}/hold",
+        data={"csrf_token": token, "hold_note": "Need manager fix"},
+        follow_redirects=False,
+    )
+    assert hold.status_code in (302, 303)
+
+    edit_page = client.get(f"/reception/entries/{entry['id']}/edit")
+    edit_token = _extract_csrf(edit_page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/edit",
+        data={
+            "csrf_token": edit_token,
+            "amount": "35",
+            "visit_date": "2026-03-21",
+            "method": "transfer",
+            "doctor_id": ANY_DOCTOR_ID,
+            "note": "Manager adjusted amount",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code in (302, 303)
+    assert resp.headers["Location"].endswith(f"/reception/entries/{entry['id']}")
+    assert _count_payments() == before_payments
+
+    updated = get_entry(entry["id"])
+    assert updated["status"] == "edited"
+    assert updated["last_action"] == "edited"
+    assert updated["hold_reason"] is None
+    assert updated["reviewed_by_user_id"] is not None
+    assert updated["paid_today_cents"] == 3500
+    assert updated["visit_date"] == "2026-03-21"
+    assert updated["payload_json"]["method"] == "transfer"
+    assert updated["payload_json"]["note"] == "Manager adjusted amount"
+    assert list_entry_events(entry["id"])[0]["meta_json"] == {"manager_edit": True}
+
+
+def test_manager_edit_new_payment_validation_error_keeps_draft_pending(client, admin_user):
+    review_role_id = _create_role("Reception Review Invalid Payment Edit", ["reception_entries:review"])
+    _create_user("review-invalid-payment-edit", "password123", [review_role_id])
+    _login(client, "review-invalid-payment-edit", "password123")
+    patient_id, treatment_id = _seed_patient_with_treatment()
+    entry = create_entry(
+        {
+            "draft_type": "new_payment",
+            "source": "treatment_card",
+            "locked_patient_id": patient_id,
+            "locked_treatment_id": treatment_id,
+            "patient_name": "Review Payment Patient",
+            "phone": "01044444444",
+            "page_number": "73",
+            "treatment_text": "Review Payment Treatment",
+            "doctor_id": ANY_DOCTOR_ID,
+            "doctor_label": ANY_DOCTOR_LABEL,
+            "visit_date": "2026-03-18",
+            "paid_today": "40",
+            "total_amount": "200",
+            "discount_amount": "10",
+            "payload_json": {
+                "submitted_amount_cents": 4000,
+                "treatment_remaining_cents_at_submit": 14000,
+                "treatment_total_paid_cents_at_submit": 5000,
+                "method": "cash",
+            },
+        },
+        actor_user_id="admin-test",
+    )
+
+    edit_page = client.get(f"/reception/entries/{entry['id']}/edit")
+    edit_token = _extract_csrf(edit_page)
+    resp = client.post(
+        f"/reception/entries/{entry['id']}/edit",
+        data={
+            "csrf_token": edit_token,
+            "amount": "200",
+            "visit_date": "2026-03-21",
+            "method": "transfer",
+            "doctor_id": ANY_DOCTOR_ID,
+            "note": "Too high",
+        },
+        follow_redirects=False,
+    )
+
+    assert resp.status_code == 400
+    body = resp.data.decode("utf-8")
+    assert "Paid today cannot be greater than the amount due." in body
+    assert 'value="200"' in body
+
+    unchanged = get_entry(entry["id"])
+    assert unchanged["status"] == "new"
+    assert unchanged["paid_today_cents"] == 4000
 
 
 def test_manager_can_open_edit_payment_draft_detail(client, admin_user):

@@ -28,24 +28,25 @@
 <div class="reception-edit-page">
   <section class="reception-edit-header">
     <div>
-      <h1 class="reception-edit-title">{{ t('reception_edit_title') }}</h1>
-      <p class="reception-edit-subtitle">{{ t('reception_edit_subtitle') }}</p>
+      <h1 class="reception-edit-title">{{ t(page_title_key) }}</h1>
+      <p class="reception-edit-subtitle">{{ t(page_subtitle_key) }}</p>
     </div>
     <div class="reception-edit-actions">
-      <a class="reception-link-btn" href="{{ url_for('reception.index', view='desk') }}">{{ t('back') }}</a>
+      <a class="reception-link-btn" href="{{ back_href }}">{{ t('back') }}</a>
     </div>
   </section>
 
+  {% if return_reason %}
   <article class="card reception-edit-card">
     <div class="reception-return-card">
       <div class="reception-return-label">{{ t('reception_return_reason') }}</div>
       <div class="reception-return-text">{{ return_reason or '—' }}</div>
     </div>
   </article>
+  {% endif %}
 
   <article class="card reception-edit-card">
     {% set form_action = url_for('reception.submit_reception_entry_edit', entry_id=entry.id) %}
-    {% set submit_label = t('reception_resubmit_draft') %}
     {% include 'reception/_entry_form.html' %}
   </article>
 </div>

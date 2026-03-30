@@ -13,6 +13,9 @@
 .reception-payment-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
 .reception-detail-label{font-size:.8rem;color:var(--muted, #6b7280);text-transform:uppercase;letter-spacing:.04em}
 .reception-detail-value{margin-top:5px;font-weight:600;word-break:break-word}
+.reception-return-card{padding:14px 16px;border-radius:14px;background:color-mix(in srgb, var(--warning, #b45309) 10%, transparent);border:1px solid color-mix(in srgb, var(--warning, #b45309) 24%, transparent)}
+.reception-return-label{font-size:.82rem;color:var(--muted, #6b7280);text-transform:uppercase;letter-spacing:.04em}
+.reception-return-text{margin-top:6px;font-weight:600}
 .reception-link-btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border-radius:10px;border:1px solid var(--ring, rgba(148,163,184,.35));background:transparent;color:var(--text-primary, inherit);text-decoration:none;font-weight:600}
 .reception-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .reception-form-grid .full{grid-column:1 / -1}
@@ -29,14 +32,24 @@
 <div class="reception-payment-page">
   <section class="reception-payment-header">
     <div>
-      <h1 class="reception-payment-title">{{ t('reception_new_payment_title') }}</h1>
-      <p class="reception-payment-subtitle">{{ t('reception_new_payment_subtitle') }}</p>
+      <h1 class="reception-payment-title">{{ t(page_title_key) }}</h1>
+      <p class="reception-payment-subtitle">{{ t(page_subtitle_key) }}</p>
     </div>
-    <a class="reception-link-btn" href="{{ url_for('patients.patient_detail', pid=locked_treatment.patient_id) }}">{{ t('back_to_patient') }}</a>
+    <a class="reception-link-btn" href="{{ back_href }}">{{ t('back') if page_title_key != 'reception_new_payment_title' else t('back_to_patient') }}</a>
   </section>
 
   <section class="reception-payment-grid">
-    <article class="card reception-payment-card">
+    <div class="reception-payment-summary">
+      {% if return_reason %}
+      <article class="card reception-payment-card">
+        <div class="reception-return-card">
+          <div class="reception-return-label">{{ t('reception_return_reason') }}</div>
+          <div class="reception-return-text">{{ return_reason }}</div>
+        </div>
+      </article>
+      {% endif %}
+
+      <article class="card reception-payment-card">
       <h2>{{ t('reception_locked_treatment_summary') }}</h2>
       <div class="reception-payment-summary">
         <div class="reception-payment-meta">
@@ -78,12 +91,11 @@
           </div>
         </div>
       </div>
-    </article>
+      </article>
+    </div>
 
     <article class="card reception-payment-card">
       <h2>{{ t('reception_new_submission') }}</h2>
-      {% set form_action = url_for('reception.create_new_payment_entry') %}
-      {% set submit_label = t('reception_create_payment_draft') %}
       {% include 'reception/_payment_entry_form.html' %}
     </article>
   </section>

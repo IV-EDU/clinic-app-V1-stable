@@ -29,6 +29,7 @@ from clinic_app.services.reception_entries import (
     resubmit_returned_entry,
     return_entry,
     search_reception_review_patients,
+    update_pending_entry,
     validate_entry_payload,
 )
 from clinic_app.services.ui import render_page
@@ -588,6 +589,54 @@ def _can_edit_returned_entry(entry: dict) -> bool:
     )
 
 
+def _can_manager_edit_entry(entry: dict) -> bool:
+    if not _can_review():
+        return False
+    supports_manager_edit = (
+        (entry.get("draft_type") == "new_treatment" and entry.get("source") == "reception_desk")
+        or (entry.get("draft_type") == "new_payment" and entry.get("source") == "treatment_card")
+        or (entry.get("draft_type") == "edit_patient" and entry.get("source") == "patient_file")
+        or (entry.get("draft_type") == "edit_payment" and entry.get("source") == "treatment_card")
+        or (entry.get("draft_type") == "edit_treatment" and entry.get("source") == "treatment_card")
+    )
+    return supports_manager_edit and entry.get("status") in {"new", "edited", "held"}
+
+
+def _edit_mode(entry: dict) -> str | None:
+    if _can_manager_edit_entry(entry):
+        return "manager_edit"
+    if _can_edit_returned_entry(entry):
+        return "resubmit"
+    return None
+
+
+def _manager_edit_page_copy(entry: dict) -> dict[str, str]:
+    if entry.get("draft_type") == "new_payment":
+        return {
+            "page_title_key": "reception_manager_edit_new_payment_title",
+            "page_subtitle_key": "reception_manager_edit_new_payment_subtitle",
+        }
+    if entry.get("draft_type") == "edit_payment":
+        return {
+            "page_title_key": "reception_manager_edit_payment_title",
+            "page_subtitle_key": "reception_manager_edit_payment_subtitle",
+        }
+    if entry.get("draft_type") == "edit_patient":
+        return {
+            "page_title_key": "reception_manager_edit_patient_title",
+            "page_subtitle_key": "reception_manager_edit_patient_subtitle",
+        }
+    if entry.get("draft_type") == "edit_treatment":
+        return {
+            "page_title_key": "reception_manager_edit_treatment_title",
+            "page_subtitle_key": "reception_manager_edit_treatment_subtitle",
+        }
+    return {
+        "page_title_key": "reception_manager_edit_treatment_entry_title",
+        "page_subtitle_key": "reception_manager_edit_treatment_entry_subtitle",
+    }
+
+
 def _detail_context(
     entry: dict,
     *,
@@ -646,6 +695,7 @@ def _detail_context(
         "approval_confirmation_key": _approval_confirmation_key(entry),
         "approval_patient_candidates": approval_patient_candidates,
         "selected_approval_patient": selected_approval_patient,
+        "can_edit_reception_entry": _can_manager_edit_entry(entry),
     }
 
 
@@ -654,9 +704,11 @@ def _edit_context(
     *,
     form_data: dict[str, str] | None = None,
     errors: list[str] | None = None,
+    page_title_key: str,
+    page_subtitle_key: str,
+    submit_label_key: str,
+    back_href: str,
 ) -> dict:
-    if not _can_edit_returned_entry(entry):
-        abort(403)
     return {
         "show_back": False,
         "entry": entry,
@@ -664,6 +716,10 @@ def _edit_context(
         "reception_form": form_data or _entry_form_data(entry),
         "reception_errors": errors or [],
         "return_reason": entry.get("return_reason") or "",
+        "page_title_key": page_title_key,
+        "page_subtitle_key": page_subtitle_key,
+        "submit_label": T(submit_label_key),
+        "back_href": back_href,
     }
 
 
@@ -900,12 +956,24 @@ def _render_edit(
     *,
     form_data: dict[str, str] | None = None,
     errors: list[str] | None = None,
+    page_title_key: str,
+    page_subtitle_key: str,
+    submit_label_key: str,
+    back_href: str,
     status_code: int = 200,
 ):
     return (
         render_page(
             "reception/edit.html",
-            **_edit_context(entry, form_data=form_data, errors=errors),
+            **_edit_context(
+                entry,
+                form_data=form_data,
+                errors=errors,
+                page_title_key=page_title_key,
+                page_subtitle_key=page_subtitle_key,
+                submit_label_key=submit_label_key,
+                back_href=back_href,
+            ),
         ),
         status_code,
     )
@@ -916,6 +984,12 @@ def _render_new_payment(
     *,
     form_data: dict[str, str] | None = None,
     errors: list[str] | None = None,
+    page_title_key: str = "reception_new_payment_title",
+    page_subtitle_key: str = "reception_new_payment_subtitle",
+    submit_label_key: str = "reception_create_payment_draft",
+    form_action: str | None = None,
+    back_href: str | None = None,
+    return_reason: str = "",
     status_code: int = 200,
 ):
     return (
@@ -926,6 +1000,12 @@ def _render_new_payment(
             payment_form=form_data or _payment_form_data(locked_context),
             payment_errors=errors or [],
             locked_treatment=locked_context,
+            page_title_key=page_title_key,
+            page_subtitle_key=page_subtitle_key,
+            submit_label=T(submit_label_key),
+            form_action=form_action or url_for("reception.create_new_payment_entry"),
+            back_href=back_href or url_for("patients.patient_detail", pid=locked_context["patient_id"]),
+            return_reason=return_reason,
         ),
         status_code,
     )
@@ -1117,14 +1197,7 @@ def new_payment_entry():
     if not patient_id or not treatment_id:
         abort(404)
     context = _locked_treatment_context_or_abort(patient_id, treatment_id)
-    return render_page(
-        "reception/new_payment.html",
-        show_back=False,
-        doctor_options=_doctor_options(),
-        payment_form=_payment_form_data(context),
-        payment_errors=[],
-        locked_treatment=context,
-    )
+    return _render_new_payment(context)[0]
 
 
 @bp.route("/reception/entries/new-payment", methods=["POST"])
@@ -1336,12 +1409,14 @@ def reception_patient_search():
 @bp.route("/reception/entries/<entry_id>/edit", methods=["GET"])
 @login_required
 def edit_reception_entry(entry_id: str):
-    if not _can_create():
+    if not (_can_create() or _can_review()):
         abort(403)
     entry = _find_entry_or_404(entry_id)
+    mode = _edit_mode(entry)
+    if not mode:
+        abort(403)
+    is_manager_edit = mode == "manager_edit"
     if entry.get("draft_type") == "edit_payment":
-        if not _can_edit_returned_entry(entry):
-            abort(403)
         locked_payment = get_locked_payment_context(
             entry.get("locked_patient_id") or "",
             entry.get("locked_payment_id") or "",
@@ -1366,16 +1441,14 @@ def edit_reception_entry(entry_id: str):
             **_payment_correction_context(
                 locked_payment,
                 entry=entry,
-                page_title_key="reception_edit_payment_title",
-                page_subtitle_key="reception_edit_payment_subtitle",
-                submit_label_key="reception_resubmit_draft",
+                page_title_key="reception_manager_edit_payment_title" if is_manager_edit else "reception_edit_payment_title",
+                page_subtitle_key="reception_manager_edit_payment_subtitle" if is_manager_edit else "reception_edit_payment_subtitle",
+                submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
                 form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
-                back_href=url_for("reception.index", view="desk"),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
             ),
         )
     if entry.get("draft_type") == "edit_patient":
-        if not _can_edit_returned_entry(entry):
-            abort(403)
         current_patient = get_locked_patient_context(entry.get("locked_patient_id") or "") or {
             "patient_id": entry.get("locked_patient_id") or "",
             **((entry.get("payload_json") or {}).get("current") or {}),
@@ -1385,16 +1458,14 @@ def edit_reception_entry(entry_id: str):
             **_patient_correction_context(
                 current_patient,
                 entry=entry,
-                page_title_key="reception_edit_patient_title",
-                page_subtitle_key="reception_edit_patient_subtitle",
-                submit_label_key="reception_resubmit_draft",
+                page_title_key="reception_manager_edit_patient_title" if is_manager_edit else "reception_edit_patient_title",
+                page_subtitle_key="reception_manager_edit_patient_subtitle" if is_manager_edit else "reception_edit_patient_subtitle",
+                submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
                 form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
-                back_href=url_for("reception.index", view="desk"),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
             ),
         )
     if entry.get("draft_type") == "edit_treatment":
-        if not _can_edit_returned_entry(entry):
-            abort(403)
         locked_treatment = get_locked_treatment_context(
             entry.get("locked_patient_id") or "",
             entry.get("locked_treatment_id") or "",
@@ -1411,25 +1482,73 @@ def edit_reception_entry(entry_id: str):
             **_treatment_correction_context(
                 locked_treatment,
                 entry=entry,
-                page_title_key="reception_edit_treatment_title",
-                page_subtitle_key="reception_edit_treatment_subtitle",
-                submit_label_key="reception_resubmit_draft",
+                page_title_key="reception_manager_edit_treatment_title" if is_manager_edit else "reception_edit_treatment_title",
+                page_subtitle_key="reception_manager_edit_treatment_subtitle" if is_manager_edit else "reception_edit_treatment_subtitle",
+                submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
                 form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
-                back_href=url_for("reception.index", view="desk"),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
             ),
         )
+    if entry.get("draft_type") == "new_payment":
+        locked_treatment = get_locked_treatment_context(
+            entry.get("locked_patient_id") or "",
+            entry.get("locked_treatment_id") or "",
+        ) or {
+            "patient_id": entry.get("locked_patient_id") or "",
+            "treatment_id": entry.get("locked_treatment_id") or "",
+            "patient_name": entry.get("patient_name") or "",
+            "phone": entry.get("phone") or "",
+            "page_number": entry.get("page_number") or "",
+            "treatment_text": entry.get("treatment_text") or "",
+            "doctor_id": entry.get("doctor_id") or "",
+            "doctor_label": entry.get("doctor_label") or "",
+            "paid_at": entry.get("visit_date") or "",
+            "total_amount_cents": entry.get("total_amount_cents") or 0,
+            "discount_amount_cents": entry.get("discount_amount_cents") or 0,
+            "remaining_cents": ((entry.get("payload_json") or {}).get("treatment_remaining_cents_at_submit") or 0),
+            "total_paid_cents": ((entry.get("payload_json") or {}).get("treatment_total_paid_cents_at_submit") or 0),
+        }
+        copy = _manager_edit_page_copy(entry)
+        return render_page(
+            "reception/new_payment.html",
+            show_back=False,
+            doctor_options=_doctor_options(),
+            payment_form=_payment_form_data(locked_treatment, entry),
+            payment_errors=[],
+            locked_treatment=locked_treatment,
+            page_title_key=copy["page_title_key"],
+            page_subtitle_key=copy["page_subtitle_key"],
+            submit_label=T("reception_manager_save_draft"),
+            form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
+            back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]),
+            return_reason=entry.get("return_reason") or "",
+        )
+    copy = _manager_edit_page_copy(entry) if is_manager_edit else {
+        "page_title_key": "reception_edit_title",
+        "page_subtitle_key": "reception_edit_subtitle",
+    }
     return render_page(
         "reception/edit.html",
-        **_edit_context(entry),
+        **_edit_context(
+            entry,
+            page_title_key=copy["page_title_key"],
+            page_subtitle_key=copy["page_subtitle_key"],
+            submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
+            back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
+        ),
     )
 
 
 @bp.route("/reception/entries/<entry_id>/edit", methods=["POST"])
 @login_required
 def submit_reception_entry_edit(entry_id: str):
-    if not _can_create():
+    if not (_can_create() or _can_review()):
         abort(403)
     entry = _find_entry_or_404(entry_id)
+    mode = _edit_mode(entry)
+    if not mode:
+        abort(403)
+    is_manager_edit = mode == "manager_edit"
     if entry.get("draft_type") == "edit_payment":
         locked_payment = get_locked_payment_context(
             entry.get("locked_patient_id") or "",
@@ -1459,15 +1578,15 @@ def submit_reception_entry_edit(entry_id: str):
                 entry=entry,
                 form_data=form_data,
                 errors=errors,
-                page_title_key="reception_edit_payment_title",
-                page_subtitle_key="reception_edit_payment_subtitle",
-                submit_label_key="reception_resubmit_draft",
+                page_title_key="reception_manager_edit_payment_title" if is_manager_edit else "reception_edit_payment_title",
+                page_subtitle_key="reception_manager_edit_payment_subtitle" if is_manager_edit else "reception_edit_payment_subtitle",
+                submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
                 form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
-                back_href=url_for("reception.index", view="desk"),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
                 status_code=400,
             )
         try:
-            resubmit_returned_entry(entry_id, payload, actor_user_id=current_user.id)
+            update_pending_entry(entry_id, payload, actor_user_id=current_user.id, mode=mode)
         except ValueError as exc:
             refreshed_entry = _find_entry_or_404(entry_id)
             refreshed_payment = get_locked_payment_context(
@@ -1479,15 +1598,15 @@ def submit_reception_entry_edit(entry_id: str):
                 entry=refreshed_entry,
                 form_data=form_data,
                 errors=[str(exc)],
-                page_title_key="reception_edit_payment_title",
-                page_subtitle_key="reception_edit_payment_subtitle",
-                submit_label_key="reception_resubmit_draft",
+                page_title_key="reception_manager_edit_payment_title" if is_manager_edit else "reception_edit_payment_title",
+                page_subtitle_key="reception_manager_edit_payment_subtitle" if is_manager_edit else "reception_edit_payment_subtitle",
+                submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
                 form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
-                back_href=url_for("reception.index", view="desk"),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
                 status_code=400,
             )
-        flash(T("reception_draft_resubmitted"), "ok")
-        return redirect(url_for("reception.index", view="desk"))
+        flash(T("reception_draft_updated" if is_manager_edit else "reception_draft_resubmitted"), "ok")
+        return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id) if is_manager_edit else url_for("reception.index", view="desk"))
     if entry.get("draft_type") == "edit_patient":
         current_patient = get_locked_patient_context(entry.get("locked_patient_id") or "") or {
             "patient_id": entry.get("locked_patient_id") or "",
@@ -1506,15 +1625,15 @@ def submit_reception_entry_edit(entry_id: str):
                 entry=entry,
                 form_data=form_data,
                 errors=errors,
-                page_title_key="reception_edit_patient_title",
-                page_subtitle_key="reception_edit_patient_subtitle",
-                submit_label_key="reception_resubmit_draft",
+                page_title_key="reception_manager_edit_patient_title" if is_manager_edit else "reception_edit_patient_title",
+                page_subtitle_key="reception_manager_edit_patient_subtitle" if is_manager_edit else "reception_edit_patient_subtitle",
+                submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
                 form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
-                back_href=url_for("reception.index", view="desk"),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
                 status_code=400,
             )
         try:
-            resubmit_returned_entry(entry_id, payload, actor_user_id=current_user.id)
+            update_pending_entry(entry_id, payload, actor_user_id=current_user.id, mode=mode)
         except ValueError as exc:
             refreshed_entry = _find_entry_or_404(entry_id)
             refreshed_patient = get_locked_patient_context(refreshed_entry.get("locked_patient_id") or "") or current_patient
@@ -1523,15 +1642,15 @@ def submit_reception_entry_edit(entry_id: str):
                 entry=refreshed_entry,
                 form_data=form_data,
                 errors=[str(exc)],
-                page_title_key="reception_edit_patient_title",
-                page_subtitle_key="reception_edit_patient_subtitle",
-                submit_label_key="reception_resubmit_draft",
+                page_title_key="reception_manager_edit_patient_title" if is_manager_edit else "reception_edit_patient_title",
+                page_subtitle_key="reception_manager_edit_patient_subtitle" if is_manager_edit else "reception_edit_patient_subtitle",
+                submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
                 form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
-                back_href=url_for("reception.index", view="desk"),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
                 status_code=400,
             )
-        flash(T("reception_draft_resubmitted"), "ok")
-        return redirect(url_for("reception.index", view="desk"))
+        flash(T("reception_draft_updated" if is_manager_edit else "reception_draft_resubmitted"), "ok")
+        return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id) if is_manager_edit else url_for("reception.index", view="desk"))
     if entry.get("draft_type") == "edit_treatment":
         locked_treatment = get_locked_treatment_context(
             entry.get("locked_patient_id") or "",
@@ -1553,15 +1672,15 @@ def submit_reception_entry_edit(entry_id: str):
                 entry=entry,
                 form_data=form_data,
                 errors=errors,
-                page_title_key="reception_edit_treatment_title",
-                page_subtitle_key="reception_edit_treatment_subtitle",
-                submit_label_key="reception_resubmit_draft",
+                page_title_key="reception_manager_edit_treatment_title" if is_manager_edit else "reception_edit_treatment_title",
+                page_subtitle_key="reception_manager_edit_treatment_subtitle" if is_manager_edit else "reception_edit_treatment_subtitle",
+                submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
                 form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
-                back_href=url_for("reception.index", view="desk"),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
                 status_code=400,
             )
         try:
-            resubmit_returned_entry(entry_id, payload, actor_user_id=current_user.id)
+            update_pending_entry(entry_id, payload, actor_user_id=current_user.id, mode=mode)
         except ValueError as exc:
             refreshed_entry = _find_entry_or_404(entry_id)
             refreshed_treatment = get_locked_treatment_context(
@@ -1573,27 +1692,107 @@ def submit_reception_entry_edit(entry_id: str):
                 entry=refreshed_entry,
                 form_data=form_data,
                 errors=[str(exc)],
-                page_title_key="reception_edit_treatment_title",
-                page_subtitle_key="reception_edit_treatment_subtitle",
-                submit_label_key="reception_resubmit_draft",
+                page_title_key="reception_manager_edit_treatment_title" if is_manager_edit else "reception_edit_treatment_title",
+                page_subtitle_key="reception_manager_edit_treatment_subtitle" if is_manager_edit else "reception_edit_treatment_subtitle",
+                submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
                 form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
-                back_href=url_for("reception.index", view="desk"),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
                 status_code=400,
             )
-        flash(T("reception_draft_resubmitted"), "ok")
-        return redirect(url_for("reception.index", view="desk"))
+        flash(T("reception_draft_updated" if is_manager_edit else "reception_draft_resubmitted"), "ok")
+        return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id) if is_manager_edit else url_for("reception.index", view="desk"))
+    if entry.get("draft_type") == "new_payment":
+        locked_treatment = get_locked_treatment_context(
+            entry.get("locked_patient_id") or "",
+            entry.get("locked_treatment_id") or "",
+        ) or {
+            "patient_id": entry.get("locked_patient_id") or "",
+            "treatment_id": entry.get("locked_treatment_id") or "",
+            "patient_name": entry.get("patient_name") or "",
+            "phone": entry.get("phone") or "",
+            "page_number": entry.get("page_number") or "",
+            "treatment_text": entry.get("treatment_text") or "",
+            "doctor_id": entry.get("doctor_id") or "",
+            "doctor_label": entry.get("doctor_label") or "",
+            "paid_at": entry.get("visit_date") or "",
+            "total_amount_cents": entry.get("total_amount_cents") or 0,
+            "discount_amount_cents": entry.get("discount_amount_cents") or 0,
+            "remaining_cents": ((entry.get("payload_json") or {}).get("treatment_remaining_cents_at_submit") or 0),
+            "total_paid_cents": ((entry.get("payload_json") or {}).get("treatment_total_paid_cents_at_submit") or 0),
+        }
+        form_data = _read_payment_form_data()
+        payload = _payment_entry_payload_from_form_data(form_data, locked_treatment)
+        errors, _warnings, _normalized = validate_entry_payload(payload)
+        copy = _manager_edit_page_copy(entry)
+        if errors:
+            return _render_new_payment(
+                locked_treatment,
+                form_data=form_data,
+                errors=errors,
+                page_title_key=copy["page_title_key"],
+                page_subtitle_key=copy["page_subtitle_key"],
+                submit_label_key="reception_manager_save_draft",
+                form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]),
+                return_reason=entry.get("return_reason") or "",
+                status_code=400,
+            )
+        try:
+            update_pending_entry(entry_id, payload, actor_user_id=current_user.id, mode=mode)
+        except ValueError as exc:
+            refreshed_entry = _find_entry_or_404(entry_id)
+            refreshed_treatment = get_locked_treatment_context(
+                refreshed_entry.get("locked_patient_id") or "",
+                refreshed_entry.get("locked_treatment_id") or "",
+            ) or locked_treatment
+            return _render_new_payment(
+                refreshed_treatment,
+                form_data=form_data,
+                errors=[str(exc)],
+                page_title_key=copy["page_title_key"],
+                page_subtitle_key=copy["page_subtitle_key"],
+                submit_label_key="reception_manager_save_draft",
+                form_action=url_for("reception.submit_reception_entry_edit", entry_id=entry["id"]),
+                back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]),
+                return_reason=refreshed_entry.get("return_reason") or "",
+                status_code=400,
+            )
+        flash(T("reception_draft_updated"), "ok")
+        return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id))
     form_data = _read_form_data()
     payload = _entry_payload_from_form_data(form_data)
     errors, _warnings, _normalized = validate_entry_payload(payload)
+    copy = _manager_edit_page_copy(entry) if is_manager_edit else {
+        "page_title_key": "reception_edit_title",
+        "page_subtitle_key": "reception_edit_subtitle",
+    }
     if errors:
-        return _render_edit(entry, form_data=form_data, errors=errors, status_code=400)
+        return _render_edit(
+            entry,
+            form_data=form_data,
+            errors=errors,
+            page_title_key=copy["page_title_key"],
+            page_subtitle_key=copy["page_subtitle_key"],
+            submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
+            back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
+            status_code=400,
+        )
     try:
-        resubmit_returned_entry(entry_id, payload, actor_user_id=current_user.id)
+        update_pending_entry(entry_id, payload, actor_user_id=current_user.id, mode=mode)
     except ValueError as exc:
         refreshed_entry = _find_entry_or_404(entry_id)
-        return _render_edit(refreshed_entry, form_data=form_data, errors=[str(exc)], status_code=400)
-    flash(T("reception_draft_resubmitted"), "ok")
-    return redirect(url_for("reception.index", view="desk"))
+        return _render_edit(
+            refreshed_entry,
+            form_data=form_data,
+            errors=[str(exc)],
+            page_title_key=copy["page_title_key"],
+            page_subtitle_key=copy["page_subtitle_key"],
+            submit_label_key="reception_manager_save_draft" if is_manager_edit else "reception_resubmit_draft",
+            back_href=url_for("reception.reception_entry_detail", entry_id=entry["id"]) if is_manager_edit else url_for("reception.index", view="desk"),
+            status_code=400,
+        )
+    flash(T("reception_draft_updated" if is_manager_edit else "reception_draft_resubmitted"), "ok")
+    return redirect(url_for("reception.reception_entry_detail", entry_id=entry_id) if is_manager_edit else url_for("reception.index", view="desk"))
 
 
 @bp.route("/reception/entries/<entry_id>/hold", methods=["POST"])

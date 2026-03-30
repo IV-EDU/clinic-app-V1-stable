@@ -285,6 +285,26 @@ def _require_returned_resubmittable_entry(row, *, actor_user_id: str) -> dict[st
     return entry
 
 
+def _require_manager_editable_entry(row) -> dict[str, Any]:
+    if row is None:
+        raise ValueError("Reception draft was not found.")
+    entry = _decode_row(row)
+    supports_manager_edit = (
+        (entry.get("draft_type") == "new_treatment" and entry.get("source") == "reception_desk")
+        or (entry.get("draft_type") == "new_payment" and entry.get("source") == "treatment_card")
+        or (entry.get("draft_type") == "edit_patient" and entry.get("source") == "patient_file")
+        or (entry.get("draft_type") == "edit_payment" and entry.get("source") == "treatment_card")
+        or (entry.get("draft_type") == "edit_treatment" and entry.get("source") == "treatment_card")
+    )
+    if not supports_manager_edit:
+        raise ValueError("Only supported pending draft types can be edited in this slice.")
+    if entry.get("status") not in {"new", "edited", "held"}:
+        raise ValueError("Only pending drafts can be edited.")
+    if entry.get("status") in {"approved", "rejected"}:
+        raise ValueError("Cannot edit a closed draft.")
+    return entry
+
+
 def validate_entry_payload(data: dict) -> tuple[list[str], list[str], dict[str, Any]]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -898,8 +918,23 @@ def list_queue_entries(*, limit: int = 50) -> list[dict[str, Any]]:
 
 
 def resubmit_returned_entry(entry_id: str, data: dict, *, actor_user_id: str) -> dict[str, Any]:
+    return update_pending_entry(entry_id, data, actor_user_id=actor_user_id, mode="resubmit")
+
+
+def update_pending_entry(entry_id: str, data: dict, *, actor_user_id: str, mode: str) -> dict[str, Any]:
     existing = get_entry(entry_id)
-    entry = _require_returned_resubmittable_entry(existing, actor_user_id=actor_user_id)
+    if mode == "resubmit":
+        entry = _require_returned_resubmittable_entry(existing, actor_user_id=actor_user_id)
+        reviewed_by_user_id = None
+        reviewed_at = None
+        event_meta = {"resubmitted": True}
+    elif mode == "manager_edit":
+        entry = _require_manager_editable_entry(existing)
+        reviewed_by_user_id = actor_user_id
+        reviewed_at = _utc_now_iso()
+        event_meta = {"manager_edit": True}
+    else:
+        raise ValueError("Unsupported Reception draft update mode.")
 
     payload = {
         "draft_type": entry["draft_type"],
@@ -949,8 +984,8 @@ def resubmit_returned_entry(entry_id: str, data: dict, *, actor_user_id: str) ->
                 match_summary_json=?,
                 status=?,
                 updated_at=?,
-                reviewed_by_user_id=NULL,
-                reviewed_at=NULL,
+                reviewed_by_user_id=?,
+                reviewed_at=?,
                 last_action=?,
                 return_reason=NULL,
                 hold_reason=NULL,
@@ -982,6 +1017,8 @@ def resubmit_returned_entry(entry_id: str, data: dict, *, actor_user_id: str) ->
                 normalized["match_summary_json"],
                 "edited",
                 now,
+                reviewed_by_user_id,
+                reviewed_at,
                 "edited",
                 entry_id,
             ),
@@ -991,10 +1028,10 @@ def resubmit_returned_entry(entry_id: str, data: dict, *, actor_user_id: str) ->
             entry_id=entry_id,
             action="edited",
             actor_user_id=actor_user_id,
-            from_status="edited",
+            from_status=entry["status"],
             to_status="edited",
             note=None,
-            meta_json={"resubmitted": True},
+            meta_json=event_meta,
             created_at=now,
         )
         conn.commit()

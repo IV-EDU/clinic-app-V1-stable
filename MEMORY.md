@@ -115,6 +115,23 @@ Sidebar rollout is complete (Mar 8, 2026). Next priority phase is:
 
 ## Template for New Entries
 
+### Session: Reception manager draft editing
+**Date:** 2026-03-30
+**What was done:**
+- Added the missing manager-side Reception `Edit` action for pending drafts by reusing the existing dedicated edit pages instead of adding modal editing.
+- Expanded `/reception/entries/<entry_id>/edit` so manager/reviewer users can edit pending `new_treatment`, `new_payment`, `edit_patient`, `edit_payment`, and `edit_treatment` drafts without posting live data.
+- Added a shared Reception draft-update helper so receptionist resubmits and manager edits now use the same validated draft-update path while keeping their review metadata behavior separate.
+- Added manager-edit UI copy, a detail-page `Edit draft` action, and focused route coverage for access rules, closed-draft blocking, held-draft editing, and no-live-write payment draft edits.
+
+**Current state:**
+- Managers can now correct pending Reception drafts before approving, holding, returning, or rejecting them.
+- Manager edits stay draft-only: they update `reception_entries` + workflow events, clear hold/return/reject reasons, and return to the draft detail page.
+- Focused Reception regression subset passes: 102 tests across `test_reception_review_routes`, `test_reception_entries_service`, `test_reception_payment_routes`, `test_reception_patient_correction_routes`, and `test_reception_treatment_correction_routes`.
+
+**Key decisions:**
+- Manager edit uses dedicated pages now; modal editing is still deferred.
+- Locked `new_payment` drafts are included in manager edit, but manager edits still never create or update live rows until approval.
+
 ### Session: Reception existing-patient routing for desk-origin treatment drafts
 **Date:** 2026-03-29
 **What was done:**
